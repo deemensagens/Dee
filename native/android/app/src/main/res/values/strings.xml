@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Dee</string>
+    <string name="title_activity_main">Dee</string>
+    <string name="package_name">br.com.deemensagens.app</string>
+    <string name="custom_url_scheme">br.com.deemensagens.app</string>
+</resources>

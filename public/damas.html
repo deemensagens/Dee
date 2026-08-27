@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Damas — Dee</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; width: 100%; background: #0b0d12; font-family: 'Segoe UI', Arial, sans-serif; }
+    body { overflow-y: auto; overflow-x: hidden; }
+    /* Sem min-height:100% aqui de propósito: o app roda dentro de uma
+       janelinha flutuante (não em tela cheia) e a página pai lê a altura
+       real do conteúdo via postMessage para dimensionar o iframe certinho,
+       sem sobrar espaço vazio embaixo do tabuleiro. Ver script no fim do
+       arquivo (dee-game-resize). */
+    #app { display: flex; flex-direction: column; align-items: center; width: 100%; padding: 8px 8px 16px; color: #e8eaf0; }
+    #status-bar { font-size: 11px; text-align: center; color: #8892a8; margin-bottom: 6px; min-height: 14px; letter-spacing: .3px; }
+    #turn-bar { font-size: 12px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+    #turn-bar.you { color: #00e5cc; }
+    #turn-bar.opp { color: #ff8a8a; }
+    #board { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); width: 288px; height: 288px; border: 2px solid #1a1d28; border-radius: 6px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+    .sq { position: relative; display: flex; align-items: center; justify-content: center; }
+    .sq.light { background: #2a2f3f; }
+    .sq.dark  { background: #12141c; }
+    .sq.selected { outline: 2px solid #00e5cc; outline-offset: -2px; }
+    .sq.hint::after { content: ''; position: absolute; width: 22%; height: 22%; border-radius: 50%; background: rgba(0,229,204,.55); }
+    .piece { width: 76%; height: 76%; border-radius: 50%; cursor: pointer; box-shadow: inset 0 2px 4px rgba(255,255,255,.15), 0 2px 5px rgba(0,0,0,.5); }
+    .piece.white { background: radial-gradient(circle at 35% 30%, #fdfdfd, #c7cbd6); border: 2px solid #8a8f9e; }
+    .piece.black { background: radial-gradient(circle at 35% 30%, #4a4f5f, #14161e); border: 2px solid #000; }
+    .piece.king::after { content: '♛'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; color: #ffd200; }
+    .piece.forced { box-shadow: 0 0 0 2px #ff5c5c, 0 0 10px 1px rgba(255,92,92,.7), inset 0 2px 4px rgba(255,255,255,.15), 0 2px 5px rgba(0,0,0,.5); }
+    #msg { margin-top: 10px; font-size: 12px; text-align: center; min-height: 34px; color: #8892a8; line-height: 1.4; }
+    #restart-btn { margin-top: 6px; padding: 7px 16px; border: none; border-radius: 8px; background: linear-gradient(135deg,#00e5cc,#00b8a8); color: #000; font-weight: 800; font-size: 11px; cursor: pointer; display: none; }
+
+    /* ── Bandeja de peças capturadas ── */
+    #captured-tray { width: 100%; max-width: 288px; margin-top: 10px; }
+    .cap-row { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: #151822; border: 1px solid #232838; border-radius: 10px; margin-bottom: 6px; }
+    .cap-row .cap-label { font-size: 10px; color: #8892a8; flex-shrink: 0; margin-right: 2px; }
+    .cap-row .cap-count { font-size: 12px; font-weight: 800; color: #e8eaf0; flex-shrink: 0; margin-right: 4px; }
+    .cap-pieces { display: flex; flex-wrap: wrap; gap: 3px; flex: 1; min-width: 0; }
+    .cap-piece { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; box-shadow: inset 0 1px 2px rgba(255,255,255,.15); }
+    .cap-piece.white { background: radial-gradient(circle at 35% 30%, #fdfdfd, #c7cbd6); border: 1px solid #8a8f9e; }
+    .cap-piece.black { background: radial-gradient(circle at 35% 30%, #4a4f5f, #14161e); border: 1px solid #000; }
+    .cap-row.mine .cap-count { color: #ff8a8a; }
+    .cap-row.theirs .cap-count { color: #00e5cc; }
+</style>
+</head>
+<body>
+<div id="app">
+    <div id="status-bar">Carregando partida...</div>
+    <div id="turn-bar"></div>
+    <div id="board"></div>
+    <div id="msg"></div>
+    <div id="captured-tray">
+        <div class="cap-row mine">
+            <span class="cap-label">Você perdeu</span>
+            <span class="cap-count" id="cap-mine-count">0</span>
+            <div class="cap-pieces" id="cap-mine-pieces"></div>
+        </div>
+        <div class="cap-row theirs">
+            <span class="cap-label">Você capturou</span>
+            <span class="cap-count" id="cap-theirs-count">0</span>
+            <div class="cap-pieces" id="cap-theirs-pieces"></div>
+        </div>
+    </div>
+    <button id="restart-btn" onclick="restartGame()">🔄 Jogar Novamente</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  FIREBASE — mesma config do app principal (leitura via query string)
+// ══════════════════════════════════════════════════════════
+const firebaseConfig = {
+    apiKey: "AIzaSyCf9UBLUNObJTzgOT6Wv6GRoWWYq0pUj68",
+    authDomain: "dee-mensagens.firebaseapp.com",
+    projectId: "dee-mensagens",
+    storageBucket: "dee-mensagens.firebasestorage.app",
+    messagingSenderId: "898078042067",
+    appId: "1:898078042067:web:6f4c2ef7554d2a6a81f126"
+};
+firebase.initializeApp(firebaseConfig);
+const db   = firebase.firestore();
+const auth = firebase.auth();
+
+var params    = new URLSearchParams(location.search);
+var docPath   = params.get('docPath');   // ex: conversas/uidA_uidB/mensagens/msgId
+var myUid     = params.get('userId');
+var myName    = params.get('userName') || 'Jogador';
+
+var msgRef    = docPath ? db.doc(docPath) : null;
+var unsub     = null;
+var myColor   = null;     // 'white' | 'black'
+var lastState = null;
+
+function statusEl() { return document.getElementById('status-bar'); }
+function turnEl()   { return document.getElementById('turn-bar'); }
+function msgEl()    { return document.getElementById('msg'); }
+
+function waitForAuth() {
+    return new Promise(function(resolve) {
+        var unsubAuth = auth.onAuthStateChanged(function(user) {
+            unsubAuth();
+            resolve(user);
+        });
+    });
+}
+
+// ══════════════════════════════════════════════════════════
+//  ESTADO INICIAL DO TABULEIRO
+// ══════════════════════════════════════════════════════════
+function initialBoard() {
+    // 0 = vazio, 'w'/'b' = peça normal, 'W'/'B' = dama
+    var b = [];
+    for (var r = 0; r < 8; r++) {
+        b.push([0,0,0,0,0,0,0,0]);
+    }
+    for (var r = 0; r < 3; r++) {
+        for (var c = 0; c < 8; c++) if ((r + c) % 2 === 1) b[r][c] = 'b';
+    }
+    for (var r = 5; r < 8; r++) {
+        for (var c = 0; c < 8; c++) if ((r + c) % 2 === 1) b[r][c] = 'w';
+    }
+    return b;
+}
+
+// O Cloud Firestore NÃO permite arrays aninhados (array dentro de array)
+// como valor de campo. Por isso o tabuleiro (matriz 8x8) é serializado
+// como um array de 8 strings (uma por linha) antes de gravar, e
+// desserializado de volta para matriz 2D assim que é lido.
+function encodeBoard(board2d) {
+    return board2d.map(function(row) {
+        return row.map(function(cell) { return cell ? cell : '.'; }).join('');
+    });
+}
+function decodeBoard(rows) {
+    return rows.map(function(rowStr) {
+        return rowStr.split('').map(function(ch) { return ch === '.' ? 0 : ch; });
+    });
+}
+
+if (!msgRef) {
+    statusEl().textContent = 'Erro: parâmetros da partida ausentes.';
+} else {
+    waitForAuth().then(function(user) {
+        if (!user) {
+            statusEl().textContent = '⚠️ Sessão não encontrada. Feche e abra o jogo novamente pelo chat.';
+            return;
+        }
+        startGame().catch(function(e) {
+            console.error(e);
+            statusEl().textContent = '⚠️ Erro ao carregar a partida: ' + (e && e.message ? e.message : 'tente novamente.');
+        });
+    });
+}
+
+async function startGame() {
+    var snap = await msgRef.get();
+    if (!snap.exists) { statusEl().textContent = 'Convite não encontrado.'; return; }
+    var data = snap.data();
+    var gs = data.gameState || {};
+    var players = gs.players || [];
+
+    // Define minha cor: quem criou o convite é sempre Brancas (Jogador 1).
+    var isCreator = data.senderId === myUid;
+
+    if (isCreator) {
+        myColor = 'white';
+        if (!gs.board) {
+            // primeira vez que o criador abre — inicializa o tabuleiro
+            await msgRef.set({
+                gameState: {
+                    status: gs.status || 'waiting',
+                    board: encodeBoard(initialBoard()),
+                    turn: 'white',
+                    players: players.indexOf(myUid) === -1 ? players.concat([myUid]) : players,
+                    p1: myUid, p1Name: myName,
+                    p2: gs.p2 || null, p2Name: gs.p2Name || null
+                }
+            }, { merge: true });
+        }
+    } else {
+        // adversário entrando
+        if (!gs.p2 || gs.p2 === myUid) {
+            myColor = 'black';
+            var newPlayers = players.indexOf(myUid) === -1 ? players.concat([myUid]) : players;
+            var updates = {
+                'gameState.players': newPlayers,
+                'gameState.p2': myUid,
+                'gameState.p2Name': myName
+            };
+            if (gs.board) updates['gameState.status'] = 'playing';
+            await msgRef.update(updates);
+        } else if (gs.p2 && gs.p2 !== myUid) {
+            statusEl().textContent = 'Esta partida já está completa. Modo espectador.';
+            myColor = 'spectator';
+        }
+    }
+
+    listen();
+}
+
+function listen() {
+    unsub = msgRef.onSnapshot(function(snap) {
+        if (!snap.exists) return;
+        var data = snap.data();
+        var gs = data.gameState || {};
+        if (!gs.board) { statusEl().textContent = 'Aguardando início...'; return; }
+        gs.board = decodeBoard(gs.board);
+        lastState = gs;
+        render(gs);
+    }, function(err) {
+        console.error(err);
+        statusEl().textContent = '⚠️ Erro de sincronização: ' + err.message;
+    });
+}
+
+var selected      = null; // {r,c}
+var activeCapture = null; // sequência de captura múltipla em andamento: {curR,curC,stepIndex,sequences}
+
+function pieceColorOf(v) {
+    if (v === 'w' || v === 'W') return 'white';
+    if (v === 'b' || v === 'B') return 'black';
+    return null;
+}
+function isKingPiece(v) { return v === 'W' || v === 'B'; }
+function inBounds(r, c) { return r >= 0 && r < 8 && c >= 0 && c < 8; }
+function cloneBoard(b) { return b.map(function(row) { return row.slice(); }); }
+function copyCapturedSet(set) {
+    var copy = {};
+    for (var k in set) { if (set.hasOwnProperty(k)) copy[k] = true; }
+    return copy;
+}
+
+// ══════════════════════════════════════════════════════════
+//  REGRAS PADRÃO DE DAMAS (Brasil / Internacional em tabuleiro 8x8)
+//   • Captura é sempre obrigatória.
+//   • Se houver mais de uma sequência de captura possível, o jogador
+//     é obrigado a jogar a que captura o MAIOR número de peças.
+//   • Peças normais capturam em qualquer direção diagonal (inclusive
+//     para trás), mas só se movem para frente quando não há captura.
+//   • Damas "voam": se movem e capturam a qualquer distância na
+//     diagonal, podendo pousar em qualquer casa vazia após a peça
+//     capturada.
+//   • Peças capturadas só saem do tabuleiro ao final de toda a
+//     sequência (não é permitido saltar duas vezes sobre a mesma peça).
+//   • Jogador sem nenhum movimento possível perde a partida.
+// ══════════════════════════════════════════════════════════
+
+// Movimentos simples (sem captura)
+function getSimpleMoves(board, r, c) {
+    var v = board[r][c];
+    if (!v) return [];
+    var color = pieceColorOf(v);
+    var king = isKingPiece(v);
+    var dirs = king ? [[-1,-1],[-1,1],[1,-1],[1,1]] : (color === 'white' ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]]);
+    var moves = [];
+    dirs.forEach(function(d) {
+        if (king) {
+            var rr = r + d[0], cc = c + d[1];
+            while (inBounds(rr, cc) && board[rr][cc] === 0) {
+                moves.push({ r: rr, c: cc });
+                rr += d[0]; cc += d[1];
+            }
+        } else {
+            var nr = r + d[0], nc = c + d[1];
+            if (inBounds(nr, nc) && board[nr][nc] === 0) moves.push({ r: nr, c: nc });
+        }
+    });
+    return moves;
+}
+
+// Todas as sequências de captura possíveis a partir de (r,c), recursivamente.
+// Cada sequência retornada é { steps: [{r,c}, ...], captured: [{r,c}, ...] }
+// com um item por salto (mesmo comprimento em ambos os arrays).
+function findCaptureSequences(board, r, c, color, king, capturedSet) {
+    var dirs = [[-1,-1],[-1,1],[1,-1],[1,1]];
+    var sequences = [];
+
+    dirs.forEach(function(d) {
+        if (!king) {
+            var er = r + d[0], ec = c + d[1];
+            var lr = r + d[0]*2, lc = c + d[1]*2;
+            if (!inBounds(er, ec) || !inBounds(lr, lc)) return;
+            var ev = board[er][ec];
+            var key = er + ',' + ec;
+            if (!ev || pieceColorOf(ev) === color || capturedSet[key]) return;
+            if (board[lr][lc] !== 0) return;
+
+            var newCaptured = copyCapturedSet(capturedSet);
+            newCaptured[key] = true;
+            var newBoard = cloneBoard(board);
+            newBoard[r][c] = 0;
+            newBoard[lr][lc] = (color === 'white' ? 'w' : 'b'); // promoção só ao final da sequência
+            var subSeqs = findCaptureSequences(newBoard, lr, lc, color, false, newCaptured);
+            if (subSeqs.length === 0) {
+                sequences.push({ steps: [{ r: lr, c: lc }], captured: [{ r: er, c: ec }] });
+            } else {
+                subSeqs.forEach(function(s) {
+                    sequences.push({
+                        steps: [{ r: lr, c: lc }].concat(s.steps),
+                        captured: [{ r: er, c: ec }].concat(s.captured)
+                    });
+                });
+            }
+        } else {
+            // Dama: varre a diagonal até achar uma peça
+            var rr = r + d[0], cc = c + d[1];
+            while (inBounds(rr, cc) && board[rr][cc] === 0) { rr += d[0]; cc += d[1]; }
+            if (!inBounds(rr, cc)) return;
+            var ev2 = board[rr][cc];
+            var key2 = rr + ',' + cc;
+            if (!ev2 || pieceColorOf(ev2) === color || capturedSet[key2]) return;
+
+            // pode pousar em qualquer casa vazia logo após a peça capturada
+            var lr2 = rr + d[0], lc2 = cc + d[1];
+            while (inBounds(lr2, lc2) && board[lr2][lc2] === 0) {
+                var newCaptured2 = copyCapturedSet(capturedSet);
+                newCaptured2[key2] = true;
+                var newBoard2 = cloneBoard(board);
+                newBoard2[r][c] = 0;
+                newBoard2[lr2][lc2] = (color === 'white' ? 'W' : 'B');
+                var subSeqs2 = findCaptureSequences(newBoard2, lr2, lc2, color, true, newCaptured2);
+                if (subSeqs2.length === 0) {
+                    sequences.push({ steps: [{ r: lr2, c: lc2 }], captured: [{ r: rr, c: cc }] });
+                } else {
+                    subSeqs2.forEach(function(s) {
+                        sequences.push({
+                            steps: [{ r: lr2, c: lc2 }].concat(s.steps),
+                            captured: [{ r: rr, c: cc }].concat(s.captured)
+                        });
+                    });
+                }
+                lr2 += d[0]; lc2 += d[1];
+            }
+        }
+    });
+
+    return sequences;
+}
+
+// Calcula as opções de jogada de um jogador: se houver captura disponível,
+// ela é obrigatória e só valem as sequências de captura máxima (regra padrão).
+function getMoveOptions(board, color) {
+    var sequencesByPiece = {};
+    var maxLen = 0;
+    for (var r = 0; r < 8; r++) {
+        for (var c = 0; c < 8; c++) {
+            var v = board[r][c];
+            if (v && pieceColorOf(v) === color) {
+                var seqs = findCaptureSequences(board, r, c, color, isKingPiece(v), {});
+                if (seqs.length) {
+                    var localMax = 0;
+                    seqs.forEach(function(s) { if (s.captured.length > localMax) localMax = s.captured.length; });
+                    var bestForPiece = seqs.filter(function(s) { return s.captured.length === localMax; });
+                    sequencesByPiece[r + ',' + c] = bestForPiece;
+                    if (localMax > maxLen) maxLen = localMax;
+                }
+            }
+        }
+    }
+    if (maxLen === 0) return { mustCapture: false, sequencesByPiece: {}, maxLen: 0 };
+    var filtered = {};
+    Object.keys(sequencesByPiece).forEach(function(k) {
+        var seqs = sequencesByPiece[k];
+        if (seqs[0].captured.length === maxLen) filtered[k] = seqs;
+    });
+    return { mustCapture: true, sequencesByPiece: filtered, maxLen: maxLen };
+}
+
+function hasAnyMove(board, color) {
+    for (var r = 0; r < 8; r++) {
+        for (var c = 0; c < 8; c++) {
+            var v = board[r][c];
+            if (v && pieceColorOf(v) === color) {
+                if (getSimpleMoves(board, r, c).length > 0) return true;
+                if (findCaptureSequences(board, r, c, color, isKingPiece(v), {}).length > 0) return true;
+            }
+        }
+    }
+    return false;
+}
+
+function render(gs) {
+    var board = gs.board;
+    var turn  = gs.turn;
+    var isMyTurn = (myColor === turn) && myColor !== 'spectator';
+
+    // Se não é minha vez, garante que nenhuma seleção/captura antiga fique pendurada.
+    if (!isMyTurn) { selected = null; activeCapture = null; }
+
+    statusEl().textContent = gs.p2
+        ? ((gs.p1Name || 'J1') + ' (Brancas)  vs  ' + (gs.p2Name || 'J2') + ' (Pretas)')
+        : 'Aguardando adversário entrar na partida...';
+
+    var tb = turnEl();
+    if (gs.status === 'finished') {
+        tb.textContent = gs.winner === myColor ? '🏆 Você venceu!' : (gs.winner ? '😔 Você perdeu.' : 'Empate.');
+        tb.className = '';
+        document.getElementById('restart-btn').style.display = 'inline-block';
+    } else if (!gs.p2) {
+        tb.textContent = 'Aguardando oponente...';
+        tb.className = '';
+        document.getElementById('restart-btn').style.display = 'none';
+    } else {
+        tb.textContent = isMyTurn ? 'Sua vez de jogar' : 'Vez do oponente';
+        tb.className = isMyTurn ? 'you' : 'opp';
+        document.getElementById('restart-btn').style.display = 'none';
+    }
+
+    var myOpts = { mustCapture: false, sequencesByPiece: {} };
+    if (isMyTurn && gs.status !== 'finished') myOpts = getMoveOptions(board, myColor);
+
+    // Se eu jogo com as pretas, inverto a exibição (180°) para que minhas
+    // peças fiquem sempre na parte de baixo, de frente para mim. As
+    // coordenadas internas do tabuleiro (board[r][c]) continuam as mesmas;
+    // só a posição visual na tela é espelhada.
+    var flip = (myColor === 'black');
+    function toDisplay(r, c) { return flip ? { r: 7 - r, c: 7 - c } : { r: r, c: c }; }
+
+    var boardEl = document.getElementById('board');
+    boardEl.innerHTML = '';
+    var cells = new Array(64);
+    for (var r = 0; r < 8; r++) {
+        for (var c = 0; c < 8; c++) {
+            var sq = document.createElement('div');
+            var dark = (r + c) % 2 === 1;
+            sq.className = 'sq ' + (dark ? 'dark' : 'light');
+            sq.dataset.r = r; sq.dataset.c = c;
+            if (selected && selected.r === r && selected.c === c) sq.classList.add('selected');
+            var val = board[r][c];
+            if (val && val !== 0) {
+                var p = document.createElement('div');
+                var isWhite = (val === 'w' || val === 'W');
+                var isKing  = (val === 'W' || val === 'B');
+                var isForced = isMyTurn && myOpts.mustCapture && myOpts.sequencesByPiece[r + ',' + c];
+                p.className = 'piece ' + (isWhite ? 'white' : 'black') + (isKing ? ' king' : '') + (isForced ? ' forced' : '');
+                sq.appendChild(p);
+            }
+            sq.onclick = (function(rr, cc) { return function() { onSquareClick(rr, cc); }; })(r, c);
+
+            var disp = toDisplay(r, c);
+            cells[disp.r * 8 + disp.c] = sq;
+        }
+    }
+    for (var i = 0; i < 64; i++) boardEl.appendChild(cells[i]);
+
+    if (selected) {
+        var hints = [];
+        if (activeCapture) {
+            var idx = activeCapture.stepIndex;
+            var seen = {};
+            activeCapture.sequences.forEach(function(s) {
+                var st = s.steps[idx];
+                var k = st.r + ',' + st.c;
+                if (!seen[k]) { seen[k] = true; hints.push(st); }
+            });
+        } else if (myOpts.mustCapture) {
+            var key = selected.r + ',' + selected.c;
+            if (myOpts.sequencesByPiece[key]) {
+                var seen2 = {};
+                myOpts.sequencesByPiece[key].forEach(function(s) {
+                    var st = s.steps[0];
+                    var k = st.r + ',' + st.c;
+                    if (!seen2[k]) { seen2[k] = true; hints.push(st); }
+                });
+            }
+        } else {
+            hints = getSimpleMoves(board, selected.r, selected.c);
+        }
+        hints.forEach(function(h) {
+            var d = toDisplay(h.r, h.c);
+            var el = boardEl.children[d.r * 8 + d.c];
+            if (el) el.classList.add('hint');
+        });
+    }
+
+    msgEl().textContent = gs.status === 'finished'
+        ? 'A partida terminou. Toque em "Jogar Novamente" para reiniciar.'
+        : (isMyTurn ? (myOpts.mustCapture ? 'Captura obrigatória! Toque na peça em destaque.' : 'Toque em uma peça sua e depois no destino.') : '');
+
+    renderCapturedTray(board);
+}
+
+// Peças que faltam no tabuleiro em relação às 12 iniciais de cada cor viraram
+// "capturadas" — mostra pra mim quantas eu perdi e quantas eu tirei do adversário.
+function renderCapturedTray(board) {
+    var whiteOnBoard = 0, blackOnBoard = 0;
+    board.forEach(function(row) { row.forEach(function(v) {
+        if (v === 'w' || v === 'W') whiteOnBoard++;
+        if (v === 'b' || v === 'B') blackOnBoard++;
+    }); });
+    var whiteCaptured = 12 - whiteOnBoard; // peças brancas comidas pelas pretas
+    var blackCaptured = 12 - blackOnBoard; // peças pretas comidas pelas brancas
+
+    var mineColor, theirColor, mineCount, theirCount, mineLabel, theirLabel;
+    if (myColor === 'spectator') {
+        mineColor = 'white'; theirColor = 'black';
+        mineCount = whiteCaptured; theirCount = blackCaptured;
+        mineLabel = 'Brancas perdeu'; theirLabel = 'Pretas perdeu';
+    } else if (myColor === 'black') {
+        mineColor = 'black'; theirColor = 'white';
+        mineCount = blackCaptured; theirCount = whiteCaptured;
+        mineLabel = 'Você perdeu'; theirLabel = 'Você capturou';
+    } else { // 'white'
+        mineColor = 'white'; theirColor = 'black';
+        mineCount = whiteCaptured; theirCount = blackCaptured;
+        mineLabel = 'Você perdeu'; theirLabel = 'Você capturou';
+    }
+
+    document.querySelector('#captured-tray .cap-row.mine .cap-label').textContent = mineLabel;
+    document.querySelector('#captured-tray .cap-row.theirs .cap-label').textContent = theirLabel;
+    document.getElementById('cap-mine-count').textContent = mineCount;
+    document.getElementById('cap-theirs-count').textContent = theirCount;
+    fillCapPieces('cap-mine-pieces', mineColor, mineCount);
+    fillCapPieces('cap-theirs-pieces', theirColor, theirCount);
+}
+function fillCapPieces(elId, color, count) {
+    var el = document.getElementById(elId);
+    el.innerHTML = '';
+    for (var i = 0; i < count; i++) {
+        var d = document.createElement('div');
+        d.className = 'cap-piece ' + color;
+        el.appendChild(d);
+    }
+}
+
+function onSquareClick(r, c) {
+    if (!lastState || lastState.status === 'finished') return;
+    if (myColor !== lastState.turn || myColor === 'spectator') return;
+
+    var board = lastState.board;
+    var opts = getMoveOptions(board, myColor);
+    var clickedKey = r + ',' + c;
+    var clickedVal = board[r][c];
+
+    // Permite escolher/trocar a peça a capturar antes de qualquer salto ser confirmado.
+    if (opts.mustCapture && clickedVal && pieceColorOf(clickedVal) === myColor &&
+        opts.sequencesByPiece[clickedKey] && (!activeCapture || activeCapture.stepIndex === 0)) {
+        selected = { r: r, c: c };
+        activeCapture = { curR: r, curC: c, stepIndex: 0, sequences: opts.sequencesByPiece[clickedKey] };
+        render(lastState);
+        return;
+    }
+
+    // Continua uma sequência de captura múltipla em andamento.
+    if (activeCapture) {
+        var stepIdx = activeCapture.stepIndex;
+        var matching = activeCapture.sequences.filter(function(s) {
+            return s.steps[stepIdx].r === r && s.steps[stepIdx].c === c;
+        });
+        if (matching.length === 0) return; // clique inválido durante captura forçada
+
+        var captured = matching[0].captured[stepIdx];
+        var piece = board[activeCapture.curR][activeCapture.curC];
+        board[activeCapture.curR][activeCapture.curC] = 0;
+        board[captured.r][captured.c] = 0;
+        board[r][c] = piece;
+
+        activeCapture.curR = r; activeCapture.curC = c;
+        activeCapture.stepIndex++;
+        activeCapture.sequences = matching;
+        selected = { r: r, c: c };
+
+        if (activeCapture.stepIndex < matching[0].steps.length) {
+            render(lastState); // ainda há mais peças a capturar nesta sequência
+        } else {
+            activeCapture = null;
+            selected = null;
+            finalizeMoveAndCommit(board, r, c, piece);
+        }
+        return;
+    }
+
+    if (opts.mustCapture) return; // captura é obrigatória: ignora cliques fora das peças destacadas
+
+    // Fluxo normal (sem captura obrigatória)
+    if (selected) {
+        var moves = getSimpleMoves(board, selected.r, selected.c);
+        var mv = moves.find(function(m) { return m.r === r && m.c === c; });
+        if (mv) {
+            var pieceN = board[selected.r][selected.c];
+            board[selected.r][selected.c] = 0;
+            board[r][c] = pieceN;
+            selected = null;
+            finalizeMoveAndCommit(board, r, c, pieceN);
+            return;
+        }
+    }
+
+    if (clickedVal && pieceColorOf(clickedVal) === myColor) {
+        selected = { r: r, c: c };
+    } else {
+        selected = null;
+    }
+    render(lastState);
+}
+
+// Aplica o resultado final do lance: atualiza a tela IMEDIATAMENTE (resposta
+// instantânea, sem esperar a rede) e só depois grava no Firestore em segundo
+// plano — isso elimina a sensação de travamento/lentidão do jogo.
+function finalizeMoveAndCommit(board, r, c, piece) {
+    var promoted = piece;
+    if ((piece === 'w' && r === 0) || (piece === 'b' && r === 7)) promoted = piece.toUpperCase();
+    board[r][c] = promoted;
+
+    var whiteLeft = 0, blackLeft = 0;
+    board.forEach(function(row) { row.forEach(function(v) {
+        if (v === 'w' || v === 'W') whiteLeft++;
+        if (v === 'b' || v === 'B') blackLeft++;
+    }); });
+
+    var nextTurn = lastState.turn === 'white' ? 'black' : 'white';
+    var update = { 'gameState.board': encodeBoard(board), 'gameState.turn': nextTurn };
+    var newState = { status: lastState.status, p1Name: lastState.p1Name, p2Name: lastState.p2Name, p2: lastState.p2, board: board, turn: nextTurn };
+
+    if (whiteLeft === 0 || blackLeft === 0) {
+        newState.status = 'finished';
+        newState.winner = (whiteLeft === 0) ? 'black' : 'white';
+    } else if (!hasAnyMove(board, nextTurn)) {
+        // Regra padrão: jogador sem nenhum movimento possível perde.
+        newState.status = 'finished';
+        newState.winner = myColor;
+    }
+    if (newState.status === 'finished') {
+        update['gameState.status'] = 'finished';
+        update['gameState.winner'] = newState.winner;
+    }
+
+    lastState = newState;
+    render(lastState); // feedback local instantâneo
+
+    msgRef.update(update).catch(function(e) {
+        console.error(e);
+        msgEl().textContent = '⚠️ Erro ao salvar a jogada. Verifique sua conexão.';
+    });
+}
+
+async function restartGame() {
+    if (myColor !== 'white' && myColor !== 'black') return;
+    await msgRef.update({
+        'gameState.board': encodeBoard(initialBoard()),
+        'gameState.turn': 'white',
+        'gameState.status': 'playing',
+        'gameState.winner': firebase.firestore.FieldValue.delete()
+    });
+}
+
+// ══════════════════════════════════════════════════════════
+//  ALTURA DINÂMICA — avisa a página pai (o app Dee) qual é a altura real
+//  do conteúdo, para a mini janela flutuante do jogo se ajustar sem sobrar
+//  espaço vazio embaixo nem cortar nada. Reaplica sempre que o layout muda
+//  (tabuleiro carregado, bandeja de capturas atualizada, etc.).
+// ══════════════════════════════════════════════════════════
+(function() {
+    var appEl = document.getElementById('app');
+    function reportHeight() {
+        var h = appEl ? appEl.scrollHeight : document.body.scrollHeight;
+        try { parent.postMessage({ type: 'dee-game-resize', height: h }, '*'); } catch (e) {}
+    }
+    if (window.ResizeObserver && appEl) {
+        new ResizeObserver(reportHeight).observe(appEl);
+    }
+    window.addEventListener('load', reportHeight);
+    setTimeout(reportHeight, 300);
+    setTimeout(reportHeight, 1000);
+})();
+</script>
+</body>
+</html>

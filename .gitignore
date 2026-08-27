@@ -1,0 +1,31 @@
+# ══════════════════════════════════════════════════════════
+#  NUNCA versionar (nem no GitHub público nem em nenhum lugar):
+#  a chave de assinatura do app e as senhas dela. Quem tiver esses
+#  dois arquivos consegue gerar um .apk "oficial" se passando por
+#  você. Guarde uma cópia deles em outro lugar seguro (ex.: um
+#  gerenciador de senhas ou pen drive) — se perder, nunca mais
+#  consegue atualizar o app nem na Play Store nem no GitHub.
+# ══════════════════════════════════════════════════════════
+native/android/keystore.properties
+native/android/app/*.jks
+native/android/app/*.keystore
+
+# Segredos de servidor (conta de serviço do Firebase) — mesmo motivo.
+cloudflare-worker/.dev.vars
+cloudflare-worker/*.json
+!cloudflare-worker/wrangler.toml
+
+# Node / build / dependências (reconstruídos com npm install / cap sync)
+**/node_modules/
+native/android/.gradle/
+native/android/build/
+native/android/app/build/
+native/android/local.properties
+native/android/.idea/
+native/android/app/src/main/assets/public/
+native/android/app/src/main/assets/capacitor.config.json
+native/android/capacitor-cordova-android-plugins/
+
+# Sistema
+.DS_Store
+Thumbs.db

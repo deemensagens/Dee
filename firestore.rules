@@ -1,0 +1,548 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function admin() {
+      return signedIn() &&
+        request.auth.token.email.lower() == "deemensagens@gmail.com";
+    }
+    // Verifica se o usuário logado é um dos dois lados de uma conversa 1:1.
+    // convId é sempre gerado pelo app como [uidA, uidB].sort().join('_')
+    // (função convId() em index.html), então basta separar pelo "_".
+    function isConvParticipant(convId) {
+      let parts = convId.split('_');
+      return parts.size() == 2 &&
+        (parts[0] == request.auth.uid || parts[1] == request.auth.uid);
+    }
+    // Verifica se o usuário logado está no array "members" do grupo.
+    function isGroupMember(groupId) {
+      return exists(/databases/$(database)/documents/grupos/$(groupId)) &&
+        get(/databases/$(database)/documents/grupos/$(groupId)).data.members
+          .hasAny([request.auth.uid]);
+    }
+    // =========================
+    // USUÁRIOS
+    // (o campo "foto" da foto de perfil vive dentro deste mesmo
+    // documento, então já está coberto pelas regras abaixo — só o
+    // próprio dono pode criar/alterar/remover sua foto de perfil)
+    // =========================
+    match /usuarios/{uid} {
+      allow read: if signedIn();
+      allow create, update, delete: if signedIn() && request.auth.uid == uid;
+    }
+    // =========================
+    // CONVERSAS
+    // Só os dois participantes da conversa (extraídos do próprio ID
+    // do documento, convId = uidA_uidB) podem ler ou escrever nas
+    // mensagens. "update" continua liberado para ambos os lados (e
+    // não só o autor) porque é usado também para estado compartilhado,
+    // como jogos e cinema coletivo, que o outro participante precisa
+    // poder atualizar. "delete" continua exclusivo do autor da mensagem
+    // — é o botão de excluir mensagem individual, que apaga para os
+    // dois lados. O botão "excluir toda a conversa" NÃO apaga mais
+    // mensagens: ele grava um marcador pessoal em /clears (ver abaixo),
+    // então não precisa (e não deve) de permissão de delete ampliada aqui.
+    // =========================
+    match /conversas/{convId}/mensagens/{msgId} {
+      allow read: if signedIn() && isConvParticipant(convId);
+      allow create: if signedIn() && isConvParticipant(convId) &&
+        request.resource.data.senderId == request.auth.uid;
+      allow update: if signedIn() && isConvParticipant(convId);
+      allow delete: if signedIn() &&
+        resource.data.senderId == request.auth.uid;
+    }
+    // Marcador pessoal de "excluí toda a conversa" (botão do menu de
+    // contexto). Documento por usuário (id = uid dele) guardando um
+    // timestamp; o app filtra e deixa de mostrar, só para esse usuário,
+    // as mensagens anteriores a esse instante. Não apaga nada do banco
+    // e não afeta o que o outro participante enxerga.
+    match /conversas/{convId}/clears/{uid} {
+      allow read: if signedIn() && isConvParticipant(convId);
+      allow write: if signedIn() && uid == request.auth.uid && isConvParticipant(convId);
+    }
+    // =========================
+    // GRUPOS
+    // Leitura restrita a quem já é membro. Criação exige que o próprio
+    // criador seja o admin e conste na lista de membros. Exclusão
+    // continua exclusiva do admin.
+    // "update": o admin pode alterar qualquer coisa (nome, membros,
+    // transferir admin, etc — é ele quem controla o grupo). Um membro
+    // comum só pode gravar a PRÓPRIA saída do grupo (botão "Sair do
+    // Grupo"): remover exatamente o seu uid do array "members", sem
+    // tocar em nenhum outro campo (nome, admin, ou remover terceiros).
+    // Isso casa com a UI, que só mostra "Configurações do grupo"
+    // (renomear/gerenciar membros) para o admin.
+    // =========================
+    match /grupos/{groupId} {
+      allow read: if signedIn() && resource.data.members.hasAny([request.auth.uid]);
+      allow create: if signedIn() &&
+        request.resource.data.admin == request.auth.uid &&
+        request.resource.data.members.hasAny([request.auth.uid]);
+      allow update: if signedIn() && resource.data.members.hasAny([request.auth.uid]) && (
+        resource.data.admin == request.auth.uid ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) &&
+          request.resource.data.members.size() == resource.data.members.size() - 1 &&
+          !request.resource.data.members.hasAny([request.auth.uid]) &&
+          resource.data.members.hasAll(request.resource.data.members)
+        )
+      );
+      allow delete: if signedIn() &&
+        resource.data.admin == request.auth.uid;
+    }
+    // "delete" continua exclusivo do autor da mensagem (exclusão
+    // individual, apaga para todos os membros). O botão "excluir toda a
+    // conversa" do grupo passou a gravar um marcador pessoal em /clears
+    // (mesma lógica da conversa 1:1 acima), sem apagar nada do grupo.
+    match /grupos/{groupId}/mensagens/{msgId} {
+      allow read: if signedIn() && isGroupMember(groupId);
+      allow create: if signedIn() && isGroupMember(groupId) &&
+        request.resource.data.senderId == request.auth.uid;
+      allow update: if signedIn() && isGroupMember(groupId);
+      allow delete: if signedIn() &&
+        resource.data.senderId == request.auth.uid;
+    }
+    match /grupos/{groupId}/clears/{uid} {
+      allow read: if signedIn() && isGroupMember(groupId);
+      allow write: if signedIn() && uid == request.auth.uid && isGroupMember(groupId);
+    }
+    // =========================
+    // FRIEND REQUESTS
+    // Só quem enviou ("from") ou recebeu ("to") o pedido pode
+    // ler/alterar/apagar. Criação exige que o remetente seja o
+    // próprio usuário logado.
+    // =========================
+    match /friend_requests/{id} {
+      allow read: if signedIn() &&
+        (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow create: if signedIn() &&
+        request.resource.data.from == request.auth.uid &&
+        request.resource.data.to != request.auth.uid;
+      allow update, delete: if signedIn() &&
+        (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+    }
+    // =========================
+    // FRIENDS
+    // Só quem participa da amizade (array "users") pode ler/apagar;
+    // criação exige que o próprio usuário logado conste no array.
+    // Não há necessidade de "update" no app (o documento não é
+    // editado depois de criado), então fica bloqueado.
+    // =========================
+    match /friends/{id} {
+      allow read, delete: if signedIn() &&
+        resource.data.users.hasAny([request.auth.uid]);
+      allow create: if signedIn() &&
+        request.resource.data.users.hasAny([request.auth.uid]);
+      allow update: if false;
+    }
+    // =========================
+    // STATUS (histórias: foto, gif com áudio ou texto)
+    // A visibilidade "só amigos veem" é filtrada no próprio app
+    // (mesmo padrão já usado em /conversas e /friends acima — o
+    // Firestore aqui não consegue validar "são amigos?" nas regras
+    // porque os documentos de /friends têm ID aleatório, sem uma
+    // chave previsível para o `get()` das regras).
+    //
+    // Criação/edição de campos gerais e exclusão: só o dono do status.
+    // Atualização de "viewers" (registro de quem visualizou) e de
+    // "likedBy"/"likes" (curtidas): qualquer usuário logado pode
+    // gravar — é assim que o app registra que "fulano viu"/"fulano
+    // curtiu" o status de outra pessoa — mas SOMENTE esses campos
+    // podem ser alterados por quem não é dono; nenhum outro campo
+    // (foto, texto, uid, etc.) pode ser tocado por terceiros.
+    // =========================
+    match /status/{statusId} {
+      allow read: if signedIn();
+      allow create: if signedIn() &&
+        request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn() && (
+        resource.data.uid == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['viewers', 'likedBy', 'likes'])
+      );
+      allow delete: if signedIn() &&
+        resource.data.uid == request.auth.uid;
+    }
+    // =========================
+    // TYPING
+    // =========================
+    match /typing/{id} {
+      allow read, write: if signedIn();
+    }
+    // =========================
+    // CHAMADAS DE VOZ (sinalização WebRTC)
+    // Um único documento por par de usuários (id = convId, igual às
+    // conversas), reaproveitado a cada nova ligação entre eles. Só quem
+    // participa da ligação (from ou to) pode ler, atualizar ou apagar o
+    // documento — assim ninguém acompanha ou interfere na chamada alheia.
+    // =========================
+    function callParticipant(callId) {
+      return exists(/databases/$(database)/documents/calls/$(callId)) &&
+        (get(/databases/$(database)/documents/calls/$(callId)).data.from == request.auth.uid ||
+         get(/databases/$(database)/documents/calls/$(callId)).data.to == request.auth.uid);
+    }
+    match /calls/{callId} {
+      allow read: if signedIn() &&
+        (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow create: if signedIn() &&
+        request.resource.data.from == request.auth.uid &&
+        request.resource.data.to   != request.auth.uid &&
+        request.resource.data.status == 'ringing';
+      allow update: if signedIn() &&
+        (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow delete: if signedIn() &&
+        (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+    }
+    match /calls/{callId}/callerCandidates/{id} {
+      allow read, write: if signedIn() && callParticipant(callId);
+    }
+    match /calls/{callId}/calleeCandidates/{id} {
+      allow read, write: if signedIn() && callParticipant(callId);
+    }
+    // =========================
+    // LIVE (transmissão ao vivo — sinalização WebRTC de 1 anfitrião para
+    // N espectadores). Vive dentro da própria mensagem "live" da conversa/
+    // grupo (mesma mensagem que carrega o campo liveState), por isso as
+    // regras abaixo reaproveitam isConvParticipant()/isGroupMember() —
+    // mesmo modelo de confiança já usado para o estado compartilhado do
+    // Cinema Coletivo e dos jogos: qualquer participante da conversa (ou
+    // membro do grupo) pode ler/escrever, sem validação campo a campo.
+    //
+    // /viewers/{uid}: presença de cada espectador (quem está assistindo
+    // agora). /peers/{viewerUid}: par oferta/resposta de UMA conexão
+    // WebRTC entre o anfitrião e aquele espectador específico, com suas
+    // subcoleções de ICE candidates em cada sentido.
+    // =========================
+    match /conversas/{convId}/mensagens/{msgId}/viewers/{uid} {
+      allow read: if signedIn() && isConvParticipant(convId);
+      allow write: if signedIn() && isConvParticipant(convId) && uid == request.auth.uid;
+    }
+    match /conversas/{convId}/mensagens/{msgId}/peers/{viewerUid} {
+      allow read, write: if signedIn() && isConvParticipant(convId);
+    }
+    match /conversas/{convId}/mensagens/{msgId}/peers/{viewerUid}/hostCandidates/{id} {
+      allow read, write: if signedIn() && isConvParticipant(convId);
+    }
+    match /conversas/{convId}/mensagens/{msgId}/peers/{viewerUid}/viewerCandidates/{id} {
+      allow read, write: if signedIn() && isConvParticipant(convId);
+    }
+    match /grupos/{groupId}/mensagens/{msgId}/viewers/{uid} {
+      allow read: if signedIn() && isGroupMember(groupId);
+      allow write: if signedIn() && isGroupMember(groupId) && uid == request.auth.uid;
+    }
+    match /grupos/{groupId}/mensagens/{msgId}/peers/{viewerUid} {
+      allow read, write: if signedIn() && isGroupMember(groupId);
+    }
+    match /grupos/{groupId}/mensagens/{msgId}/peers/{viewerUid}/hostCandidates/{id} {
+      allow read, write: if signedIn() && isGroupMember(groupId);
+    }
+    match /grupos/{groupId}/mensagens/{msgId}/peers/{viewerUid}/viewerCandidates/{id} {
+      allow read, write: if signedIn() && isGroupMember(groupId);
+    }
+    // =========================
+    // CHUNKS
+    // (usado tanto pelas mídias do chat quanto pelas mídias dos
+    // status — mesmo mecanismo de armazenamento para ambos)
+    // Obs.: os documentos não guardam quem é o dono, só o auth é
+    // exigido; a proteção real é o mediaId ser aleatório/imprevisível.
+    // Restringir por dono exigiria gravar um campo de autoria no
+    // app — deixado como está para não quebrar o fluxo existente.
+    // =========================
+    match /chunks/{id} {
+      allow read, write: if signedIn();
+    }
+    match /chunks/{id}/parts/{partId} {
+      allow read, write: if signedIn();
+    }
+    // =========================
+    // DEVICE
+    // Usado ANTES do login (checagem de vínculo dispositivo/e-mail),
+    // por isso precisa ficar acessível sem autenticação. Não é um
+    // mecanismo de autenticação real — é só um aviso de UX — então o
+    // acesso público aqui não compromete contas.
+    // =========================
+    match /device_bindings/{id} {
+      allow read, write: if true;
+    }
+    match /email_device_index/{id} {
+      allow read, write: if true;
+    }
+    // =========================
+    // ADS
+    // =========================
+    match /ads/{adId} {
+      allow read: if true;
+      allow create, update, delete: if admin();
+    }
+    // =========================
+    // CLIQUES DOS ANÚNCIOS
+    // =========================
+    match /ads_clicks/{clickId} {
+      allow read: if admin();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+    match /adClicks/{clickId} {
+      allow read: if admin();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+    // =========================
+    // ESTATÍSTICAS DOS ANÚNCIOS
+    // =========================
+    match /ads_stats/{adId} {
+      allow read: if admin();
+      allow write: if admin();
+    }
+    // =========================
+    // RADAR DE INTERESSES
+    // =========================
+    match /market_insights/{termId} {
+      allow read: if admin();
+      allow create, update: if signedIn();
+      allow delete: if admin();
+    }
+    match /market_insights_meta/{docId} {
+      allow read: if admin();
+      allow create, update: if signedIn();
+      allow delete: if admin();
+    }
+    // =========================
+    // CONTAS EXCLUÍDAS
+    // =========================
+    match /contas_excluidas/{uid} {
+      allow read: if admin();
+      allow create: if signedIn() && request.auth.uid == uid && resource == null;
+      allow update: if false;
+      allow delete: if admin();
+    }
+    // =========================
+    // BLOQUEIO DE USUÁRIOS (moderação — Exigência Google Play / Apple)
+    // Documento por par: blocked_users/{blockerUid}_{blockedUid}.
+    // Só quem bloqueou (blockerId) pode ler, criar ou apagar
+    // (desbloquear) o próprio registro de bloqueio. A pessoa bloqueada
+    // não tem acesso de leitura a esse documento — ela simplesmente
+    // deixa de conseguir enviar mensagens, o que é validado no app
+    // (index.html) e reforçado pela regra de "conversas" continuar
+    // exigindo apenas isConvParticipant, então o bloqueio em si é uma
+    // camada de produto/UX, não uma regra de acesso à conversa.
+    // =========================
+    function isOwnBlockDoc(docId) {
+      let parts = docId.split('_');
+      return parts.size() == 2 && parts[0] == request.auth.uid;
+    }
+    match /blocked_users/{docId} {
+      allow read: if signedIn() && resource.data.blockerId == request.auth.uid;
+      allow create: if signedIn() &&
+        request.resource.data.blockerId == request.auth.uid &&
+        request.resource.data.blockedId != request.auth.uid &&
+        isOwnBlockDoc(docId);
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.blockerId == request.auth.uid;
+    }
+    // =========================
+    // DENÚNCIAS (moderação — Exigência Google Play / Apple)
+    // Qualquer usuário logado pode criar uma denúncia em que ele mesmo
+    // conste como autor (reporterId == uid logado) e o denunciado não
+    // seja ele mesmo. Leitura, alteração de status ("pending" ->
+    // "reviewed"/"resolved") e exclusão ficam restritas ao admin, que
+    // analisa as denúncias fora do app, no console do Firebase ou em
+    // um painel administrativo futuro.
+    // =========================
+    match /reports/{reportId} {
+      allow create: if signedIn() &&
+        request.resource.data.reporterId == request.auth.uid &&
+        request.resource.data.reportedId != request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow read, update, delete: if admin();
+    }
+    // =========================
+    // REDE SOCIAL (feed "Comunidade Dee")
+    // Leitura liberada a qualquer usuário logado (é um feed público
+    // dentro do app). Criação exige que o autor (uid) seja o próprio
+    // usuário logado. "update": o dono do post pode alterar qualquer
+    // campo (não é usado hoje, mas não há motivo pra travar); qualquer
+    // outro usuário logado só pode alterar os campos de interação
+    // (curtidas e contadores), sem tocar em texto, mídia ou autoria —
+    // mesmo padrão já usado em /status acima. "delete": o autor do post
+    // continua podendo excluir a própria publicação (botão "Meus posts"
+    // > excluir). O admin() também pode excluir QUALQUER publicação —
+    // é a aba "Publicações" do painel administrativo (painel.html),
+    // usada para moderar o feed.
+    // =========================
+    match /social_posts/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn() &&
+        request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn() && (
+        resource.data.uid == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['likes', 'likedBy', 'commentsCount', 'sharesCount'])
+      );
+      allow delete: if signedIn() &&
+        (resource.data.uid == request.auth.uid || admin());
+    }
+    // Comentários de um post: qualquer usuário logado pode ler e criar
+    // (comentando com o próprio uid). Exclusão permitida para quem
+    // escreveu o comentário, para o dono do post (moderar comentários
+    // no próprio post) e para o admin() (aba "Publicações" do painel
+    // administrativo, moderação geral do feed). Sem "update" —
+    // comentário não é editado depois de enviado.
+    match /social_posts/{postId}/comments/{commentId} {
+      allow read: if signedIn();
+      allow create: if signedIn() &&
+        request.resource.data.uid == request.auth.uid;
+      allow update: if false;
+      allow delete: if signedIn() && (
+        resource.data.uid == request.auth.uid ||
+        admin() ||
+        (
+          exists(/databases/$(database)/documents/social_posts/$(postId)) &&
+          get(/databases/$(database)/documents/social_posts/$(postId)).data.uid == request.auth.uid
+        )
+      );
+    }
+    // =========================
+    // REDE SOCIAL — LIVE (transmissão ao vivo dentro de um post: câmera do
+    // anfitrião → N espectadores). Mesmo modelo de sinalização WebRTC via
+    // Firestore já usado pela Live do chat (ver /conversas/.../viewers e
+    // /peers acima), só que vivendo dentro do próprio post — por isso
+    // qualquer usuário logado pode ler/escrever aqui (assim como já pode
+    // ler qualquer social_posts), em vez de restringir a participantes de
+    // uma conversa específica.
+    // /viewers/{uid}: presença de cada espectador (quem está assistindo
+    // agora) — só o próprio uid grava o próprio doc de presença.
+    // /peers/{viewerUid}: par oferta/resposta de UMA conexão WebRTC entre
+    // o anfitrião e aquele espectador específico, com suas subcoleções de
+    // ICE candidates em cada sentido (host→viewer e viewer→host).
+    // =========================
+    match /social_posts/{postId}/viewers/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && uid == request.auth.uid;
+    }
+    match /social_posts/{postId}/peers/{viewerUid} {
+      allow read, write: if signedIn();
+    }
+    match /social_posts/{postId}/peers/{viewerUid}/hostCandidates/{id} {
+      allow read, write: if signedIn();
+    }
+    match /social_posts/{postId}/peers/{viewerUid}/viewerCandidates/{id} {
+      allow read, write: if signedIn();
+    }
+    // =========================
+    // REDE SOCIAL — OCULTAR/BLOQUEAR (preferências pessoais do feed)
+    // Documento único por usuário (id = próprio uid), guardando dois
+    // arrays: "hiddenPosts" (postagens ocultadas individualmente) e
+    // "blockedUsers" (autores cujas postagens somem inteiramente do
+    // feed). É uma lista pessoal — só o próprio dono pode ler ou
+    // escrever nela; ninguém mais precisa (ou deve) saber quem cada
+    // pessoa bloqueou/ocultou.
+    // =========================
+    match /social_blocks/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+    // =========================
+    // REDE SOCIAL — CONFIGURAÇÃO (postagem em destaque)
+    // Documento social_config/pinned: guarda qual publicação (postId)
+    // deve aparecer fixada em primeiro no carrossel da Comunidade Dee,
+    // e até quando (expiresAt em ms, ou null = até ser removida
+    // manualmente). Só o admin() define isso, pela aba "Publicações"
+    // do painel administrativo (painel.html) — qualquer usuário
+    // logado pode LER o doc, porque é o app (social.js) quem lê essa
+    // configuração pra reordenar o feed de cada pessoa.
+    // =========================
+    match /social_config/{docId} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+    // =========================
+    // REDE SOCIAL — NOTIFICAÇÕES (curtida/comentário/compartilhamento
+    // nas MINHAS postagens). Documento por interação, criado por quem
+    // curtiu/comentou/compartilhou (fromUid) para avisar o dono do post
+    // (toUid). Leitura restrita a quem recebeu (toUid == uid logado) —
+    // ninguém mais precisa ver essas notificações. "update" só é usado
+    // para marcar como lida (campo "read"), então só o destinatário
+    // pode gravar e só nesse campo. Sem "delete" pelo app hoje; o
+    // admin() pode limpar se precisar de uma faxina manual.
+    // =========================
+    match /social_notifications/{id} {
+      allow read: if signedIn() && resource.data.toUid == request.auth.uid;
+      allow create: if signedIn() &&
+        request.resource.data.fromUid == request.auth.uid &&
+        request.resource.data.toUid != request.auth.uid;
+      allow update: if signedIn() && resource.data.toUid == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      // Além do admin (faxina manual), quem enviou (fromUid) ou recebeu
+      // (toUid) a notificação pode apagá-la — usado na exclusão de conta,
+      // pra não deixar notificações órfãs referenciando um uid apagado.
+      allow delete: if admin() ||
+        (signedIn() && (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid));
+    }
+    // =========================
+    // VOZ DEE — PONTUAÇÃO DE IMPACTO
+    // Cada interação recebida (curtida/comentário/compartilhamento) e
+    // cada reconhecimento vira um EVENTO imutável com timestamp — nunca
+    // um "score" mutável. A pontuação de cada pessoa é sempre a soma
+    // desses eventos com decaimento, calculada no cliente (ver
+    // sfComputeImpactScoreSync em social.js), então ninguém escreve a
+    // própria pontuação diretamente: só pode existir através desses
+    // eventos, um por um. "weight" é travado por tipo (sfImpactWeightOk)
+    // pra impedir gravar, por exemplo, uma curtida valendo 1000 pontos.
+    // Sem update/delete pelo app — são fatos históricos.
+    // =========================
+    function sfImpactWeightOk(type, weight) {
+      return (type == 'like' && weight == 1) ||
+        (type == 'comment' && weight == 3) ||
+        (type == 'share' && weight == 5) ||
+        (type == 'recognition' && weight == 50);
+    }
+    match /social_impact_events/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() &&
+        request.resource.data.fromUid == request.auth.uid &&
+        request.resource.data.toUid != request.auth.uid &&
+        sfImpactWeightOk(request.resource.data.type, request.resource.data.weight) &&
+        request.resource.data.createdAt is number;
+      allow update: if admin();
+      // "delete": além do admin, quem RECEBEU o evento (toUid) pode apagar
+      // os próprios eventos — usado só na exclusão de conta, pra garantir
+      // que a pessoa some do Ranking da Comunidade imediatamente e não
+      // fique aparecendo com um nome genérico ("Usuário") depois de
+      // excluir a conta. Só é permitido apagar o lado "toUid" (a pontuação
+      // que a pessoa recebeu); o lado "fromUid" (curtidas/comentários que
+      // ela deu em posts de outras pessoas) continua imutável mesmo por
+      // ela mesma, senão daria pra "emprestar" uma curtida pra alguém e
+      // depois apagar o evento pra tirar o ponto de volta.
+      allow delete: if admin() ||
+        (signedIn() && resource.data.toUid == request.auth.uid);
+    }
+    // =========================
+    // VOZ DEE — RECONHECIMENTO
+    // 1 por semana por pessoa, nunca a si mesmo, nunca repetindo o
+    // mesmo destinatário em duas semanas seguidas. Semana = período
+    // fixo de 7 dias contado a partir da época Unix (weekId = piso
+    // (agora / 7 dias)), igual pra todo mundo. Documento ID =
+    // {giverUid}_{weekId}: como o ID já embute usuário+semana, uma
+    // segunda tentativa na mesma semana cai em "update" (documento já
+    // existe), e update é bloqueado abaixo — sem precisar checar nada
+    // a mais pra essa regra. Pra impedir repetir o MESMO destinatário
+    // na semana seguinte, a regra lê (get) o doc da semana anterior do
+    // mesmo doador e compara o toUid.
+    // =========================
+    match /social_recognitions/{docId} {
+      allow read: if signedIn();
+      allow create: if signedIn() &&
+        request.resource.data.giverUid == request.auth.uid &&
+        request.resource.data.toUid != request.auth.uid &&
+        request.resource.data.weekId is int &&
+        docId == request.resource.data.giverUid + '_' + string(request.resource.data.weekId) &&
+        (
+          !exists(/databases/$(database)/documents/social_recognitions/$(request.resource.data.giverUid + '_' + string(request.resource.data.weekId - 1))) ||
+          get(/databases/$(database)/documents/social_recognitions/$(request.resource.data.giverUid + '_' + string(request.resource.data.weekId - 1))).data.toUid != request.resource.data.toUid
+        );
+      allow update, delete: if false;
+    }
+  }
+}
