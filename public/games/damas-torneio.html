@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Torneio de Damas — Dee</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; width: 100%; background: #0b0d12; font-family: 'Segoe UI', Arial, sans-serif; color: #e8eaf0; }
+    body { overflow-y: auto; overflow-x: hidden; }
+    /* Sem min-height:100% aqui de propósito: o app roda dentro de uma
+       janelinha flutuante (não em tela cheia) e a página pai lê a altura
+       real do conteúdo via postMessage para dimensionar o iframe certinho,
+       sem sobrar espaço vazio embaixo. Ver script no fim do arquivo
+       (dee-game-resize). */
+    #app { display: flex; flex-direction: column; align-items: center; width: 100%; padding: 10px 8px 22px; }
+
+    #top-status { font-size: 11px; text-align: center; color: #8892a8; margin-bottom: 4px; letter-spacing: .3px; }
+    #top-title { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; font-weight: 800; text-align: center; margin-bottom: 10px; color: #ffd200; }
+
+    .card { width: 100%; max-width: 320px; background: #151822; border: 1px solid #232838; border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+    .card h3 { margin: 0 0 8px; font-size: 13px; color: #00e5cc; letter-spacing: .3px; }
+    .muted { color: #8892a8; font-size: 12px; line-height: 1.5; }
+
+    .player-chip { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #1c2130; border-radius: 10px; margin-bottom: 6px; font-size: 12px; }
+    .player-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #00e5cc; flex-shrink: 0; }
+    .player-chip.me { border: 1px solid #00e5cc; }
+
+    #join-btn { width: 100%; margin-top: 6px; padding: 12px; border: none; border-radius: 12px; background: linear-gradient(135deg,#00e5cc,#00b8a8); color: #000; font-weight: 800; font-size: 13px; cursor: pointer; }
+    #join-btn:disabled { opacity: .5; }
+
+    #countdown-timer { font-family: 'Segoe UI', Arial, sans-serif; font-size: 30px; font-weight: 800; text-align: center; color: #ff8a8a; margin: 4px 0 10px; letter-spacing: 1px; }
+
+    /* ── Tabuleiro (mesma aparência do jogo 1x1) ── */
+    #board-wrap { display: flex; flex-direction: column; align-items: center; margin-bottom: 6px; }
+    .board-side-label { font-size: 11px; font-weight: 700; color: #8892a8; margin: 2px 0; }
+    #turn-bar { font-size: 12px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+    #turn-bar.you { color: #00e5cc; }
+    #turn-bar.opp { color: #ff8a8a; }
+    #board { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); width: 272px; height: 272px; border: 2px solid #1a1d28; border-radius: 6px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+    .sq { position: relative; display: flex; align-items: center; justify-content: center; }
+    .sq.light { background: #2a2f3f; }
+    .sq.dark  { background: #12141c; }
+    .sq.selected { outline: 2px solid #00e5cc; outline-offset: -2px; }
+    .sq.hint::after { content: ''; position: absolute; width: 22%; height: 22%; border-radius: 50%; background: rgba(0,229,204,.55); }
+    .piece { width: 76%; height: 76%; border-radius: 50%; cursor: pointer; box-shadow: inset 0 2px 4px rgba(255,255,255,.15), 0 2px 5px rgba(0,0,0,.5); }
+    .piece.white { background: radial-gradient(circle at 35% 30%, #fdfdfd, #c7cbd6); border: 2px solid #8a8f9e; }
+    .piece.black { background: radial-gradient(circle at 35% 30%, #4a4f5f, #14161e); border: 2px solid #000; }
+    .piece.king::after { content: '♛'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; color: #ffd200; }
+    .piece.forced { box-shadow: 0 0 0 2px #ff5c5c, 0 0 10px 1px rgba(255,92,92,.7), inset 0 2px 4px rgba(255,255,255,.15), 0 2px 5px rgba(0,0,0,.5); }
+    #match-msg { margin-top: 8px; font-size: 12px; text-align: center; min-height: 30px; color: #8892a8; line-height: 1.4; }
+
+    /* ── Bandeja de peças capturadas ── */
+    #captured-tray { width: 100%; max-width: 272px; margin-top: 4px; }
+    .cap-row { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: #151822; border: 1px solid #232838; border-radius: 10px; margin-bottom: 6px; }
+    .cap-row .cap-label { font-size: 10px; color: #8892a8; flex-shrink: 0; margin-right: 2px; }
+    .cap-row .cap-count { font-size: 12px; font-weight: 800; color: #e8eaf0; flex-shrink: 0; margin-right: 4px; }
+    .cap-pieces { display: flex; flex-wrap: wrap; gap: 3px; flex: 1; min-width: 0; }
+    .cap-piece { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; box-shadow: inset 0 1px 2px rgba(255,255,255,.15); }
+    .cap-piece.white { background: radial-gradient(circle at 35% 30%, #fdfdfd, #c7cbd6); border: 1px solid #8a8f9e; }
+    .cap-piece.black { background: radial-gradient(circle at 35% 30%, #4a4f5f, #14161e); border: 1px solid #000; }
+    .cap-row.mine .cap-count { color: #ff8a8a; }
+    .cap-row.theirs .cap-count { color: #00e5cc; }
+
+    /* ── Espectador: tabuleiro girado 90°, um lado pra cada jogador ── */
+    #spec-board-wrap { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .spec-name { writing-mode: vertical-rl; font-size: 11px; font-weight: 700; color: #8892a8; white-space: nowrap; }
+    .spec-name.left { transform: rotate(180deg); }
+    #spec-board { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); width: 232px; height: 232px; border: 2px solid #1a1d28; border-radius: 6px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.5); flex-shrink: 0; }
+
+    /* ── Chaveamento ── */
+    .bracket-round { margin-bottom: 10px; }
+    .bracket-round-title { font-size: 11px; font-weight: 700; color: #ffd200; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .bracket-match { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 7px 9px; background: #1c2130; border-radius: 10px; margin-bottom: 6px; font-size: 11px; }
+    .bracket-match.watchable { cursor: pointer; border: 1px solid #232838; }
+    .bracket-match.watchable:active { background: #232a3c; }
+    .bracket-match .bm-p { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bracket-match .bm-p.winner { color: #00e5cc; font-weight: 700; }
+    .bracket-match .bm-vs { color: #545b70; font-size: 10px; }
+    .bm-live-tag { font-size: 9px; background: #ff5c5c; color: #000; font-weight: 800; padding: 2px 6px; border-radius: 6px; margin-left: 4px; }
+
+    #champion-banner { text-align: center; padding: 20px 14px; }
+    #champion-banner .trophy { font-size: 46px; }
+    #champion-banner .champ-name { font-family: 'Segoe UI', Arial, sans-serif; font-size: 18px; font-weight: 800; color: #ffd200; margin-top: 6px; }
+
+    .action-btn { width: 100%; padding: 11px; border: none; border-radius: 12px; font-weight: 800; font-size: 12px; cursor: pointer; margin-top: 4px; }
+    .action-btn.pri { background: linear-gradient(135deg,#00e5cc,#00b8a8); color: #000; }
+    .action-btn.sec { background: #1c2130; color: #e8eaf0; border: 1px solid #232838; }
+
+    #bracket-toggle-btn { position: sticky; top: 4px; align-self: flex-end; margin-bottom: 6px; background: #1c2130; color: #ffd200; border: 1px solid #232838; border-radius: 10px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app">
+    <div id="top-title">🏆 Torneio de Damas</div>
+    <div id="top-status">Carregando torneio...</div>
+    <button id="bracket-toggle-btn" style="display:none;" onclick="toggleBracketView()">📋 Chaveamento</button>
+
+    <div id="screen-lobby" class="card" style="display:none;">
+        <h3>Inscrições</h3>
+        <div id="lobby-players"></div>
+        <div id="countdown-timer" style="display:none;"></div>
+        <div class="muted" id="lobby-msg"></div>
+        <button id="join-btn" onclick="joinTournament()">🎮 Participar do Torneio</button>
+    </div>
+
+    <div id="screen-match" style="display:none; width:100%; display:flex; flex-direction:column; align-items:center;">
+        <div class="muted" id="match-context" style="margin-bottom:6px;"></div>
+        <div id="turn-bar"></div>
+        <div id="board"></div>
+        <div id="match-msg"></div>
+        <div id="captured-tray">
+            <div class="cap-row mine">
+                <span class="cap-label">Você perdeu</span>
+                <span class="cap-count" id="cap-mine-count">0</span>
+                <div class="cap-pieces" id="cap-mine-pieces"></div>
+            </div>
+            <div class="cap-row theirs">
+                <span class="cap-label">Você capturou</span>
+                <span class="cap-count" id="cap-theirs-count">0</span>
+                <div class="cap-pieces" id="cap-theirs-pieces"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-waiting" class="card" style="display:none;">
+        <h3 id="waiting-title">Aguardando</h3>
+        <div class="muted" id="waiting-msg"></div>
+    </div>
+
+    <div id="screen-spectator" class="card" style="display:none;">
+        <h3>👀 Partidas em andamento</h3>
+        <div id="spectator-list"></div>
+        <div id="spec-board-area" style="display:none; margin-top:14px;">
+            <div class="muted" style="text-align:center;margin-bottom:8px;">Visão lateral — cada lado é um jogador</div>
+            <div id="spec-board-wrap">
+                <div class="spec-name left" id="spec-name-left"></div>
+                <div id="spec-board"></div>
+                <div class="spec-name" id="spec-name-right"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-finished" class="card" style="display:none;">
+        <div id="champion-banner">
+            <div class="trophy">🏆</div>
+            <div class="muted" id="champion-sub">Campeão do torneio</div>
+            <div class="champ-name" id="champion-name"></div>
+        </div>
+        <button class="action-btn pri" onclick="restartTournament()">🔄 Novo Torneio</button>
+    </div>
+
+    <div id="screen-bracket" class="card" style="display:none; width:100%; max-width:320px;">
+        <h3>📋 Chaveamento</h3>
+        <div id="bracket-full"></div>
+        <button class="action-btn sec" onclick="toggleBracketView()">Fechar</button>
+    </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  FIREBASE
+// ══════════════════════════════════════════════════════════
+const firebaseConfig = {
+    apiKey: "AIzaSyCf9UBLUNObJTzgOT6Wv6GRoWWYq0pUj68",
+    authDomain: "dee-mensagens.firebaseapp.com",
+    projectId: "dee-mensagens",
+    storageBucket: "dee-mensagens.firebasestorage.app",
+    messagingSenderId: "898078042067",
+    appId: "1:898078042067:web:6f4c2ef7554d2a6a81f126"
+};
+firebase.initializeApp(firebaseConfig);
+const db   = firebase.firestore();
+const auth = firebase.auth();
+
+var params  = new URLSearchParams(location.search);
+var docPath = params.get('docPath');
+var myUid   = params.get('userId');
+var myName  = params.get('userName') || 'Jogador';
+
+var msgRef  = docPath ? db.doc(docPath) : null;
+var lastState = null;         // gameState atual (autoritativo do Firestore, ou sobrescrito otimisticamente)
+var DEFAULT_COUNTDOWN = 60;   // segundos de inscrição após o 2º jogador entrar
+
+var selected = null, activeCapture = null;   // estado da minha partida ativa (mesmo padrão do damas.html)
+var bracketOpen = false;
+var watchingMatchId = null;   // id da partida que estou assistindo como espectador
+var countdownIntervalId = null;
+
+function topStatusEl() { return document.getElementById('top-status'); }
+
+function waitForAuth() {
+    return new Promise(function(resolve) {
+        var unsubAuth = auth.onAuthStateChanged(function(user) { unsubAuth(); resolve(user); });
+    });
+}
+
+if (!msgRef) {
+    topStatusEl().textContent = 'Erro: parâmetros do torneio ausentes.';
+} else {
+    waitForAuth().then(function(user) {
+        if (!user) { topStatusEl().textContent = '⚠️ Sessão não encontrada. Feche e abra o jogo novamente pelo chat.'; return; }
+        listen();
+    });
+}
+
+function listen() {
+    msgRef.onSnapshot(function(snap) {
+        if (!snap.exists) return;
+        var data = snap.data();
+        var gs = data.gameState || { status: 'lobby', players: [] };
+        gs.bracket = gs.bracket || {};
+        gs.players = gs.players || [];
+        lastState = gs;
+        render(gs);
+        if (gs.status === 'countdown') maybeTryStartTournament(gs);
+        if (gs.status === 'in_progress') maybeTryAdvanceRound(gs);
+    }, function(err) {
+        console.error(err);
+        topStatusEl().textContent = '⚠️ Erro de sincronização: ' + err.message;
+    });
+}
+
+// ══════════════════════════════════════════════════════════
+//  REGRAS PADRÃO DE DAMAS (idênticas ao jogo 1x1) — captura
+//  obrigatória, captura máxima, captura em cadeia, dama voadora.
+// ══════════════════════════════════════════════════════════
+function initialBoard() {
+    var b = [];
+    for (var r = 0; r < 8; r++) b.push([0,0,0,0,0,0,0,0]);
+    for (var r = 0; r < 3; r++) for (var c = 0; c < 8; c++) if ((r + c) % 2 === 1) b[r][c] = 'b';
+    for (var r = 5; r < 8; r++) for (var c = 0; c < 8; c++) if ((r + c) % 2 === 1) b[r][c] = 'w';
+    return b;
+}
+function encodeBoard(b) { return b.map(function(row) { return row.map(function(cell) { return cell ? cell : '.'; }).join(''); }); }
+function decodeBoard(rows) { return rows.map(function(rowStr) { return rowStr.split('').map(function(ch) { return ch === '.' ? 0 : ch; }); }); }
+
+function pieceColorOf(v) { if (v === 'w' || v === 'W') return 'white'; if (v === 'b' || v === 'B') return 'black'; return null; }
+function isKingPiece(v) { return v === 'W' || v === 'B'; }
+function inBounds(r, c) { return r >= 0 && r < 8 && c >= 0 && c < 8; }
+function cloneBoard(b) { return b.map(function(row) { return row.slice(); }); }
+function copyCapturedSet(set) { var copy = {}; for (var k in set) if (set.hasOwnProperty(k)) copy[k] = true; return copy; }
+
+function getSimpleMoves(board, r, c) {
+    var v = board[r][c];
+    if (!v) return [];
+    var color = pieceColorOf(v);
+    var king = isKingPiece(v);
+    var dirs = king ? [[-1,-1],[-1,1],[1,-1],[1,1]] : (color === 'white' ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]]);
+    var moves = [];
+    dirs.forEach(function(d) {
+        if (king) {
+            var rr = r + d[0], cc = c + d[1];
+            while (inBounds(rr, cc) && board[rr][cc] === 0) { moves.push({ r: rr, c: cc }); rr += d[0]; cc += d[1]; }
+        } else {
+            var nr = r + d[0], nc = c + d[1];
+            if (inBounds(nr, nc) && board[nr][nc] === 0) moves.push({ r: nr, c: nc });
+        }
+    });
+    return moves;
+}
+
+function findCaptureSequences(board, r, c, color, king, capturedSet) {
+    var dirs = [[-1,-1],[-1,1],[1,-1],[1,1]];
+    var sequences = [];
+    dirs.forEach(function(d) {
+        if (!king) {
+            var er = r + d[0], ec = c + d[1];
+            var lr = r + d[0]*2, lc = c + d[1]*2;
+            if (!inBounds(er, ec) || !inBounds(lr, lc)) return;
+            var ev = board[er][ec];
+            var key = er + ',' + ec;
+            if (!ev || pieceColorOf(ev) === color || capturedSet[key]) return;
+            if (board[lr][lc] !== 0) return;
+            var newCaptured = copyCapturedSet(capturedSet); newCaptured[key] = true;
+            var newBoard = cloneBoard(board);
+            newBoard[r][c] = 0; newBoard[lr][lc] = (color === 'white' ? 'w' : 'b');
+            var subSeqs = findCaptureSequences(newBoard, lr, lc, color, false, newCaptured);
+            if (subSeqs.length === 0) sequences.push({ steps: [{ r: lr, c: lc }], captured: [{ r: er, c: ec }] });
+            else subSeqs.forEach(function(s) { sequences.push({ steps: [{ r: lr, c: lc }].concat(s.steps), captured: [{ r: er, c: ec }].concat(s.captured) }); });
+        } else {
+            var rr = r + d[0], cc = c + d[1];
+            while (inBounds(rr, cc) && board[rr][cc] === 0) { rr += d[0]; cc += d[1]; }
+            if (!inBounds(rr, cc)) return;
+            var ev2 = board[rr][cc]; var key2 = rr + ',' + cc;
+            if (!ev2 || pieceColorOf(ev2) === color || capturedSet[key2]) return;
+            var lr2 = rr + d[0], lc2 = cc + d[1];
+            while (inBounds(lr2, lc2) && board[lr2][lc2] === 0) {
+                var newCaptured2 = copyCapturedSet(capturedSet); newCaptured2[key2] = true;
+                var newBoard2 = cloneBoard(board);
+                newBoard2[r][c] = 0; newBoard2[lr2][lc2] = (color === 'white' ? 'W' : 'B');
+                var subSeqs2 = findCaptureSequences(newBoard2, lr2, lc2, color, true, newCaptured2);
+                if (subSeqs2.length === 0) sequences.push({ steps: [{ r: lr2, c: lc2 }], captured: [{ r: rr, c: cc }] });
+                else subSeqs2.forEach(function(s) { sequences.push({ steps: [{ r: lr2, c: lc2 }].concat(s.steps), captured: [{ r: rr, c: cc }].concat(s.captured) }); });
+                lr2 += d[0]; lc2 += d[1];
+            }
+        }
+    });
+    return sequences;
+}
+
+function getMoveOptions(board, color) {
+    var sequencesByPiece = {}, maxLen = 0;
+    for (var r = 0; r < 8; r++) for (var c = 0; c < 8; c++) {
+        var v = board[r][c];
+        if (v && pieceColorOf(v) === color) {
+            var seqs = findCaptureSequences(board, r, c, color, isKingPiece(v), {});
+            if (seqs.length) {
+                var localMax = 0; seqs.forEach(function(s) { if (s.captured.length > localMax) localMax = s.captured.length; });
+                sequencesByPiece[r + ',' + c] = seqs.filter(function(s) { return s.captured.length === localMax; });
+                if (localMax > maxLen) maxLen = localMax;
+            }
+        }
+    }
+    if (maxLen === 0) return { mustCapture: false, sequencesByPiece: {}, maxLen: 0 };
+    var filtered = {};
+    Object.keys(sequencesByPiece).forEach(function(k) { if (sequencesByPiece[k][0].captured.length === maxLen) filtered[k] = sequencesByPiece[k]; });
+    return { mustCapture: true, sequencesByPiece: filtered, maxLen: maxLen };
+}
+
+function hasAnyMove(board, color) {
+    for (var r = 0; r < 8; r++) for (var c = 0; c < 8; c++) {
+        var v = board[r][c];
+        if (v && pieceColorOf(v) === color) {
+            if (getSimpleMoves(board, r, c).length > 0) return true;
+            if (findCaptureSequences(board, r, c, color, isKingPiece(v), {}).length > 0) return true;
+        }
+    }
+    return false;
+}
+
+// ══════════════════════════════════════════════════════════
+//  CHAVEAMENTO — sorteio, pareamento, byes
+// ══════════════════════════════════════════════════════════
+function shuffleArr(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+}
+function buildRound(list) {
+    var shuffled = shuffleArr(list);
+    var matches = [], idx = 0, mi = 0;
+    while (idx < shuffled.length) {
+        var p1 = shuffled[idx], p2 = shuffled[idx + 1];
+        if (p2) {
+            matches.push({ id: 'm' + mi, p1Uid: p1.uid, p1Name: p1.name, p2Uid: p2.uid, p2Name: p2.name, board: encodeBoard(initialBoard()), turn: 'white', status: 'playing', winnerUid: null, winnerName: null });
+        } else {
+            matches.push({ id: 'm' + mi, p1Uid: p1.uid, p1Name: p1.name, p2Uid: null, p2Name: null, board: null, turn: null, status: 'bye', winnerUid: p1.uid, winnerName: p1.name });
+        }
+        idx += 2; mi++;
+    }
+    return matches;
+}
+
+// ══════════════════════════════════════════════════════════
+//  INSCRIÇÃO / INÍCIO DA CONTAGEM / AVANÇO DE RODADAS
+// ══════════════════════════════════════════════════════════
+async function joinTournament() {
+    if (!msgRef) return;
+    document.getElementById('join-btn').disabled = true;
+    try {
+        await db.runTransaction(async function(tx) {
+            var snap = await tx.get(msgRef);
+            var data = snap.data();
+            var gs = data.gameState || { status: 'lobby', players: [] };
+            if (gs.status !== 'lobby' && gs.status !== 'countdown') throw new Error('closed');
+            if (gs.status === 'countdown' && gs.countdownEndAt && Date.now() > gs.countdownEndAt) throw new Error('closed');
+            var players = gs.players || [];
+            if (players.some(function(p) { return p.uid === myUid; })) return; // já inscrito
+            players = players.concat([{ uid: myUid, name: myName }]);
+            var update = { 'gameState.players': players };
+            if (players.length === 2 && gs.status === 'lobby') {
+                update['gameState.status'] = 'countdown';
+                update['gameState.countdownSeconds'] = gs.countdownSeconds || DEFAULT_COUNTDOWN;
+                update['gameState.countdownEndAt'] = Date.now() + (gs.countdownSeconds || DEFAULT_COUNTDOWN) * 1000;
+            }
+            tx.update(msgRef, update);
+        });
+    } catch (e) {
+        if (e && e.message === 'closed') document.getElementById('lobby-msg').textContent = 'As inscrições já foram encerradas — você poderá acompanhar os jogos.';
+        else console.error(e);
+    }
+    document.getElementById('join-btn').disabled = false;
+}
+
+var startAttemptInFlight = false;
+async function maybeTryStartTournament(gs) {
+    if (startAttemptInFlight) return;
+    if (!gs.countdownEndAt || Date.now() < gs.countdownEndAt) return;
+    startAttemptInFlight = true;
+    try {
+        await db.runTransaction(async function(tx) {
+            var snap = await tx.get(msgRef);
+            var data = snap.data();
+            var gs2 = data.gameState || {};
+            if (gs2.status !== 'countdown') return;
+            if (!gs2.countdownEndAt || Date.now() < gs2.countdownEndAt) return;
+            var players = gs2.players || [];
+            if (players.length < 2) {
+                tx.update(msgRef, { 'gameState.status': 'finished', 'gameState.champion': null, 'gameState.cancelReason': 'Jogadores insuficientes para iniciar o torneio.' });
+                return;
+            }
+            var round1 = buildRound(players);
+            var update = { 'gameState.status': 'in_progress', 'gameState.round': 1 };
+            update['gameState.bracket.round_1'] = round1;
+            tx.update(msgRef, update);
+        });
+    } catch (e) { console.error(e); }
+    startAttemptInFlight = false;
+}
+
+var advanceAttemptInFlight = false;
+async function maybeTryAdvanceRound(gs) {
+    if (advanceAttemptInFlight) return;
+    var roundKey = 'round_' + gs.round;
+    var matches = (gs.bracket && gs.bracket[roundKey]) || [];
+    if (matches.length === 0) return;
+    var allDone = matches.every(function(m) { return m.status === 'finished' || m.status === 'bye'; });
+    if (!allDone) return;
+    advanceAttemptInFlight = true;
+    try {
+        await db.runTransaction(async function(tx) {
+            var snap = await tx.get(msgRef);
+            var data = snap.data();
+            var gs2 = data.gameState || {};
+            if (gs2.status !== 'in_progress') return;
+            var curRound = gs2.round;
+            var rk = 'round_' + curRound;
+            var ms = (gs2.bracket && gs2.bracket[rk]) || [];
+            if (ms.length === 0) return;
+            var done = ms.every(function(m) { return m.status === 'finished' || m.status === 'bye'; });
+            if (!done) return;
+            var winners = ms.map(function(m) { return { uid: m.winnerUid, name: m.winnerName }; });
+            if (winners.length <= 1) {
+                tx.update(msgRef, { 'gameState.status': 'finished', 'gameState.champion': winners[0] || null });
+                return;
+            }
+            var nextRound = curRound + 1;
+            var nextMatches = buildRound(winners);
+            var update = { 'gameState.round': nextRound };
+            update['gameState.bracket.round_' + nextRound] = nextMatches;
+            tx.update(msgRef, update);
+        });
+    } catch (e) { console.error(e); }
+    advanceAttemptInFlight = false;
+}
+
+async function restartTournament() {
+    try {
+        await msgRef.update({
+            gameState: { status: 'lobby', players: [], countdownSeconds: DEFAULT_COUNTDOWN, countdownEndAt: null, round: 0, bracket: {}, champion: null }
+        });
+    } catch (e) { console.error(e); }
+}
+
+// ══════════════════════════════════════════════════════════
+//  MINHA PARTIDA ATIVA — mesma jogabilidade do 1x1, porém os
+//  dados vivem dentro de gameState.bracket.round_N[índice]
+// ══════════════════════════════════════════════════════════
+function findMyMatch(gs) {
+    if (!gs || gs.status !== 'in_progress') return null;
+    var roundKey = 'round_' + gs.round;
+    var matches = (gs.bracket && gs.bracket[roundKey]) || [];
+    for (var i = 0; i < matches.length; i++) {
+        var m = matches[i];
+        if (m.p1Uid === myUid || m.p2Uid === myUid) return { match: m, index: i, roundKey: roundKey };
+    }
+    return null;
+}
+
+function onSquareClick(r, c) {
+    var info = findMyMatch(lastState);
+    if (!info || info.match.status !== 'playing') return;
+    var match = info.match;
+    var myColor = (match.p1Uid === myUid) ? 'white' : 'black';
+    var oppColor = myColor === 'white' ? 'black' : 'white';
+    if (match.turn !== myColor) return;
+
+    var board = decodeBoard(match.board);
+    var opts = getMoveOptions(board, myColor);
+    var clickedKey = r + ',' + c;
+    var clickedVal = board[r][c];
+
+    if (opts.mustCapture && clickedVal && pieceColorOf(clickedVal) === myColor &&
+        opts.sequencesByPiece[clickedKey] && (!activeCapture || activeCapture.stepIndex === 0)) {
+        selected = { r: r, c: c };
+        activeCapture = { curR: r, curC: c, stepIndex: 0, sequences: opts.sequencesByPiece[clickedKey] };
+        renderMatchScreen(lastState);
+        return;
+    }
+
+    if (activeCapture) {
+        var stepIdx = activeCapture.stepIndex;
+        var matching = activeCapture.sequences.filter(function(s) { return s.steps[stepIdx].r === r && s.steps[stepIdx].c === c; });
+        if (matching.length === 0) return;
+        var captured = matching[0].captured[stepIdx];
+        var piece = board[activeCapture.curR][activeCapture.curC];
+        board[activeCapture.curR][activeCapture.curC] = 0;
+        board[captured.r][captured.c] = 0;
+        board[r][c] = piece;
+        activeCapture.curR = r; activeCapture.curC = c;
+        activeCapture.stepIndex++;
+        activeCapture.sequences = matching;
+        selected = { r: r, c: c };
+        if (activeCapture.stepIndex < matching[0].steps.length) {
+            match.board = encodeBoard(board);
+            renderMatchScreen(lastState);
+        } else {
+            activeCapture = null; selected = null;
+            finalizeMatchMove(info, board, r, c, piece, myColor, oppColor);
+        }
+        return;
+    }
+
+    if (opts.mustCapture) return;
+
+    if (selected) {
+        var moves = getSimpleMoves(board, selected.r, selected.c);
+        var mv = moves.find(function(m) { return m.r === r && m.c === c; });
+        if (mv) {
+            var pieceN = board[selected.r][selected.c];
+            board[selected.r][selected.c] = 0;
+            board[r][c] = pieceN;
+            selected = null;
+            finalizeMatchMove(info, board, r, c, pieceN, myColor, oppColor);
+            return;
+        }
+    }
+    if (clickedVal && pieceColorOf(clickedVal) === myColor) selected = { r: r, c: c };
+    else selected = null;
+    renderMatchScreen(lastState);
+}
+
+function finalizeMatchMove(info, board, r, c, piece, myColor, oppColor) {
+    var promoted = piece;
+    if ((piece === 'w' && r === 0) || (piece === 'b' && r === 7)) promoted = piece.toUpperCase();
+    board[r][c] = promoted;
+
+    var whiteLeft = 0, blackLeft = 0;
+    board.forEach(function(row) { row.forEach(function(v) { if (v === 'w' || v === 'W') whiteLeft++; if (v === 'b' || v === 'B') blackLeft++; }); });
+
+    var nextTurn = myColor === 'white' ? 'black' : 'white';
+    var match = info.match;
+    match.board = encodeBoard(board);
+    match.turn = nextTurn;
+
+    var finished = false, winnerUid = null, winnerName = null;
+    if (whiteLeft === 0 || blackLeft === 0) {
+        finished = true;
+        var winnerColor = whiteLeft === 0 ? 'black' : 'white';
+        winnerUid = winnerColor === myColor ? myUid : (match.p1Uid === myUid ? match.p2Uid : match.p1Uid);
+        winnerName = winnerColor === myColor ? myName : (match.p1Uid === myUid ? match.p2Name : match.p1Name);
+    } else if (!hasAnyMove(board, nextTurn)) {
+        finished = true;
+        winnerUid = myUid; winnerName = myName;
+    }
+    if (finished) { match.status = 'finished'; match.winnerUid = winnerUid; match.winnerName = winnerName; }
+
+    // Reescreve a rodada inteira (arrays não podem ser editados por índice no Firestore)
+    var roundKey = 'round_' + lastState.round;
+    var matches = (lastState.bracket[roundKey] || []).slice();
+    matches[info.index] = match;
+    lastState.bracket[roundKey] = matches;
+
+    renderMatchScreen(lastState); // feedback instantâneo
+
+    var update = {};
+    update['gameState.bracket.' + roundKey] = matches;
+    msgRef.update(update).catch(function(e) { console.error(e); document.getElementById('match-msg').textContent = '⚠️ Erro ao salvar a jogada. Verifique sua conexão.'; });
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDERIZAÇÃO
+// ══════════════════════════════════════════════════════════
+function showScreen(id) {
+    ['screen-lobby','screen-match','screen-waiting','screen-spectator','screen-finished'].forEach(function(s) {
+        document.getElementById(s).style.display = (s === id) ? '' : 'none';
+    });
+}
+
+function render(gs) {
+    var count = (gs.players || []).length;
+    var roundTxt = gs.round ? (' · Rodada ' + gs.round) : '';
+    topStatusEl().textContent = count + ' inscrito(s)' + roundTxt;
+    document.getElementById('bracket-toggle-btn').style.display = (gs.status === 'in_progress' || gs.status === 'finished') ? '' : 'none';
+
+    if (bracketOpen) { renderBracketScreen(gs); return; }
+
+    if (gs.status === 'lobby' || gs.status === 'countdown') {
+        renderLobby(gs);
+        return;
+    }
+    if (gs.status === 'in_progress') {
+        var info = findMyMatch(gs);
+        if (info && info.match.status === 'playing') { showScreen('screen-match'); renderMatchScreen(gs); return; }
+        if (info && info.match.status !== 'playing') {
+            showScreen('screen-waiting');
+            document.getElementById('waiting-title').textContent = (info.match.winnerUid === myUid) ? '🎉 Você venceu esse confronto!' : '😔 Você foi eliminado';
+            document.getElementById('waiting-msg').textContent = (info.match.winnerUid === myUid)
+                ? 'Aguardando o fim da rodada para o próximo confronto...'
+                : 'Obrigado por jogar! Você pode acompanhar as demais partidas no chaveamento.';
+            return;
+        }
+        showScreen('screen-spectator');
+        renderSpectatorScreen(gs);
+        return;
+    }
+    if (gs.status === 'finished') {
+        showScreen('screen-finished');
+        document.getElementById('champion-name').textContent = gs.champion ? gs.champion.name : '—';
+        document.getElementById('champion-sub').textContent = gs.champion ? 'Campeão do torneio' : (gs.cancelReason || 'Torneio encerrado sem campeão.');
+        return;
+    }
+    showScreen('screen-lobby');
+}
+
+function renderLobby(gs) {
+    showScreen('screen-lobby');
+    var listEl = document.getElementById('lobby-players');
+    listEl.innerHTML = '';
+    (gs.players || []).forEach(function(p) {
+        var chip = document.createElement('div');
+        chip.className = 'player-chip' + (p.uid === myUid ? ' me' : '');
+        chip.innerHTML = '<span class="dot"></span><span>' + escHtml(p.name) + (p.uid === myUid ? ' (você)' : '') + '</span>';
+        listEl.appendChild(chip);
+    });
+    if ((gs.players || []).length === 0) {
+        listEl.innerHTML = '<div class="muted">Nenhum inscrito ainda. Seja o primeiro!</div>';
+    }
+
+    var amIn = (gs.players || []).some(function(p) { return p.uid === myUid; });
+    var timerEl = document.getElementById('countdown-timer');
+    var msgEl = document.getElementById('lobby-msg');
+    var btn = document.getElementById('join-btn');
+
+    if (gs.status === 'countdown') {
+        timerEl.style.display = '';
+        startCountdownTicker(gs.countdownEndAt);
+        msgEl.textContent = amIn
+            ? 'Você está inscrito! Assim que o tempo acabar, o chaveamento começa.'
+            : 'As inscrições estão fechando — entre agora para competir!';
+    } else {
+        timerEl.style.display = 'none';
+        stopCountdownTicker();
+        msgEl.textContent = amIn
+            ? 'Você está inscrito. Aguardando mais um jogador para a contagem regressiva começar.'
+            : 'Toque para participar. Assim que 2 pessoas entrarem, a contagem regressiva para o início começa.';
+    }
+    btn.style.display = amIn ? 'none' : '';
+}
+
+function startCountdownTicker(endAt) {
+    stopCountdownTicker();
+    function tick() {
+        var msLeft = Math.max(0, (endAt || 0) - Date.now());
+        var s = Math.ceil(msLeft / 1000);
+        var mm = Math.floor(s / 60), ss = s % 60;
+        document.getElementById('countdown-timer').textContent = mm + ':' + (ss < 10 ? '0' : '') + ss;
+    }
+    tick();
+    countdownIntervalId = setInterval(tick, 250);
+}
+function stopCountdownTicker() { if (countdownIntervalId) { clearInterval(countdownIntervalId); countdownIntervalId = null; } }
+
+function renderMatchScreen(gs) {
+    var info = findMyMatch(gs);
+    if (!info) return;
+    var match = info.match;
+    var myColor = (match.p1Uid === myUid) ? 'white' : 'black';
+    var oppName = (myColor === 'white') ? match.p2Name : match.p1Name;
+    document.getElementById('match-context').textContent = 'Rodada ' + gs.round + ' · vs ' + oppName;
+
+    var board = decodeBoard(match.board);
+    var isMyTurn = match.turn === myColor;
+    if (!isMyTurn) { selected = null; activeCapture = null; }
+
+    var tb = document.getElementById('turn-bar');
+    if (match.status === 'finished') {
+        tb.textContent = match.winnerUid === myUid ? '🏆 Você venceu o confronto!' : '😔 Você perdeu.';
+        tb.className = '';
+    } else {
+        tb.textContent = isMyTurn ? 'Sua vez de jogar' : 'Vez do oponente';
+        tb.className = isMyTurn ? 'you' : 'opp';
+    }
+
+    var myOpts = { mustCapture: false, sequencesByPiece: {} };
+    if (isMyTurn && match.status === 'playing') myOpts = getMoveOptions(board, myColor);
+
+    var flip = (myColor === 'black');
+    function toDisplay(r, c) { return flip ? { r: 7 - r, c: 7 - c } : { r: r, c: c }; }
+
+    var boardEl = document.getElementById('board');
+    boardEl.innerHTML = '';
+    var cells = new Array(64);
+    for (var r = 0; r < 8; r++) {
+        for (var c = 0; c < 8; c++) {
+            var sq = document.createElement('div');
+            var dark = (r + c) % 2 === 1;
+            sq.className = 'sq ' + (dark ? 'dark' : 'light');
+            if (selected && selected.r === r && selected.c === c) sq.classList.add('selected');
+            var val = board[r][c];
+            if (val && val !== 0) {
+                var p = document.createElement('div');
+                var isWhite = (val === 'w' || val === 'W');
+                var isKing = (val === 'W' || val === 'B');
+                var isForced = isMyTurn && myOpts.mustCapture && myOpts.sequencesByPiece[r + ',' + c];
+                p.className = 'piece ' + (isWhite ? 'white' : 'black') + (isKing ? ' king' : '') + (isForced ? ' forced' : '');
+                sq.appendChild(p);
+            }
+            sq.onclick = (function(rr, cc) { return function() { onSquareClick(rr, cc); }; })(r, c);
+            var disp = toDisplay(r, c);
+            cells[disp.r * 8 + disp.c] = sq;
+        }
+    }
+    for (var i = 0; i < 64; i++) boardEl.appendChild(cells[i]);
+
+    if (selected) {
+        var hints = [];
+        if (activeCapture) {
+            var idx = activeCapture.stepIndex, seen = {};
+            activeCapture.sequences.forEach(function(s) { var st = s.steps[idx]; var k = st.r + ',' + st.c; if (!seen[k]) { seen[k] = true; hints.push(st); } });
+        } else if (myOpts.mustCapture) {
+            var key = selected.r + ',' + selected.c;
+            if (myOpts.sequencesByPiece[key]) {
+                var seen2 = {};
+                myOpts.sequencesByPiece[key].forEach(function(s) { var st = s.steps[0]; var k = st.r + ',' + st.c; if (!seen2[k]) { seen2[k] = true; hints.push(st); } });
+            }
+        } else {
+            hints = getSimpleMoves(board, selected.r, selected.c);
+        }
+        hints.forEach(function(h) { var d = toDisplay(h.r, h.c); var el = boardEl.children[d.r * 8 + d.c]; if (el) el.classList.add('hint'); });
+    }
+
+    document.getElementById('match-msg').textContent = match.status === 'finished'
+        ? 'Confronto encerrado.'
+        : (isMyTurn ? (myOpts.mustCapture ? 'Captura obrigatória! Toque na peça em destaque.' : 'Toque em uma peça sua e depois no destino.') : '');
+
+    renderCapturedTray(board, myColor);
+}
+
+// Mostra pra mim quantas peças minhas foram comidas e quantas eu comi do adversário
+// (12 peças por lado no início; a diferença pro que está no tabuleiro = capturadas).
+function renderCapturedTray(board, myColor) {
+    var whiteOnBoard = 0, blackOnBoard = 0;
+    board.forEach(function(row) { row.forEach(function(v) {
+        if (v === 'w' || v === 'W') whiteOnBoard++;
+        if (v === 'b' || v === 'B') blackOnBoard++;
+    }); });
+    var whiteCaptured = 12 - whiteOnBoard;
+    var blackCaptured = 12 - blackOnBoard;
+
+    var mineColor, theirColor, mineCount, theirCount;
+    if (myColor === 'black') { mineColor = 'black'; theirColor = 'white'; mineCount = blackCaptured; theirCount = whiteCaptured; }
+    else { mineColor = 'white'; theirColor = 'black'; mineCount = whiteCaptured; theirCount = blackCaptured; }
+
+    document.getElementById('cap-mine-count').textContent = mineCount;
+    document.getElementById('cap-theirs-count').textContent = theirCount;
+    fillCapPieces('cap-mine-pieces', mineColor, mineCount);
+    fillCapPieces('cap-theirs-pieces', theirColor, theirCount);
+}
+function fillCapPieces(elId, color, count) {
+    var el = document.getElementById(elId);
+    el.innerHTML = '';
+    for (var i = 0; i < count; i++) {
+        var d = document.createElement('div');
+        d.className = 'cap-piece ' + color;
+        el.appendChild(d);
+    }
+}
+
+// ── Espectador: lista de partidas ao vivo + visão lateral ──
+function renderSpectatorScreen(gs) {
+    var roundKey = 'round_' + gs.round;
+    var matches = (gs.bracket && gs.bracket[roundKey]) || [];
+    var listEl = document.getElementById('spectator-list');
+    listEl.innerHTML = '';
+    var liveMatches = matches.filter(function(m) { return m.status === 'playing'; });
+
+    if (liveMatches.length === 0) {
+        listEl.innerHTML = '<div class="muted">Nenhuma partida ao vivo nesta rodada no momento.</div>';
+    }
+    matches.forEach(function(m) {
+        var row = document.createElement('div');
+        var isLive = m.status === 'playing';
+        row.className = 'bracket-match' + (isLive ? ' watchable' : '');
+        var p1Label = m.p1Name || '?';
+        var p2Label = m.p2Name || (m.status === 'bye' ? 'BYE (avança direto)' : '?');
+        row.innerHTML =
+            '<span class="bm-p' + (m.winnerUid === m.p1Uid && m.status !== 'playing' ? ' winner' : '') + '">' + escHtml(p1Label) + '</span>' +
+            '<span class="bm-vs">vs</span>' +
+            '<span class="bm-p' + (m.winnerUid === m.p2Uid && m.status !== 'playing' ? ' winner' : '') + '">' + escHtml(p2Label) + '</span>' +
+            (isLive ? '<span class="bm-live-tag">AO VIVO</span>' : '');
+        if (isLive) row.onclick = function() { watchingMatchId = m.id; renderSpectatorScreen(gs); };
+        listEl.appendChild(row);
+    });
+
+    var watchArea = document.getElementById('spec-board-area');
+    var watched = matches.find(function(m) { return m.id === watchingMatchId && m.status === 'playing'; });
+    if (!watched && liveMatches.length > 0) watched = liveMatches[0];
+    if (!watched) { watchArea.style.display = 'none'; return; }
+
+    watchArea.style.display = '';
+    document.getElementById('spec-name-left').textContent = '⚪ ' + (watched.p1Name || '?');
+    document.getElementById('spec-name-right').textContent = '⚫ ' + (watched.p2Name || '?');
+    renderSideBoard(decodeBoard(watched.board));
+}
+
+// Tabuleiro "de lado": brancas na coluna esquerda da tela, pretas na direita —
+// visão neutra, sem favorecer a perspectiva de nenhum dos dois jogadores.
+function renderSideBoard(board) {
+    var boardEl = document.getElementById('spec-board');
+    boardEl.innerHTML = '';
+    var cells = new Array(64);
+    for (var r = 0; r < 8; r++) {
+        for (var c = 0; c < 8; c++) {
+            var sq = document.createElement('div');
+            var dark = (r + c) % 2 === 1;
+            sq.className = 'sq ' + (dark ? 'dark' : 'light');
+            var val = board[r][c];
+            if (val && val !== 0) {
+                var p = document.createElement('div');
+                var isWhite = (val === 'w' || val === 'W');
+                var isKing = (val === 'W' || val === 'B');
+                p.className = 'piece ' + (isWhite ? 'white' : 'black') + (isKing ? ' king' : '');
+                sq.appendChild(p);
+            }
+            var dispCol = 7 - r, dispRow = c; // rotação de 90°
+            cells[dispRow * 8 + dispCol] = sq;
+        }
+    }
+    for (var i = 0; i < 64; i++) boardEl.appendChild(cells[i]);
+}
+
+// ── Chaveamento completo ──
+function toggleBracketView() {
+    bracketOpen = !bracketOpen;
+    document.getElementById('screen-bracket').style.display = bracketOpen ? '' : 'none';
+    if (bracketOpen) renderBracketScreen(lastState);
+    else render(lastState);
+}
+function renderBracketScreen(gs) {
+    ['screen-lobby','screen-match','screen-waiting','screen-spectator','screen-finished'].forEach(function(s) { document.getElementById(s).style.display = 'none'; });
+    document.getElementById('screen-bracket').style.display = '';
+    var container = document.getElementById('bracket-full');
+    container.innerHTML = '';
+    var bracket = gs.bracket || {};
+    var roundNums = Object.keys(bracket).map(function(k) { return parseInt(k.replace('round_', ''), 10); }).sort(function(a, b) { return a - b; });
+    if (roundNums.length === 0) { container.innerHTML = '<div class="muted">O chaveamento ainda não foi definido.</div>'; return; }
+    roundNums.forEach(function(rn) {
+        var block = document.createElement('div');
+        block.className = 'bracket-round';
+        var title = document.createElement('div');
+        title.className = 'bracket-round-title';
+        title.textContent = 'Rodada ' + rn;
+        block.appendChild(title);
+        (bracket['round_' + rn] || []).forEach(function(m) {
+            var row = document.createElement('div');
+            row.className = 'bracket-match';
+            var p1Label = m.p1Name || '?';
+            var p2Label = m.p2Name || (m.status === 'bye' ? 'BYE' : '?');
+            row.innerHTML =
+                '<span class="bm-p' + (m.winnerUid === m.p1Uid ? ' winner' : '') + '">' + escHtml(p1Label) + '</span>' +
+                '<span class="bm-vs">vs</span>' +
+                '<span class="bm-p' + (m.winnerUid === m.p2Uid ? ' winner' : '') + '">' + escHtml(p2Label) + '</span>' +
+                (m.status === 'playing' ? '<span class="bm-live-tag">AO VIVO</span>' : '');
+            block.appendChild(row);
+        });
+        container.appendChild(block);
+    });
+}
+
+function escHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+}
+
+// ══════════════════════════════════════════════════════════
+//  ALTURA DINÂMICA — avisa a página pai (o app Dee) qual é a altura real
+//  do conteúdo, para a mini janela flutuante do jogo se ajustar sem sobrar
+//  espaço vazio embaixo nem cortar nada. Reaplica sempre que o layout muda
+//  (chaveamento do torneio carregado, novas rodadas aparecendo, etc.).
+// ══════════════════════════════════════════════════════════
+(function() {
+    var appEl = document.getElementById('app');
+    function reportHeight() {
+        var h = appEl ? appEl.scrollHeight : document.body.scrollHeight;
+        try { parent.postMessage({ type: 'dee-game-resize', height: h }, '*'); } catch (e) {}
+    }
+    if (window.ResizeObserver && appEl) {
+        new ResizeObserver(reportHeight).observe(appEl);
+    }
+    window.addEventListener('load', reportHeight);
+    setTimeout(reportHeight, 300);
+    setTimeout(reportHeight, 1000);
+})();
+</script>
+</body>
+</html>

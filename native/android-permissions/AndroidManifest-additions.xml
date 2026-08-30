@@ -1,0 +1,63 @@
+<!--
+  ════════════════════════════════════════════════════════════════
+  DEE FULL — permissões a mesclar em:
+  android/app/src/main/AndroidManifest.xml
+  (gerado só depois de rodar `npx cap add android` dentro de /native)
+
+  Cole as tags <uses-permission> e <uses-feature> dentro de <manifest>,
+  ANTES da tag <application>. Não remova nada que o Capacitor já gerou.
+  ════════════════════════════════════════════════════════════════
+-->
+
+<!-- Internet + estado de rede (Firebase / WebRTC / push) -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+<!-- Câmera traseira e frontal (fotos, vídeo chamada) -->
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-feature android:name="android.hardware.camera" android:required="false" />
+<uses-feature android:name="android.hardware.camera.front" android:required="false" />
+<uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
+<!-- Microfone + troca de rota de áudio (auricular / viva-voz / bluetooth) -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+<uses-permission android:name="android.permission.BLUETOOTH" />
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+<!-- Notificações push (Android 13+ exige permissão explícita em runtime) -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+<uses-permission android:name="android.permission.VIBRATE" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+
+<!--
+  Tela de chamada em tela cheia mesmo com o app fechado/minimizado
+  (usado pelo @capgo/capacitor-incoming-call-kit)
+-->
+<uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+<!-- Galeria / arquivos (anexar fotos e vídeos do dispositivo) -->
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+
+<!--
+  ════════════════════════════════════════════════════════════════
+  Dentro de <application>, o Capacitor já cria a MainActivity.
+  Para chamadas em tela cheia com a tela bloqueada, adicione estes
+  atributos na tag <activity android:name=".MainActivity" ...>:
+
+    android:showWhenLocked="true"
+    android:turnScreenOn="true"
+
+  E dentro dela, este <meta-data> (evita a barra de status “comer”
+  a tela cheia da chamada):
+
+    <meta-data
+        android:name="android.max_aspect"
+        android:value="2.4" />
+  ════════════════════════════════════════════════════════════════
+-->

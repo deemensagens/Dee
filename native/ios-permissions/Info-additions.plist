@@ -1,0 +1,65 @@
+<!--
+  ════════════════════════════════════════════════════════════════
+  DEE FULL — chaves a mesclar em:
+  ios/App/App/Info.plist
+  (gerado só depois de rodar `npx cap add ios` dentro de /native)
+
+  Cole estas chaves dentro do <dict> raiz. Não remova nada que o
+  Capacitor já gerou.
+  ════════════════════════════════════════════════════════════════
+-->
+<dict>
+
+    <!-- Câmera traseira e frontal (fotos, vídeo chamada) -->
+    <key>NSCameraUsageDescription</key>
+    <string>O Dee usa a câmera para você tirar fotos, gravar vídeos e fazer videochamadas.</string>
+
+    <!-- Microfone (chamadas de voz e vídeo, áudios) -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>O Dee usa o microfone para chamadas de voz, videochamadas e mensagens de áudio.</string>
+
+    <!-- Galeria (anexar fotos/vídeos, salvar mídia recebida) -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>O Dee acessa suas fotos para você enviar imagens e vídeos nas conversas.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>O Dee salva fotos e vídeos recebidos na sua galeria quando você pede.</string>
+
+    <!-- Contatos (opcional — só se o app oferecer "convidar contato") -->
+    <key>NSContactsUsageDescription</key>
+    <string>O Dee pode acessar seus contatos para facilitar encontrar amigos que já usam o app.</string>
+
+    <!--
+      Background modes: necessários para
+      - "audio": manter a chamada de voz/vídeo ativa em segundo plano
+      - "voip": acordar o app pra tocar a tela de chamada (PushKit / CallKit)
+      - "remote-notification": push chegar com o app fechado/minimizado
+      - "processing": manutenção de sessão do Firestore listener
+    -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+        <string>voip</string>
+        <string>remote-notification</string>
+    </array>
+
+    <!-- Necessário para usar CallKit (tela de chamada nativa em tela cheia) -->
+    <key>UIRequiresPersistentWiFi</key>
+    <false/>
+
+</dict>
+
+<!--
+  ════════════════════════════════════════════════════════════════
+  Além do Info.plist, para push + CallKit funcionarem de verdade
+  no iOS é preciso, no Apple Developer portal:
+
+  1. Ativar as capabilities no Xcode (aba "Signing & Capabilities"
+     do target App): Push Notifications, Background Modes
+     (Audio/AirPlay, Voice over IP, Remote notifications).
+  2. Gerar um certificado/chave APNs (.p8) e subir no backend
+     (Cloud Function) que dispara as notificações.
+  3. Sem conta Apple Developer paga (99 USD/ano), push e CallKit
+     NÃO funcionam em dispositivo real — só a versão Lite (PWA)
+     roda no iPhone sem essa conta.
+  ════════════════════════════════════════════════════════════════
+-->

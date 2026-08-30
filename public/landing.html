@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0c10">
+<meta name="description" content="Dee — mensagens, chamadas de vídeo, Cinema Coletivo, rede social e localização em tempo real, tudo em um só app.">
+<title>Dee — Converse. Ligue. Assista junto.</title>
+
+<script>
+/* ── PORTEIRO DE ENTRADA ──
+   Se a pessoa já tem o Dee instalado como app (PWA) e, por algum motivo,
+   abriu esta página (ex.: link antigo salvo), pula a apresentação e manda
+   direto pro app. A landing só faz sentido pra quem está no navegador
+   comum, sem o app instalado. */
+(function() {
+    try {
+        var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        if (standalone) { location.replace('index.html'); }
+    } catch(e) {}
+})();
+</script>
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dee">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+    :root {
+        --bg:        #06070a;
+        --surface:   #0d0f14;
+        --surface2:  #12151c;
+        --surface3:  #191d27;
+        --accent:    #00e5cc;
+        --accent2:   #0088ff;
+        --accent3:   #7c5cff;
+        --text:      #eef0f4;
+        --muted:     #8890a4;
+        --muted-dim: #565d70;
+        --border:    #1d212c;
+        --border-hi: #2a2f3d;
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-top:    env(safe-area-inset-top, 0px);
+    }
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { background: var(--bg); scroll-behavior: smooth; overflow-x: hidden; }
+    body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Inter', sans-serif;
+        font-size: 15px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100%;
+        padding-top: var(--safe-top);
+        padding-bottom: var(--safe-bottom);
+        overflow-x: hidden;
+        position: relative;
+    }
+    h1, h2, h3, .brand { font-family: 'Space Grotesk', sans-serif; font-weight: 600; letter-spacing: -.02em; }
+    .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: .04em; }
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+
+    /* ══════════ FUNDO: grid técnico + blobs flutuantes ══════════ */
+    .bg-grid {
+        position: fixed; inset: 0; z-index: -2; pointer-events: none;
+        background-image:
+            linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+        background-size: 42px 42px;
+        -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 40%, transparent 90%);
+        mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 40%, transparent 90%);
+    }
+    .bg-blob { position: fixed; z-index: -1; pointer-events: none; border-radius: 50%; filter: blur(70px); opacity: .32; max-width: 100vw; }
+    .bg-blob.b1 { width: 320px; height: 320px; top: -80px; left: -100px; background: var(--accent); animation: drift1 22s ease-in-out infinite; }
+    .bg-blob.b2 { width: 280px; height: 280px; top: 220px; right: -110px; background: var(--accent2); animation: drift2 26s ease-in-out infinite; }
+    .bg-blob.b3 { width: 260px; height: 260px; bottom: 10%; left: -90px; background: var(--accent3); animation: drift1 19s ease-in-out infinite reverse; opacity: .22; }
+    @keyframes drift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,50px) scale(1.12); } }
+    @keyframes drift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-35px,40px) scale(1.08); } }
+
+    /* partículas geométricas flutuantes soltas pela página */
+    .shape { position: absolute; z-index: 0; pointer-events: none; opacity: .5; }
+    .shape.sq { border: 1.5px solid var(--border-hi); }
+    @keyframes floaty { 0%,100% { transform: translateY(0) rotate(var(--r,0deg)); } 50% { transform: translateY(-16px) rotate(calc(var(--r,0deg) + 6deg)); } }
+
+    .wrap { max-width: 560px; margin: 0 auto; padding: 0 22px; position: relative; z-index: 1; }
+
+    /* ══════════ NAV ══════════ */
+    nav { position: sticky; top: 0; z-index: 100; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); background: rgba(6,7,10,.72); border-bottom: 1px solid transparent; transition: border-color .25s ease; }
+    nav.scrolled { border-bottom-color: var(--border); }
+    .nav-inner { max-width: 560px; margin: 0 auto; padding: 14px 22px; display: flex; align-items: center; justify-content: space-between; }
+    .nav-brand { display: flex; align-items: center; gap: 9px; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 17px; }
+    .nav-brand img { width: 26px; height: 26px; border-radius: 6px; }
+    .nav-cta { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 13px; padding: 8px 15px; border: 1px solid var(--border-hi); border-radius: 8px; color: var(--text); transition: border-color .2s, background .2s; }
+    .nav-cta:active { background: var(--surface2); }
+
+    /* ══════════ HERO ══════════ */
+    .hero { padding: 56px 0 40px; text-align: center; position: relative; }
+    .kicker { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid var(--border-hi); border-radius: 20px; background: var(--surface); font-size: 11px; color: var(--muted); margin-bottom: 22px; }
+    .kicker .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 rgba(0,229,204,.6); animation: pulse-dot 1.8s infinite; }
+    @keyframes pulse-dot { 0% { box-shadow: 0 0 0 0 rgba(0,229,204,.55); } 70% { box-shadow: 0 0 0 7px rgba(0,229,204,0); } 100% { box-shadow: 0 0 0 0 rgba(0,229,204,0); } }
+
+    .hero h1 { font-size: 40px; line-height: 1.08; color: var(--text); }
+    .hero h1 .grad {
+        background: linear-gradient(100deg, var(--accent), var(--accent2) 45%, var(--accent3) 90%);
+        background-size: 200% auto;
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+        animation: gradflow 6s ease-in-out infinite;
+    }
+    @keyframes gradflow { 0%,100% { background-position: 0% center; } 50% { background-position: 100% center; } }
+
+    .hero .pitch { font-size: 15px; color: var(--muted); margin-top: 16px; max-width: 400px; margin-left: auto; margin-right: auto; }
+
+    .ctas { display: flex; flex-direction: column; gap: 11px; margin-top: 28px; }
+    .btn { display: block; width: 100%; padding: 15px; border: none; border-radius: 10px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14.5px; cursor: pointer; text-align: center; position: relative; overflow: hidden; transition: transform .15s ease; }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: linear-gradient(100deg, var(--accent), var(--accent2)); color: #04141a; }
+    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border-hi); }
+    .install-hint { margin-top: 16px; font-size: 12px; color: var(--muted-dim); }
+    .install-hint button, .install-hint a.apk-link { background: none; border: none; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 500; cursor: pointer; text-decoration: underline; padding: 0; letter-spacing: .02em; }
+
+    /* mockup flutuante do hero: janela do Cinema Coletivo + bolhas de chat */
+    .hero-visual { position: relative; margin: 40px auto 4px; height: 210px; max-width: 340px; }
+    .hv-card { position: absolute; background: var(--surface); border: 1px solid var(--border-hi); border-radius: 14px; box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+    .hv-cinema { width: 210px; left: 50%; top: 6px; transform: translateX(-50%); animation: floaty 6s ease-in-out infinite; --r: -2deg; z-index: 2; }
+    .hv-cinema .hv-top { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .hv-cinema .hv-top .live { display: flex; align-items: center; gap: 5px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--accent); letter-spacing: .05em; }
+    .hv-cinema .hv-top .live .d { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: pulse-dot 1.6s infinite; }
+    .hv-cinema .hv-body { height: 78px; margin: 8px 9px; border-radius: 8px; background: linear-gradient(135deg, var(--surface3), var(--surface2)); display: flex; align-items: center; justify-content: center; }
+    .hv-cinema .hv-play { width: 26px; height: 26px; border-radius: 50%; background: rgba(0,229,204,.14); border: 1px solid rgba(0,229,204,.4); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--accent); }
+    .hv-cinema .hv-foot { display: flex; align-items: center; justify-content: space-between; padding: 0 10px 9px; }
+    .hv-avatars { display: flex; }
+    .hv-avatars span { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--surface); background: linear-gradient(135deg, var(--accent2), var(--accent3)); margin-left: -5px; }
+    .hv-avatars span:first-child { margin-left: 0; }
+    .hv-foot-lbl { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; color: var(--muted-dim); }
+
+    .hv-chat { width: 128px; padding: 9px 10px; font-size: 10.5px; color: var(--muted); left: 4px; bottom: 4px; animation: floaty 5s ease-in-out infinite .4s; --r: 3deg; z-index: 3; }
+    .hv-chat .who { font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: var(--text); font-size: 10.5px; margin-bottom: 2px; }
+    .hv-call { width: 104px; padding: 9px; right: 2px; bottom: 4px; text-align: center; animation: floaty 5.6s ease-in-out infinite .8s; --r: -3deg; z-index: 3; }
+    .hv-call .ic { font-size: 15px; }
+    .hv-call .lbl { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--muted-dim); margin-top: 3px; }
+
+    /* ══════════ TICKER ══════════ */
+    .ticker-wrap { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); overflow: hidden; padding: 13px 0; background: var(--surface); }
+    .ticker-track { display: flex; width: max-content; gap: 34px; animation: ticker 26s linear infinite; }
+    @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .ticker-item { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--muted); letter-spacing: .06em; white-space: nowrap; display: flex; align-items: center; gap: 10px; }
+    .ticker-item b { color: var(--accent); font-weight: 500; }
+    .ticker-item .sep { color: var(--border-hi); }
+
+    /* ══════════ SEÇÕES ══════════ */
+    section { padding: 46px 0; }
+    .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+    .sec-title { font-size: 25px; color: var(--text); }
+    .sec-sub { font-size: 13.5px; color: var(--muted); margin-top: 8px; max-width: 400px; }
+
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+    .reveal.in { opacity: 1; transform: translateY(0); }
+
+    /* ══════════ CINEMA COLETIVO — SPOTLIGHT ══════════ */
+    .cinema-panel {
+        margin-top: 26px; position: relative; border: 1px solid var(--border-hi); border-radius: 18px; padding: 24px 20px 20px;
+        background: linear-gradient(165deg, rgba(0,229,204,.06), rgba(124,92,255,.05) 60%, transparent);
+        overflow: hidden;
+    }
+    .cinema-panel::before {
+        content: ''; position: absolute; top: -60%; right: -30%; width: 260px; height: 260px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(0,229,204,.18), transparent 70%); filter: blur(10px);
+        animation: drift2 18s ease-in-out infinite;
+    }
+    .cinema-badge { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .08em; color: var(--accent); border: 1px solid rgba(0,229,204,.35); background: rgba(0,229,204,.08); padding: 5px 10px; border-radius: 6px; position: relative; z-index: 1; }
+    .cinema-panel h3 { font-size: 21px; margin-top: 14px; position: relative; z-index: 1; }
+    .cinema-panel p { font-size: 13.5px; color: var(--muted); margin-top: 8px; max-width: 380px; position: relative; z-index: 1; }
+
+    .cinema-mock { position: relative; z-index: 1; margin-top: 20px; border: 1px solid var(--border-hi); border-radius: 12px; background: var(--surface2); overflow: hidden; }
+    .cinema-mock .cm-bar { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+    .cinema-mock .cm-bar .cm-tag { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--accent); letter-spacing: .06em; }
+    .cinema-mock .cm-bar .cm-tag .d { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: pulse-dot 1.6s infinite; }
+    .cinema-mock .cm-bar .cm-people { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--muted-dim); }
+    .cinema-mock .cm-screen { height: 132px; margin: 12px; border-radius: 8px; background: #0a0e1a;
+        display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+    .cinema-mock .cm-screen .playbtn { width: 40px; height: 40px; border-radius: 50%; background: rgba(0,229,204,.15); border: 1px solid rgba(0,229,204,.45); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 14px; animation: pulse-ring 2.4s ease-out infinite; position: relative; z-index: 2; }
+    @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(0,229,204,.35); } 70% { box-shadow: 0 0 0 14px rgba(0,229,204,0); } 100% { box-shadow: 0 0 0 0 rgba(0,229,204,0); } }
+    .cinema-mock .cm-progress { position: absolute; left: 12px; right: 12px; bottom: 10px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.12); overflow: hidden; z-index: 2; }
+    .cinema-mock .cm-progress i { position: absolute; left: 0; top: 0; bottom: 0; width: 42%; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+
+    /* ── "filminho" de ficção/ação rodando dentro da tela do Cinema Coletivo: Terra + Lua + meteoro ── */
+    .movie-scene { position: absolute; inset: 0; z-index: 0; }
+    .msc-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .msc-star { animation: msc-twinkle 2.6s ease-in-out infinite alternate; }
+    .msc-star:nth-child(2n) { animation-delay: .5s; }
+    .msc-star:nth-child(3n) { animation-delay: 1.1s; }
+    .msc-star:nth-child(5n) { animation-delay: 1.7s; }
+    @keyframes msc-twinkle { 0% { opacity: .35; } 100% { opacity: 1; } }
+    .msc-moon-glow { animation: msc-moonglow 4s ease-in-out infinite alternate; }
+    @keyframes msc-moonglow { 0% { opacity: .5; } 100% { opacity: .85; } }
+    .msc-meteor-group {
+        transform-box: fill-box; transform-origin: center;
+        animation: msc-meteor-fly 6s ease-in infinite;
+    }
+    @keyframes msc-meteor-fly {
+        0%   { transform: translate(20px,-35px) scale(.5); opacity: 0; }
+        5%   { opacity: 1; }
+        40%  { transform: translate(140px,90px) scale(.85); }
+        62%  { transform: translate(205px,165px) scale(1.18); opacity: 1; }
+        72%  { transform: translate(222px,185px) scale(.55); opacity: 1; }
+        76%  { transform: translate(228px,192px) scale(.15); opacity: 0; }
+        100% { transform: translate(228px,192px) scale(.15); opacity: 0; }
+    }
+    .msc-flame-halo { animation: msc-halo-pulse .6s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+    @keyframes msc-halo-pulse { 0% { opacity: .35; transform: scale(.9); } 100% { opacity: .65; transform: scale(1.1); } }
+    .msc-flame-outer { animation: msc-flame-flicker1 .35s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 0 0; }
+    @keyframes msc-flame-flicker1 { 0% { transform: scale(1,.92); opacity: .85; } 100% { transform: scale(1.1,1.06); opacity: 1; } }
+    .msc-flame-inner { animation: msc-flame-flicker2 .22s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 0 0; }
+    @keyframes msc-flame-flicker2 { 0% { transform: scale(.94,1); opacity: .9; } 100% { transform: scale(1.12,1.08); opacity: 1; } }
+    .msc-ember { animation: msc-ember-fade .9s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+    .msc-ember1 { animation-delay: 0s; }
+    .msc-ember2 { animation-delay: .2s; }
+    .msc-ember3 { animation-delay: .4s; }
+    .msc-ember4 { animation-delay: .6s; }
+    @keyframes msc-ember-fade { 0% { opacity: 0; transform: translate(0,0) scale(.6); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(-7px,3px) scale(1); } }
+
+    /* ── explosão do impacto + revelação da logo Dee, sincronizadas com o ciclo de 6s do meteoro ── */
+    .msc-impact-flash { transform-box: fill-box; transform-origin: center; animation: msc-impact-flash 6s ease-out infinite; }
+    @keyframes msc-impact-flash {
+        0%, 75%  { opacity: 0; transform: scale(.2); }
+        77%      { opacity: 1; transform: scale(1); }
+        82%      { opacity: .55; transform: scale(1.7); }
+        87%, 100% { opacity: 0; transform: scale(2.2); }
+    }
+    .msc-impact-ring { transform-box: fill-box; transform-origin: center; animation: msc-impact-ring 6s ease-out infinite; }
+    .msc-ring1 { animation-delay: 0s; }
+    .msc-ring2 { animation-delay: .12s; }
+    @keyframes msc-impact-ring {
+        0%, 76%   { opacity: 0; transform: scale(.3); }
+        78%       { opacity: .85; transform: scale(.5); }
+        92%, 100% { opacity: 0; transform: scale(2.6); }
+    }
+    .msc-spark-line { transform-box: fill-box; transform-origin: 0 0; animation: msc-spark-fly 6s ease-out infinite; }
+    @keyframes msc-spark-fly {
+        0%, 76%   { opacity: 0; transform: translateX(0) scale(.3); }
+        79%       { opacity: 1; transform: translateX(4px) scale(1); }
+        90%, 100% { opacity: 0; transform: translateX(24px) scale(1); }
+    }
+    .msc-logo-reveal { transform-box: fill-box; transform-origin: center; animation: msc-logo-reveal 6s ease-out infinite; }
+    @keyframes msc-logo-reveal {
+        0%, 80%   { opacity: 0; transform: scale(.4); }
+        83%       { opacity: 1; transform: scale(1.08); }
+        86%       { opacity: 1; transform: scale(1); }
+        95%       { opacity: 1; transform: scale(1); }
+        99%, 100% { opacity: 0; transform: scale(1.05); }
+    }
+    .msc-earth-clouds { animation: msc-clouddrift 30s linear infinite; transform-box: fill-box; }
+    @keyframes msc-clouddrift { 0% { transform: translateX(0); } 100% { transform: translateX(-12px); } }
+    .msc-grain {
+        position: absolute; inset: 0; pointer-events: none; opacity: .5; mix-blend-mode: overlay;
+        background: repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px);
+    }
+    .msc-letterbox { position: absolute; left: 0; right: 0; height: 9px; background: #000; z-index: 1; }
+    .msc-letterbox.top { top: 0; }
+    .msc-letterbox.bottom { bottom: 0; }
+
+    .cinema-feats { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; position: relative; z-index: 1; }
+    .cinema-feat { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; color: var(--muted); }
+    .cinema-feat .chk { flex-shrink: 0; width: 16px; height: 16px; margin-top: 1px; border-radius: 4px; background: rgba(0,229,204,.12); border: 1px solid rgba(0,229,204,.4); color: var(--accent); font-size: 10px; display: flex; align-items: center; justify-content: center; }
+
+    /* ══════════ BENTO FEATURES ══════════ */
+    .bento { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-top: 24px; }
+    .bento .feat-card:nth-child(1) { grid-column: 1 / -1; }
+    .bento .feat-card:last-child { grid-column: 1 / -1; }
+    .feat-card { border: 1px solid var(--border); background: var(--surface); border-radius: 14px; padding: 16px; position: relative; overflow: hidden; transition: border-color .2s ease; }
+    .feat-card .feat-icon { width: 34px; height: 34px; border-radius: 9px; background: var(--surface3); border: 1px solid var(--border-hi); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .feat-card .feat-name { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13.5px; color: var(--text); margin-top: 12px; }
+    .feat-card .feat-desc { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+    .feat-card .feat-tag { position: absolute; top: 14px; right: 14px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--muted-dim); }
+
+    /* ══════════ DEMO DO CHAT INSTANTÂNEO (dentro do primeiro card do bento) ══════════ */
+    .chat-mock { position: relative; margin-top: 16px; border: 1px solid var(--border-hi); border-radius: 12px; background: var(--surface2); overflow: hidden; }
+    .chat-mock .cm-bar { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .chat-mock .cm-avatar { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--accent2), var(--accent3)); display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 11px; color: #fff; }
+    .chat-mock .cm-who-name { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12px; color: var(--text); }
+    .chat-mock .cm-who-status { display: flex; align-items: center; gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--accent); margin-top: 1px; }
+    .chat-mock .cm-who-status .d { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: pulse-dot 1.6s infinite; }
+
+    .cm-thread { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 14px 12px; min-height: 252px; }
+
+    .cbubble { max-width: 76%; padding: 8px 11px 15px; border-radius: 13px; font-size: 12px; line-height: 1.42; position: relative; opacity: 0; animation-duration: 17s; animation-iteration-count: infinite; animation-timing-function: ease; }
+    .cbubble.left  { align-self: flex-start; background: var(--surface3); color: var(--text); border-bottom-left-radius: 4px; }
+    .cbubble.right { align-self: flex-end; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #04141a; border-bottom-right-radius: 4px; }
+    .cb-time { position: absolute; right: 11px; bottom: 5px; font-family: 'JetBrains Mono', monospace; font-size: 8.5px; }
+    .cbubble.left .cb-time  { color: var(--muted-dim); }
+    .cbubble.right .cb-time { color: rgba(4,20,26,.6); }
+
+    .cb-audio-row { display: flex; align-items: center; gap: 8px; padding-right: 22px; }
+    .cb-play { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; }
+    .cbubble.left .cb-play  { background: rgba(0,229,204,.16); border: 1px solid rgba(0,229,204,.45); color: var(--accent); }
+    .cbubble.right .cb-play { background: rgba(4,20,26,.14); border: 1px solid rgba(4,20,26,.3); color: #04141a; }
+    .cb-wave { display: flex; align-items: center; gap: 2px; height: 17px; }
+    .cb-wave span { width: 2px; border-radius: 1px; display: block; animation: waveBounce 1s ease-in-out infinite; }
+    .cbubble.left .cb-wave span  { background: var(--accent); opacity: .85; }
+    .cbubble.right .cb-wave span { background: #04141a; opacity: .55; }
+    .cb-wave span:nth-child(1){height:6px;animation-delay:0s;}
+    .cb-wave span:nth-child(2){height:12px;animation-delay:.1s;}
+    .cb-wave span:nth-child(3){height:17px;animation-delay:.2s;}
+    .cb-wave span:nth-child(4){height:9px;animation-delay:.3s;}
+    .cb-wave span:nth-child(5){height:14px;animation-delay:.4s;}
+    .cb-wave span:nth-child(6){height:7px;animation-delay:.5s;}
+    .cb-wave span:nth-child(7){height:13px;animation-delay:.6s;}
+    .cb-wave span:nth-child(8){height:5px;animation-delay:.7s;}
+    @keyframes waveBounce { 0%,100% { transform: scaleY(.45); } 50% { transform: scaleY(1); } }
+
+    .cb-photo-thumb { width: 122px; height: 84px; border-radius: 8px; background: linear-gradient(135deg, var(--surface3), var(--surface2)); border: 1px solid var(--border-hi); display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 14px; }
+    .cb-photo-thumb svg { width: 100%; height: 100%; display: block; }
+    .cbubble.right .cb-photo-thumb { background: linear-gradient(135deg, rgba(4,20,26,.12), rgba(4,20,26,.05)); border-color: rgba(4,20,26,.25); }
+
+    .cbubble.cb-typing { display: flex; align-items: center; gap: 4px; padding: 11px 13px; }
+    .cbubble.cb-typing .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); animation: typingBounce 1s infinite ease-in-out; }
+    .cbubble.cb-typing .dot:nth-child(2) { animation-delay: .15s; }
+    .cbubble.cb-typing .dot:nth-child(3) { animation-delay: .3s; }
+    @keyframes typingBounce { 0%,60%,100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+    @keyframes cbAnim1 { 0%,1%{opacity:0;transform:translateY(6px);} 4%{opacity:1;transform:translateY(0);} 89%{opacity:1;transform:translateY(0);} 93%{opacity:0;transform:translateY(-4px);} 100%{opacity:0;} }
+    @keyframes cbAnim2 { 0%,12%{opacity:0;transform:translateY(6px);} 15%{opacity:1;transform:translateY(0);} 89%{opacity:1;transform:translateY(0);} 93%{opacity:0;transform:translateY(-4px);} 100%{opacity:0;} }
+    @keyframes cbAnim3 { 0%,24%{opacity:0;transform:translateY(6px);} 27%{opacity:1;transform:translateY(0);} 89%{opacity:1;transform:translateY(0);} 93%{opacity:0;transform:translateY(-4px);} 100%{opacity:0;} }
+    @keyframes cbAnim4 { 0%,38%{opacity:0;transform:translateY(6px);} 41%{opacity:1;transform:translateY(0);} 89%{opacity:1;transform:translateY(0);} 93%{opacity:0;transform:translateY(-4px);} 100%{opacity:0;} }
+    @keyframes cbAnim5 { 0%,52%{opacity:0;transform:translateY(6px);} 55%{opacity:1;transform:translateY(0);} 61%{opacity:1;transform:translateY(0);} 64%{opacity:0;transform:translateY(-4px);} 100%{opacity:0;} }
+    @keyframes cbAnim6 { 0%,63%{opacity:0;transform:translateY(6px);} 66%{opacity:1;transform:translateY(0);} 89%{opacity:1;transform:translateY(0);} 93%{opacity:0;transform:translateY(-4px);} 100%{opacity:0;} }
+
+    .cb1{animation-name:cbAnim1;} .cb2{animation-name:cbAnim2;} .cb3{animation-name:cbAnim3;}
+    .cb4{animation-name:cbAnim4;} .cb5{animation-name:cbAnim5;} .cb6{animation-name:cbAnim6;}
+
+    /* ══════════ DEMO CHAMADAS DE VÍDEO (card 02) ══════════ */
+    .call-mock { margin-top: 14px; border: 1px solid var(--border-hi); border-radius: 12px; background: var(--surface2); padding: 14px 10px 12px; display: flex; flex-direction: column; align-items: center; gap: 7px; }
+    .call-avatar-wrap { position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+    .call-ring { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--accent); opacity: 0; animation: callPulse 2.2s ease-out infinite; }
+    .call-ring.r2 { animation-delay: 1.1s; }
+    @keyframes callPulse { 0% { transform: scale(.7); opacity: .6; } 70% { opacity: 0; } 100% { transform: scale(1.55); opacity: 0; } }
+    .call-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent2), var(--accent3)); display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; color: #fff; position: relative; z-index: 1; }
+    .call-info { text-align: center; }
+    .call-name { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12px; color: var(--text); }
+    .call-status { display: flex; align-items: center; justify-content: center; gap: 5px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent); margin-top: 2px; }
+    .call-status .d { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: pulse-dot 1.6s infinite; }
+    .call-actions { display: flex; gap: 7px; margin-top: 1px; }
+    .call-btn { width: 25px; height: 25px; border-radius: 50%; background: var(--surface3); border: 1px solid var(--border-hi); display: flex; align-items: center; justify-content: center; font-size: 10.5px; }
+    .call-btn.end { background: rgba(255,77,79,.14); border-color: rgba(255,77,79,.4); }
+
+    /* ══════════ DEMO LOCALIZAÇÃO AO VIVO (card 03) ══════════ */
+    .loc-mock { margin-top: 14px; border: 1px solid var(--border-hi); border-radius: 12px; background: var(--surface2); overflow: hidden; }
+    .loc-map { position: relative; height: 78px;
+        background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+        background-size: 16px 16px; background-color: #0c1219; }
+    .loc-map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .loc-route { stroke: var(--accent2); stroke-width: 2; fill: none; stroke-linecap: round; stroke-dasharray: 6 6; animation: routeDraw 2.4s linear infinite; opacity: .85; }
+    @keyframes routeDraw { to { stroke-dashoffset: -24; } }
+    .loc-dot-ring { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0; animation: callPulse 2.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+    .loc-dot { fill: var(--accent); }
+    .loc-info { display: flex; align-items: center; gap: 6px; padding: 8px 12px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--muted); }
+    .loc-info .d { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: pulse-dot 1.6s infinite; flex-shrink: 0; }
+
+    /* ══════════ DEMO GRUPOS (card 04) ══════════ */
+    .group-mock { margin-top: 14px; border: 1px solid var(--border-hi); border-radius: 12px; background: var(--surface2); padding: 12px; }
+    .group-avatars { display: flex; }
+    .group-avatars .ga { width: 25px; height: 25px; border-radius: 50%; border: 2px solid var(--surface2); margin-left: -8px; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 10px; color: #fff; }
+    .group-avatars .ga:first-child { margin-left: 0; }
+    .group-avatars .ga.more { background: var(--surface3); color: var(--muted); border-color: var(--border-hi); font-size: 8.5px; }
+    .group-name { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12px; color: var(--text); margin-top: 9px; }
+    .group-preview { position: relative; height: 15px; margin-top: 4px; }
+    .gp-msg { position: absolute; left: 0; top: 0; right: 0; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; animation: gpCrossfade 6s ease-in-out infinite; }
+    .gp-msg.gp2 { animation-delay: 3s; }
+    @keyframes gpCrossfade { 0%,3% { opacity: 0; transform: translateY(3px); } 8%,42% { opacity: 1; transform: translateY(0); } 48%,100% { opacity: 0; transform: translateY(-3px); } }
+
+    /* ══════════ DEMO STATUS (card 05) ══════════ */
+    .status-mock { margin-top: 14px; border: 1px solid var(--border-hi); border-radius: 12px; background: var(--surface2); padding: 13px 10px; display: flex; gap: 10px; align-items: center; justify-content: center; }
+    .status-ring-wrap { position: relative; width: 36px; height: 36px; flex-shrink: 0; }
+    .status-ring-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; animation: ringRotate 5s linear infinite; }
+    .status-ring-wrap.rw2 svg { animation-duration: 6.5s; animation-direction: reverse; }
+    .status-ring-wrap.add svg { animation: none; }
+    @keyframes ringRotate { to { transform: rotate(360deg); } }
+    .status-avatar { position: absolute; inset: 3px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 12px; color: #fff; background: linear-gradient(135deg, var(--accent2), var(--accent3)); }
+    .status-ring-wrap.add .status-avatar { background: var(--surface3); color: var(--accent); font-size: 15px; }
+    .status-caption-row { margin-top: 9px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--muted-dim); text-align: center; }
+
+    /* ══════════ DEMO REDE SOCIAL "COMUNIDADE DEE" (card 06) ══════════ */
+    .social-mock { margin-top: 14px; border: 1px solid var(--border-hi); border-radius: 12px; background: var(--surface2); overflow: hidden; }
+    .social-mock .sm-head { display: flex; align-items: center; gap: 8px; padding: 10px 11px 8px; }
+    .social-mock .sm-avatar { flex-shrink: 0; width: 24px; height: 24px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 10px; color: #04141a; }
+    .social-mock .sm-who { flex: 1; min-width: 0; }
+    .social-mock .sm-name { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 11.5px; color: var(--text); }
+    .social-mock .sm-time { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; color: var(--muted-dim); margin-top: 1px; }
+    .social-mock .sm-photo { height: 72px; margin: 0 11px; border-radius: 8px; background: linear-gradient(135deg, rgba(0,229,204,.18), rgba(124,92,255,.16)); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .social-mock .sm-actions { display: flex; align-items: center; gap: 13px; padding: 9px 11px 4px; }
+    .social-mock .sm-act { display: flex; align-items: center; gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); }
+    .social-mock .sm-act.liked { color: var(--accent); }
+    .social-mock .sm-dots { display: flex; justify-content: center; gap: 4px; padding: 9px 0 10px; }
+    .social-mock .sm-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--border-hi); transition: background .2s, width .2s; }
+    .social-mock .sm-dot.on { background: var(--accent); width: 12px; border-radius: 2px; }
+
+    /* ══════════ REDE SOCIAL — SPOTLIGHT ══════════ */
+    .rs-spotlight { display: flex; align-items: center; gap: 6px; padding: 7px 10px; margin: 12px 12px 0; border-radius: 9px; background: linear-gradient(135deg, rgba(0,229,204,.14), rgba(124,92,255,.08)); border: 1px solid rgba(0,229,204,.28); font-size: 10.5px; color: var(--text); }
+    .rs-spotlight .rs-spot-ic { flex-shrink: 0; font-size: 11px; }
+    .rs-spotlight b { color: var(--accent); font-weight: 700; }
+    .rs-badge { display: inline-flex; align-items: center; gap: 2px; font-family: 'JetBrains Mono', monospace; font-size: 7.5px; color: var(--accent); background: rgba(0,229,204,.12); border: 1px solid rgba(0,229,204,.3); padding: 1px 5px 1px 4px; border-radius: 5px; margin-left: 5px; vertical-align: middle; }
+    .rs-mock-wrap { padding: 0 0 12px; }
+    .rs-mock-wrap .social-mock { margin: 10px 12px 0; }
+
+    /* ══════════ COMO FUNCIONA ══════════ */
+    .steps { margin-top: 26px; position: relative; }
+    .steps::before { content: ''; position: absolute; left: 13px; top: 6px; bottom: 6px; width: 1px; background: linear-gradient(var(--border-hi), transparent); }
+    .step { display: flex; gap: 16px; align-items: flex-start; position: relative; padding-bottom: 26px; }
+    .step:last-child { padding-bottom: 0; }
+    .step-n { flex-shrink: 0; width: 27px; height: 27px; border-radius: 7px; background: var(--surface2); border: 1px solid var(--border-hi); color: var(--accent); font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 11px; display: flex; align-items: center; justify-content: center; z-index: 1; }
+    .step-info .step-name { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14px; color: var(--text); }
+    .step-info .step-desc { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+
+    /* ══════════ PRIVACIDADE ══════════ */
+    .privacy-card { margin-top: 8px; border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; gap: 14px; align-items: flex-start; background: var(--surface); }
+    .privacy-card .feat-icon { flex-shrink: 0; width: 34px; height: 34px; border-radius: 9px; background: rgba(0,229,204,.08); border: 1px solid rgba(0,229,204,.28); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+    /* ══════════ CTA FINAL ══════════ */
+    .cta-final { text-align: center; border: 1px solid var(--border-hi); border-radius: 18px; padding: 38px 22px; position: relative; overflow: hidden; background: var(--surface); }
+    .cta-final::before { content: ''; position: absolute; inset: -40%; background: radial-gradient(circle at 30% 20%, rgba(0,229,204,.14), transparent 55%), radial-gradient(circle at 80% 80%, rgba(124,92,255,.13), transparent 55%); animation: drift1 24s ease-in-out infinite; }
+    .cta-final > * { position: relative; z-index: 1; }
+    .cta-final .sec-title { margin-bottom: 6px; }
+    .cta-final .ctas { max-width: 320px; margin-left: auto; margin-right: auto; }
+
+    /* ══════════ FOOTER ══════════ */
+    footer { padding: 30px 0 40px; text-align: center; }
+    footer .flinks { display: flex; justify-content: center; gap: 16px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+    footer .flinks a:hover, footer .flinks a:active { color: var(--accent); }
+    footer .fcopy { margin-top: 14px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--muted-dim); }
+
+    /* ══════════ BANNER FLUTUANTE DE INSTALAÇÃO ══════════ */
+    #install-fab {
+        position: fixed; left: 16px; right: 16px; bottom: calc(16px + var(--safe-bottom));
+        max-width: 528px; margin: 0 auto;
+        background: var(--surface2); border: 1px solid var(--border-hi); border-radius: 14px;
+        padding: 12px 14px; display: none; align-items: center; gap: 12px;
+        box-shadow: 0 12px 34px rgba(0,0,0,.5); z-index: 500;
+    }
+    #install-fab.show { display: flex; }
+    #install-fab img { width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0; }
+    #install-fab .ifab-txt { flex: 1; min-width: 0; }
+    #install-fab .ifab-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12.5px; }
+    #install-fab .ifab-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    #install-fab .ifab-btn { flex-shrink: 0; background: var(--accent); color: #04141a; border: none; border-radius: 8px; padding: 9px 13px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12px; cursor: pointer; }
+    #install-fab .ifab-close { flex-shrink: 0; background: none; border: none; color: var(--muted); font-size: 15px; cursor: pointer; padding: 4px; }
+
+    /* ══════════ MODAL: ESCOLHA DE INSTALAÇÃO (Dee Lite x Dee Full) ══════════ */
+    #install-choice-overlay { position: fixed; inset: 0; background: rgba(4,5,8,.72); backdrop-filter: blur(3px); display: none; align-items: center; justify-content: center; z-index: 600; padding: 16px; }
+    #install-choice-overlay.show { display: flex; }
+    .ic-card { width: 100%; max-width: 380px; background: var(--surface2); border: 1px solid var(--border-hi); border-radius: 18px; padding: 22px; box-shadow: 0 20px 60px rgba(0,0,0,.55); }
+    .ic-card h3 { font-family: 'Space Grotesk', sans-serif; font-size: 18px; margin-bottom: 6px; }
+    .ic-card .ic-desc { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin-bottom: 16px; }
+    .ic-opt { width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; gap: 12px; align-items: flex-start; cursor: pointer; margin-bottom: 10px; transition: border-color .15s, background .15s; font-family: inherit; color: var(--text); }
+    .ic-opt:hover, .ic-opt:active { border-color: var(--accent); background: var(--surface3); }
+    .ic-opt .ic-ic { flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; background: rgba(0,229,204,.1); border: 1px solid rgba(0,229,204,.3); display: flex; align-items: center; justify-content: center; color: var(--accent); }
+    .ic-opt .ic-title { font-weight: 700; font-size: 13.5px; }
+    .ic-opt .ic-title span { font-weight: 400; font-size: 10.5px; color: var(--accent); }
+    .ic-opt .ic-sub { font-weight: 400; font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+    #ic-note { display: none; font-size: 12px; color: var(--muted); background: var(--surface3); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 6px; line-height: 1.5; }
+    .ic-cancel { width: 100%; margin-top: 4px; background: none; border: none; color: var(--muted); font-size: 13px; padding: 10px; cursor: pointer; font-family: inherit; }
+    .ic-cancel:hover { color: var(--text); }
+
+    /* ── Modal de confirmação de download ── */
+    #dl-overlay { position: fixed; inset: 0; background: rgba(4,5,8,.72); backdrop-filter: blur(3px); display: none; align-items: center; justify-content: center; z-index: 700; padding: 16px; }
+    #dl-overlay.show { display: flex; }
+    .dl-card { width: 100%; max-width: 340px; background: var(--surface2); border: 1px solid var(--border-hi); border-radius: 18px; padding: 24px 22px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.55); text-align: center; }
+    .dl-icon { width: 48px; height: 48px; border-radius: 14px; background: rgba(0,229,204,.1); border: 1px solid rgba(0,229,204,.3); display: flex; align-items: center; justify-content: center; color: var(--accent); margin: 0 auto 14px; }
+    .dl-card h3 { font-family: 'Space Grotesk', sans-serif; font-size: 17px; margin-bottom: 8px; }
+    .dl-card p { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
+    .dl-btn { display: block; width: 100%; padding: 13px; border: none; border-radius: 10px; background: linear-gradient(100deg, var(--accent), var(--accent2)); color: #04141a; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14px; cursor: pointer; margin-bottom: 8px; }
+    .dl-btn-close { width: 100%; background: none; border: none; color: var(--muted); font-size: 13px; padding: 8px; cursor: pointer; font-family: inherit; }
+    .dl-btn-close:hover { color: var(--text); }
+
+    @media (min-width: 640px) {
+        .hero h1 { font-size: 48px; }
+        .bento { grid-template-columns: 1fr 1fr 1fr; }
+        .bento .feat-card:nth-child(1) { grid-column: span 2; }
+    }
+
+    /* ══════════ DESKTOP: usa a largura toda da tela, mobile permanece igual ══════════ */
+    @media (min-width: 960px) {
+        .wrap { max-width: 1180px; padding: 0 48px; }
+        .nav-inner { max-width: 1180px; padding: 16px 48px; }
+
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 64px;
+            padding: 96px 0 76px;
+            text-align: left;
+        }
+        .hero-content { flex: 1 1 480px; max-width: 500px; }
+        .hero-content .kicker { margin-left: 0; }
+        .hero h1 { font-size: 54px; }
+        .hero .pitch { margin-left: 0; margin-right: 0; max-width: 440px; }
+        .ctas { flex-direction: row; }
+        .btn { width: auto; padding: 16px 30px; }
+        .install-hint { text-align: left; }
+
+        .hero-visual { flex: 0 0 420px; max-width: 420px; height: 250px; margin: 0; }
+
+        .bento { gap: 16px; }
+
+        .cinema-panel { padding: 34px 40px 30px; }
+        .cinema-mock { max-width: 640px; margin-left: auto; margin-right: auto; }
+
+        section { padding: 64px 0; }
+    }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-blob b1"></div>
+<div class="bg-blob b2"></div>
+<div class="bg-blob b3"></div>
+
+<nav id="navbar">
+    <div class="nav-inner">
+        <div class="nav-brand"><img src="icon-512.png" alt="Dee">Dee</div>
+        <a class="nav-cta" href="index.html?mode=login">Entrar</a>
+    </div>
+</nav>
+
+<div class="wrap">
+
+    <!-- ════ HERO ════ -->
+    <div class="hero">
+        <span class="shape sq" style="width:34px;height:34px;top:18px;left:-6px;--r:12deg;animation:floaty 7s ease-in-out infinite;"></span>
+        <span class="shape sq" style="width:20px;height:20px;top:70px;right:2px;border-radius:5px;--r:-8deg;animation:floaty 5.5s ease-in-out infinite .6s;"></span>
+
+        <div class="hero-content">
+            <div class="kicker"><span class="dot"></span><span class="mono">NOVO · CINEMA COLETIVO</span></div>
+
+            <h1>Converse, ligue e <span class="grad">assista junto</span>, sem sair da conversa.</h1>
+            <p class="pitch">Dee é o app de mensagens com chamadas de vídeo, localização em tempo real, uma rede social pra compartilhar momentos e o Cinema Coletivo — vídeos sincronizados pra assistir com quem importa, ao vivo.</p>
+
+            <div class="ctas">
+                <a class="btn btn-primary" href="index.html?mode=cadastro">Criar conta grátis</a>
+                <a class="btn btn-ghost" href="index.html?mode=login">Já tenho conta — Entrar</a>
+            </div>
+            <p class="install-hint">Prefere como aplicativo? <button type="button" onclick="doInstall()">Instalar o Dee</button></p>
+            
+        </div>
+
+        <div class="hero-visual">
+            <div class="hv-card hv-cinema">
+                <div class="hv-top"><span class="live"><span class="d"></span>AO VIVO</span></div>
+                <div class="hv-body"><div class="hv-play">▶</div></div>
+                <div class="hv-foot">
+                    <div class="hv-avatars"><span></span><span></span><span></span></div>
+                    <div class="hv-foot-lbl">SINCRONIZADO</div>
+                </div>
+            </div>
+            <div class="hv-card hv-chat">
+                <div class="who">Aline</div>
+                partiu maratonar hoje? 🍿
+            </div>
+            <div class="hv-card hv-call">
+                <div class="ic">🎥</div>
+                <div class="lbl">VÍDEOCHAMADA · 04:12</div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ════ TICKER ════ -->
+    <div class="ticker-wrap">
+        <div class="ticker-track" id="ticker-track"></div>
+    </div>
+
+    <!-- ════ CINEMA COLETIVO — SPOTLIGHT ════ -->
+    <section>
+        <div class="reveal">
+            <div class="eyebrow">Destaque</div>
+            <h2 class="sec-title">Cinema Coletivo</h2>
+            <p class="sec-sub">Assista vídeos ou navegue em qualquer página junto com seus contatos, em tempo real, dentro da própria conversa.</p>
+
+            <div class="cinema-panel">
+                <span class="cinema-badge">🎬&nbsp;WATCH PARTY</span>
+                <h3>Todo mundo vendo a mesma cena, no mesmo segundo.</h3>
+                <p>Cole o link de um vídeo do YouTube e inicie uma sessão sincronizada. A janela flutua sobre o chat — dá pra continuar conversando, minimizar ou ir pra tela cheia sem perder a sincronia.</p>
+
+                <div class="cinema-mock">
+                    <div class="cm-bar">
+                        <span class="cm-tag"><span class="d"></span>SESSÃO ATIVA</span>
+                        <span class="cm-people">3 assistindo</span>
+                    </div>
+                    <div class="cm-screen">
+                        <div class="movie-scene">
+                            <svg class="msc-svg" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <radialGradient id="mscSpace" cx="50%" cy="30%" r="80%">
+                                        <stop offset="0%" stop-color="#171d34"/>
+                                        <stop offset="55%" stop-color="#0b0e1c"/>
+                                        <stop offset="100%" stop-color="#040509"/>
+                                    </radialGradient>
+                                    <radialGradient id="mscMoon" cx="36%" cy="32%" r="70%">
+                                        <stop offset="0%" stop-color="#f4f2ec"/>
+                                        <stop offset="55%" stop-color="#bab7ac"/>
+                                        <stop offset="100%" stop-color="#726f66"/>
+                                    </radialGradient>
+                                    <radialGradient id="mscEarth" cx="36%" cy="28%" r="78%">
+                                        <stop offset="0%" stop-color="#6ec2ec"/>
+                                        <stop offset="42%" stop-color="#2f7fc9"/>
+                                        <stop offset="78%" stop-color="#163f7d"/>
+                                        <stop offset="100%" stop-color="#0a2350"/>
+                                    </radialGradient>
+                                    <radialGradient id="mscAtmo" cx="36%" cy="28%" r="82%">
+                                        <stop offset="79%" stop-color="#78c2ff" stop-opacity="0"/>
+                                        <stop offset="93%" stop-color="#8fd0ff" stop-opacity=".55"/>
+                                        <stop offset="100%" stop-color="#8fd0ff" stop-opacity="0"/>
+                                    </radialGradient>
+                                    <radialGradient id="mscFlameHalo" cx="50%" cy="50%" r="50%">
+                                        <stop offset="0%" stop-color="#ffb44d" stop-opacity=".65"/>
+                                        <stop offset="55%" stop-color="#ff7a2e" stop-opacity=".25"/>
+                                        <stop offset="100%" stop-color="#ff7a2e" stop-opacity="0"/>
+                                    </radialGradient>
+                                    <linearGradient id="mscFlameOuter" x1="10" y1="0" x2="-70" y2="0" gradientUnits="userSpaceOnUse">
+                                        <stop offset="0%" stop-color="#fff4d6"/>
+                                        <stop offset="25%" stop-color="#ffcf5c"/>
+                                        <stop offset="55%" stop-color="#ff9d3d"/>
+                                        <stop offset="85%" stop-color="#ff5b3d" stop-opacity=".55"/>
+                                        <stop offset="100%" stop-color="#ff5b3d" stop-opacity="0"/>
+                                    </linearGradient>
+                                    <linearGradient id="mscFlameBlue" x1="8" y1="0" x2="-23" y2="0" gradientUnits="userSpaceOnUse">
+                                        <stop offset="0%" stop-color="#eaf7ff"/>
+                                        <stop offset="35%" stop-color="#8fd8ff"/>
+                                        <stop offset="70%" stop-color="#2f8fe0"/>
+                                        <stop offset="100%" stop-color="#2f8fe0" stop-opacity="0"/>
+                                    </linearGradient>
+                                    <radialGradient id="mscHotTip" cx="50%" cy="50%" r="50%">
+                                        <stop offset="0%" stop-color="#ffffff"/>
+                                        <stop offset="45%" stop-color="#bfe8ff"/>
+                                        <stop offset="100%" stop-color="#bfe8ff" stop-opacity="0"/>
+                                    </radialGradient>
+                                    <linearGradient id="mscPlaneHot" x1="16" y1="0" x2="-14" y2="0" gradientUnits="userSpaceOnUse">
+                                        <stop offset="0%" stop-color="#ffffff"/>
+                                        <stop offset="22%" stop-color="#dff3ff"/>
+                                        <stop offset="55%" stop-color="#b9d4ea"/>
+                                        <stop offset="100%" stop-color="#7d8ea6"/>
+                                    </linearGradient>
+                                    <linearGradient id="mscPlaneHotShadow" x1="16" y1="0" x2="-14" y2="0" gradientUnits="userSpaceOnUse">
+                                        <stop offset="0%" stop-color="#cfe6f7"/>
+                                        <stop offset="40%" stop-color="#8fa9c4"/>
+                                        <stop offset="100%" stop-color="#3d485c"/>
+                                    </linearGradient>
+                                    <filter id="mscFlameNoise" x="-80%" y="-80%" width="260%" height="260%">
+                                        <feTurbulence type="fractalNoise" baseFrequency="0.09 0.18" numOctaves="2" seed="2" result="noise">
+                                            <animate attributeName="seed" values="1;6;2;8;1" dur="1s" repeatCount="indefinite"/>
+                                        </feTurbulence>
+                                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G"/>
+                                    </filter>
+                                    <clipPath id="mscEarthClip">
+                                        <circle cx="150" cy="330" r="165"/>
+                                    </clipPath>
+                                    <radialGradient id="mscImpactFlash" cx="50%" cy="50%" r="50%">
+                                        <stop offset="0%" stop-color="#ffffff"/>
+                                        <stop offset="35%" stop-color="#ffe1a8"/>
+                                        <stop offset="70%" stop-color="#ff9d3d" stop-opacity=".6"/>
+                                        <stop offset="100%" stop-color="#ff9d3d" stop-opacity="0"/>
+                                    </radialGradient>
+                                    <radialGradient id="mscLogoGlow" cx="50%" cy="50%" r="50%">
+                                        <stop offset="0%" stop-color="#bdf6ff" stop-opacity=".85"/>
+                                        <stop offset="55%" stop-color="#00b4c9" stop-opacity=".35"/>
+                                        <stop offset="100%" stop-color="#00b4c9" stop-opacity="0"/>
+                                    </radialGradient>
+                                    <linearGradient id="mscLogoPlaneTop" x1="22" y1="0" x2="-20" y2="0" gradientUnits="userSpaceOnUse">
+                                        <stop offset="0%" stop-color="#f2fffc"/>
+                                        <stop offset="35%" stop-color="#8ff5e6"/>
+                                        <stop offset="75%" stop-color="#00e5cc"/>
+                                        <stop offset="100%" stop-color="#00a3c4"/>
+                                    </linearGradient>
+                                    <linearGradient id="mscLogoPlaneBottom" x1="22" y1="0" x2="-20" y2="0" gradientUnits="userSpaceOnUse">
+                                        <stop offset="0%" stop-color="#8fe0ff"/>
+                                        <stop offset="50%" stop-color="#0088ff"/>
+                                        <stop offset="100%" stop-color="#0a3a66"/>
+                                    </linearGradient>
+                                    <linearGradient id="mscLogoText" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stop-color="#00e5cc"/>
+                                        <stop offset="50%" stop-color="#0088ff"/>
+                                        <stop offset="100%" stop-color="#7c5cff"/>
+                                    </linearGradient>
+                                </defs>
+
+                                <rect width="400" height="260" fill="url(#mscSpace)"/>
+
+                                <g class="msc-stars">
+                                    <circle class="msc-star" cx="36" cy="26" r="1.3" fill="#fff"/>
+                                    <circle class="msc-star" cx="88" cy="52" r="1" fill="#fff"/>
+                                    <circle class="msc-star" cx="150" cy="20" r="1.1" fill="#fff"/>
+                                    <circle class="msc-star" cx="200" cy="60" r="1.4" fill="#fff"/>
+                                    <circle class="msc-star" cx="250" cy="24" r="1" fill="#fff"/>
+                                    <circle class="msc-star" cx="20" cy="90" r="1" fill="#fff"/>
+                                    <circle class="msc-star" cx="120" cy="80" r="1.2" fill="#fff"/>
+                                    <circle class="msc-star" cx="290" cy="90" r="1" fill="#fff"/>
+                                    <circle class="msc-star" cx="370" cy="140" r="1.3" fill="#fff"/>
+                                    <circle class="msc-star" cx="60" cy="130" r="1" fill="#fff"/>
+                                    <circle class="msc-star" cx="320" cy="30" r="1.1" fill="#fff"/>
+                                    <circle class="msc-star" cx="10" cy="45" r="1" fill="#fff"/>
+                                </g>
+
+                                <circle class="msc-moon-glow" cx="333" cy="46" r="30" fill="#b9d4ff" opacity=".45" style="filter:blur(6px)"/>
+                                <circle cx="333" cy="46" r="22" fill="url(#mscMoon)"/>
+                                <circle cx="326" cy="38" r="3.2" fill="#8f8c82" opacity=".5"/>
+                                <circle cx="341" cy="49" r="2.2" fill="#8f8c82" opacity=".45"/>
+                                <circle cx="330" cy="53" r="3.8" fill="#8f8c82" opacity=".4"/>
+
+                                <g class="msc-meteor-group">
+                                    <g transform="rotate(48)">
+                                        <!-- halo de calor -->
+                                        <circle class="msc-flame-halo" cx="-14" cy="0" r="30" fill="url(#mscFlameHalo)" style="mix-blend-mode:screen"/>
+                                        <!-- rastro de chama amarela/laranja -->
+                                        <path class="msc-flame-outer" filter="url(#mscFlameNoise)" fill="url(#mscFlameOuter)" d="M2,-6 C-20,-14 -46,-9 -70,-2 C-60,3 -38,9 -16,7 C-4,6 3,1 2,-6 Z"/>
+                                        <!-- fogo azul, mais quente e colado no avião -->
+                                        <path class="msc-flame-inner" fill="url(#mscFlameBlue)" style="mix-blend-mode:screen" d="M6,-4 C-6,-8 -17,-4 -23,0 C-17,4 -4,6 6,4 Z"/>
+                                        <!-- fagulhas -->
+                                        <circle class="msc-ember msc-ember1" cx="-30" cy="-5" r="1.3" fill="#ffcf7a"/>
+                                        <circle class="msc-ember msc-ember2" cx="-42" cy="4" r="1" fill="#ffb15e"/>
+                                        <circle class="msc-ember msc-ember3" cx="-55" cy="-3" r="1.1" fill="#ff9d3d"/>
+                                        <circle class="msc-ember msc-ember4" cx="-64" cy="3" r=".8" fill="#ffcf7a"/>
+                                        <!-- ponta incandescente -->
+                                        <ellipse cx="15" cy="0" rx="5" ry="3" fill="url(#mscHotTip)" style="mix-blend-mode:screen"/>
+                                        <!-- silhueta do aviãozinho de papel da logo Dee -->
+                                        <path fill="url(#mscPlaneHot)" d="M16,0 L-14,-9 L-3,-1 Z"/>
+                                        <path fill="url(#mscPlaneHotShadow)" d="M16,0 L-3,-1 L-14,9 Z"/>
+                                        <path fill="#2b3446" opacity=".85" d="M-6,-3 L-14,-9 L-9,0 Z"/>
+                                        <path fill="none" stroke="#8fd8ff" stroke-width=".8" opacity=".8" style="mix-blend-mode:screen" d="M16,0 L-14,-9 L-3,-1 Z"/>
+                                    </g>
+                                </g>
+
+                                <circle cx="150" cy="330" r="172" fill="url(#mscAtmo)"/>
+                                <circle cx="150" cy="330" r="163" fill="url(#mscEarth)"/>
+                                <g clip-path="url(#mscEarthClip)">
+                                    <path d="M35,205 Q72,178 118,192 Q152,202 142,233 Q108,250 72,239 Q42,233 35,205 Z" fill="#2f6b3f" opacity=".55"/>
+                                    <path d="M178,188 Q220,172 252,193 Q248,220 212,222 Q184,214 178,188 Z" fill="#3d7a45" opacity=".5"/>
+                                    <path d="M60,150 Q90,140 110,155 Q100,168 78,166 Q60,162 60,150 Z" fill="#2f6b3f" opacity=".4"/>
+                                    <g class="msc-earth-clouds">
+                                        <ellipse cx="115" cy="172" rx="55" ry="13" fill="#fff" opacity=".2"/>
+                                        <ellipse cx="215" cy="203" rx="46" ry="10" fill="#fff" opacity=".16"/>
+                                        <ellipse cx="70" cy="230" rx="38" ry="9" fill="#fff" opacity=".14"/>
+                                    </g>
+                                </g>
+
+                                <!-- explosão no instante em que "chega" na Terra -->
+                                <g class="msc-impact" transform="translate(210,175)">
+                                    <circle class="msc-impact-flash" r="16" fill="url(#mscImpactFlash)" style="mix-blend-mode:screen"/>
+                                    <circle class="msc-impact-ring msc-ring1" r="10" fill="none" stroke="#ffcf7a" stroke-width="2.5"/>
+                                    <circle class="msc-impact-ring msc-ring2" r="10" fill="none" stroke="#8fd8ff" stroke-width="2"/>
+                                    <g transform="rotate(0)"><line class="msc-spark-line" x1="0" y1="0" x2="14" y2="0" stroke="#ffcf7a" stroke-width="2" stroke-linecap="round"/></g>
+                                    <g transform="rotate(60)"><line class="msc-spark-line" x1="0" y1="0" x2="14" y2="0" stroke="#ff9d3d" stroke-width="2" stroke-linecap="round"/></g>
+                                    <g transform="rotate(120)"><line class="msc-spark-line" x1="0" y1="0" x2="14" y2="0" stroke="#ffcf7a" stroke-width="2" stroke-linecap="round"/></g>
+                                    <g transform="rotate(180)"><line class="msc-spark-line" x1="0" y1="0" x2="14" y2="0" stroke="#8fd8ff" stroke-width="2" stroke-linecap="round"/></g>
+                                    <g transform="rotate(240)"><line class="msc-spark-line" x1="0" y1="0" x2="14" y2="0" stroke="#ff9d3d" stroke-width="2" stroke-linecap="round"/></g>
+                                    <g transform="rotate(300)"><line class="msc-spark-line" x1="0" y1="0" x2="14" y2="0" stroke="#ffcf7a" stroke-width="2" stroke-linecap="round"/></g>
+                                </g>
+
+                                <!-- revelação da logo Dee, aparece logo depois da explosão -->
+                                <g class="msc-logo-reveal" transform="translate(200,128)">
+                                    <circle r="46" fill="url(#mscLogoGlow)" style="mix-blend-mode:screen"/>
+                                    <g transform="rotate(-18) translate(0,-8)">
+                                        <path fill="url(#mscLogoPlaneTop)" d="M22,0 L-20,-13 L-4,-1 Z"/>
+                                        <path fill="url(#mscLogoPlaneBottom)" d="M22,0 L-4,-1 L-20,13 Z"/>
+                                        <path fill="#063a52" opacity=".55" d="M-9,-4 L-20,-13 L-13,0 Z"/>
+                                    </g>
+                                    <text x="0" y="34" text-anchor="middle" font-family="'Space Grotesk', sans-serif" font-weight="700" font-size="24" fill="url(#mscLogoText)">Dee</text>
+                                    <path d="M20,29 C34,29 38,15 29,9" fill="none" stroke="#00e5cc" stroke-width="2" stroke-linecap="round" opacity=".85"/>
+                                </g>
+                            </svg>
+                            <div class="msc-grain"></div>
+                        </div>
+                        <div class="msc-letterbox top"></div>
+                        <div class="msc-letterbox bottom"></div>
+                        <div class="playbtn">▶</div>
+                        <div class="cm-progress"><i></i></div>
+                    </div>
+                </div>
+
+                <div class="cinema-feats">
+                    <div class="cinema-feat"><span class="chk">✓</span>Play, pausa e avanço sincronizados pra todo mundo na sessão</div>
+                    <div class="cinema-feat"><span class="chk">✓</span>Janela flutuante (picture-in-picture) — continue no chat enquanto assiste</div>
+                    <div class="cinema-feat"><span class="chk">✓</span>Tela cheia com um toque, quando quiser focar só no conteúdo</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════ FUNCIONALIDADES ════ -->
+    <section>
+        <div class="reveal">
+            <div class="eyebrow">Funcionalidades</div>
+            <h2 class="sec-title">Feito pra ficar perto de quem importa</h2>
+            <p class="sec-sub">Rápido no dia a dia, sem complicação.</p>
+
+            <div class="bento">
+                <div class="feat-card">
+                    <span class="feat-tag mono">01</span>
+                    <div class="feat-icon">💬</div>
+                    <div class="feat-name">Chat instantâneo</div>
+                    <div class="feat-desc">Texto, fotos, vídeos, áudios e figurinhas entregues na hora.</div>
+
+                    <div class="chat-mock">
+                        <div class="cm-bar">
+                            <span class="cm-avatar">A</span>
+                            <div>
+                                <div class="cm-who-name">Aline</div>
+                                <div class="cm-who-status"><span class="d"></span>digitando em tempo real</div>
+                            </div>
+                        </div>
+                        <div class="cm-thread">
+                            <div class="cbubble left cb1">bora maratonar hj à noite? 🍿<span class="cb-time">21:40</span></div>
+                            <div class="cbubble right cb2">bora! separa a pipoca 😂<span class="cb-time">21:41</span></div>
+                            <div class="cbubble left cb3">
+                                <div class="cb-audio-row">
+                                    <span class="cb-play">▶</span>
+                                    <span class="cb-wave"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+                                </div>
+                                <span class="cb-time">21:41</span>
+                            </div>
+                            <div class="cbubble left cb4">
+                                <div class="cb-photo-thumb">
+                                    <svg viewBox="0 0 300 200" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                                        <defs>
+                                            <radialGradient id="pcBg" cx="38%" cy="22%" r="95%">
+                                                <stop offset="0%" stop-color="#3a2418"/>
+                                                <stop offset="55%" stop-color="#231309"/>
+                                                <stop offset="100%" stop-color="#0d0704"/>
+                                            </radialGradient>
+                                            <radialGradient id="pcBokeh1" cx="50%" cy="50%" r="50%">
+                                                <stop offset="0%" stop-color="#ffb84d" stop-opacity=".55"/>
+                                                <stop offset="100%" stop-color="#ffb84d" stop-opacity="0"/>
+                                            </radialGradient>
+                                            <radialGradient id="pcBokeh2" cx="50%" cy="50%" r="50%">
+                                                <stop offset="0%" stop-color="#ff7a3d" stop-opacity=".4"/>
+                                                <stop offset="100%" stop-color="#ff7a3d" stop-opacity="0"/>
+                                            </radialGradient>
+                                            <radialGradient id="pcKernel" cx="34%" cy="28%" r="75%">
+                                                <stop offset="0%" stop-color="#fffaf0"/>
+                                                <stop offset="45%" stop-color="#fce8b8"/>
+                                                <stop offset="78%" stop-color="#e8c37a"/>
+                                                <stop offset="100%" stop-color="#c69a52"/>
+                                            </radialGradient>
+                                            <radialGradient id="pcKernelDark" cx="34%" cy="28%" r="75%">
+                                                <stop offset="0%" stop-color="#fdf3d9"/>
+                                                <stop offset="45%" stop-color="#eecd8c"/>
+                                                <stop offset="78%" stop-color="#d1a35e"/>
+                                                <stop offset="100%" stop-color="#a67c3f"/>
+                                            </radialGradient>
+                                            <linearGradient id="pcBucket" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stop-color="#e4453f"/>
+                                                <stop offset="100%" stop-color="#a72a26"/>
+                                            </linearGradient>
+                                            <linearGradient id="pcBucketStripe" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stop-color="#fbf3e4"/>
+                                                <stop offset="100%" stop-color="#e6dcc6"/>
+                                            </linearGradient>
+                                            <linearGradient id="pcRim" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stop-color="#fff6e6"/>
+                                                <stop offset="100%" stop-color="#d8c9a4"/>
+                                            </linearGradient>
+                                            <filter id="pcGrain" x="-20%" y="-20%" width="140%" height="140%">
+                                                <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="n"/>
+                                                <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .05 0"/>
+                                            </filter>
+                                        </defs>
+
+                                        <rect width="300" height="200" fill="url(#pcBg)"/>
+                                        <circle cx="235" cy="35" r="60" fill="url(#pcBokeh1)"/>
+                                        <circle cx="55" cy="170" r="55" fill="url(#pcBokeh2)"/>
+                                        <circle cx="270" cy="160" r="34" fill="url(#pcBokeh1)" opacity=".6"/>
+
+                                        <clipPath id="pcBucketClip">
+                                            <path d="M92,120 L208,120 L196,196 L104,196 Z"/>
+                                        </clipPath>
+                                        <g clip-path="url(#pcBucketClip)">
+                                            <rect x="80" y="118" width="140" height="80" fill="url(#pcBucket)"/>
+                                            <rect x="92" y="118" width="16" height="80" fill="url(#pcBucketStripe)"/>
+                                            <rect x="124" y="118" width="16" height="80" fill="url(#pcBucketStripe)"/>
+                                            <rect x="156" y="118" width="16" height="80" fill="url(#pcBucketStripe)"/>
+                                            <rect x="188" y="118" width="16" height="80" fill="url(#pcBucketStripe)"/>
+                                            <rect x="80" y="118" width="140" height="80" fill="#000" opacity=".14"/>
+                                            <rect x="80" y="118" width="55" height="80" fill="#fff" opacity=".08"/>
+                                        </g>
+                                        <path d="M92,120 L208,120 L196,196 L104,196 Z" fill="none" stroke="#7a1c19" stroke-width="1.5" opacity=".5"/>
+                                        <ellipse cx="150" cy="120" rx="58" ry="10" fill="url(#pcRim)"/>
+                                        <ellipse cx="150" cy="120" rx="58" ry="10" fill="none" stroke="#b89a63" stroke-width="1" opacity=".6"/>
+
+                                        <g>
+                                            <ellipse cx="150" cy="112" rx="70" ry="14" fill="#0d0704" opacity=".35"/>
+                                            <g transform="translate(96,78)"><path d="M14,20 C2,17 -3,7 4,0 C10,-6 20,-5 24,2 C30,-2 40,1 40,10 C40,18 32,24 24,22 C20,26 16,24 14,20 Z" fill="url(#pcKernelDark)"/></g>
+                                            <g transform="translate(128,62)"><path d="M15,22 C2,19 -4,8 4,0 C11,-7 22,-5 26,3 C33,-2 43,2 43,11 C43,20 34,26 26,23 C22,28 18,26 15,22 Z" fill="url(#pcKernel)"/></g>
+                                            <g transform="translate(163,68)"><path d="M13,19 C1,16 -3,6 4,-1 C10,-7 19,-5 23,2 C29,-3 38,1 38,9 C38,17 30,22 23,20 C19,24 15,22 13,19 Z" fill="url(#pcKernelDark)"/></g>
+                                            <g transform="translate(190,84)"><path d="M12,18 C1,15 -3,6 3,-1 C9,-6 18,-5 21,2 C27,-3 36,1 36,9 C36,16 28,21 21,19 C18,23 14,21 12,18 Z" fill="url(#pcKernel)"/></g>
+                                            <g transform="translate(110,42)"><path d="M13,19 C1,16 -3,6 4,-1 C10,-7 19,-5 23,2 C29,-3 38,1 38,9 C38,17 30,22 23,20 C19,24 15,22 13,19 Z" fill="url(#pcKernel)"/></g>
+                                            <g transform="translate(145,32)"><path d="M12,17 C1,14 -3,5 3,-1 C8,-7 17,-5 20,2 C26,-3 34,1 34,8 C34,15 27,20 20,18 C17,22 14,20 12,17 Z" fill="url(#pcKernelDark)"/></g>
+                                            <g transform="translate(178,44)"><path d="M11,16 C1,13 -3,5 3,-1 C8,-6 16,-5 19,2 C24,-3 32,1 32,8 C32,14 25,19 19,17 C16,21 13,19 11,16 Z" fill="url(#pcKernel)"/></g>
+                                            <g transform="translate(200,60)"><path d="M10,15 C1,12 -2,4 3,-1 C7,-6 15,-4 17,2 C22,-2 29,1 29,7 C29,13 23,17 17,16 C15,19 12,17 10,15 Z" fill="url(#pcKernelDark)"/></g>
+                                            <g transform="translate(72,60)"><path d="M10,15 C1,12 -2,4 3,-1 C7,-6 15,-4 17,2 C22,-2 29,1 29,7 C29,13 23,17 17,16 C15,19 12,17 10,15 Z" fill="url(#pcKernel)"/></g>
+                                            <g transform="translate(85,96)"><path d="M9,13 C0,11 -2,4 3,-1 C6,-5 13,-4 15,1 C19,-2 25,1 25,6 C25,11 20,15 15,14 C13,17 11,15 9,13 Z" fill="url(#pcKernel)"/></g>
+                                            <g transform="translate(210,100)"><path d="M9,13 C0,11 -2,4 3,-1 C6,-5 13,-4 15,1 C19,-2 25,1 25,6 C25,11 20,15 15,14 C13,17 11,15 9,13 Z" fill="url(#pcKernelDark)"/></g>
+                                            <g transform="translate(128,20)"><path d="M8,12 C0,10 -2,3 2,-1 C5,-5 11,-4 13,1 C17,-2 22,1 22,5 C22,10 18,13 13,12 C12,15 10,13 8,12 Z" fill="url(#pcKernel)"/></g>
+                                            <g transform="translate(160,18)"><path d="M8,11 C0,9 -1,3 2,-1 C5,-4 10,-3 12,1 C15,-2 20,1 20,5 C20,9 16,12 12,11 C10,14 9,12 8,11 Z" fill="url(#pcKernelDark)"/></g>
+                                        </g>
+
+                                        <rect width="300" height="200" filter="url(#pcGrain)" opacity=".5"/>
+                                        <rect width="300" height="200" fill="url(#pcBg)" opacity=".12"/>
+                                    </svg>
+                                </div>
+                                <span class="cb-time">21:42</span>
+                            </div>
+                            <div class="cbubble left cb-typing cb5"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                            <div class="cbubble left cb6">já tô entrando na sala do Cinema! 🎬<span class="cb-time">21:43</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="feat-card">
+                    <span class="feat-tag mono">02</span>
+                    <div class="feat-icon">📞</div>
+                    <div class="feat-name">Chamadas de vídeo</div>
+                    <div class="feat-desc">Direto pelo navegador, com qualidade de imagem e áudio como numa ligação de verdade.</div>
+
+                    <div class="call-mock">
+                        <div class="call-avatar-wrap">
+                            <div class="call-ring r1"></div>
+                            <div class="call-ring r2"></div>
+                            <div class="call-avatar">A</div>
+                        </div>
+                        <div class="call-info">
+                            <div class="call-name">Aline</div>
+                            <div class="call-status"><span class="d"></span>04:12</div>
+                        </div>
+                        <div class="call-actions">
+                            <span class="call-btn">🎙️</span>
+                            <span class="call-btn">🎥</span>
+                            <span class="call-btn end">📞</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="feat-card">
+                    <span class="feat-tag mono">03</span>
+                    <div class="feat-icon">📍</div>
+                    <div class="feat-name">Localização ao vivo</div>
+                    <div class="feat-desc">Compartilhe onde você está ou envie sua rota em tempo real.</div>
+
+                    <div class="loc-mock">
+                        <div class="loc-map">
+                            <svg viewBox="0 0 160 78" xmlns="http://www.w3.org/2000/svg">
+                                <path class="loc-route" d="M14,60 C40,50 55,20 90,26 C115,30 120,45 140,40"/>
+                                <circle cx="14" cy="60" r="3" fill="var(--muted-dim)"/>
+                                <circle class="loc-dot-ring" cx="140" cy="40" r="6"/>
+                                <circle class="loc-dot" cx="140" cy="40" r="3.5"/>
+                            </svg>
+                        </div>
+                        <div class="loc-info"><span class="d"></span>compartilhando ao vivo</div>
+                    </div>
+                </div>
+                <div class="feat-card">
+                    <span class="feat-tag mono">04</span>
+                    <div class="feat-icon">👥</div>
+                    <div class="feat-name">Grupos</div>
+                    <div class="feat-desc">Família, amigos ou trabalho — sem limite pra conversar.</div>
+
+                    <div class="group-mock">
+                        <div class="group-avatars">
+                            <span class="ga" style="background:linear-gradient(135deg,#ff8a5c,#ff5c8a);">F</span>
+                            <span class="ga" style="background:linear-gradient(135deg,var(--accent),var(--accent2));">R</span>
+                            <span class="ga" style="background:linear-gradient(135deg,var(--accent3),var(--accent2));">D</span>
+                            <span class="ga more">+12</span>
+                        </div>
+                        <div class="group-name">Galera do Cinema</div>
+                        <div class="group-preview">
+                            <span class="gp-msg gp1">Rafa: chegando aí! 🚗</span>
+                            <span class="gp-msg gp2">Duda: kkkk boa essa 😂</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="feat-card">
+                    <span class="feat-tag mono">05</span>
+                    <div class="feat-icon">⭐</div>
+                    <div class="feat-name">Status</div>
+                    <div class="feat-desc">Fotos e vídeos visíveis por 24 horas para seus contatos.</div>
+
+                    <div class="status-mock">
+                        <div class="status-ring-wrap">
+                            <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="28 8 28 8 28 8"/></svg>
+                            <div class="status-avatar">V</div>
+                        </div>
+                        <div class="status-ring-wrap rw2">
+                            <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="none" stroke="var(--accent3)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="22 10 22 10 22 10"/></svg>
+                            <div class="status-avatar" style="background:linear-gradient(135deg,var(--accent3),var(--accent2));">L</div>
+                        </div>
+                        <div class="status-ring-wrap add">
+                            <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="none" stroke="var(--border-hi)" stroke-width="2" stroke-dasharray="3 4"/></svg>
+                            <div class="status-avatar">+</div>
+                        </div>
+                    </div>
+                    <div class="status-caption-row">3 atualizações novas · somem em 24h</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════ REDE SOCIAL — SPOTLIGHT ════ -->
+    <section>
+        <div class="reveal">
+            <div class="eyebrow">Comunidade</div>
+            <h2 class="sec-title">Rede Social</h2>
+            <p class="sec-sub">Poste fotos, áudios ou só um texto pra comunidade do Dee. Curta, comente, compartilhe e reconheça quem se destacou.</p>
+
+            <div class="cinema-panel">
+                <span class="cinema-badge">🌐&nbsp;COMUNIDADE</span>
+                <h3>Um feed só seu, sem algoritmo e sem anúncios.</h3>
+                <p>Veja as postagens de quem você conhece num carrossel simples. Dê seu "Reconhecimento" da semana pra quem publicou algo que valeu a pena, e acompanhe quem está em destaque nos últimos 7 dias.</p>
+
+                <div class="cinema-mock">
+                    <div class="cm-bar">
+                        <span class="cm-tag"><span class="d"></span>COMUNIDADE</span>
+                        <span class="cm-people">feed ao vivo</span>
+                    </div>
+                    <div class="rs-mock-wrap">
+                        <div class="rs-spotlight"><span class="rs-spot-ic">⭐</span><span>Destaques da semana: <b>Rafa</b>, <b>Duda</b>, <b>Léo</b></span></div>
+                        <div class="social-mock">
+                            <div class="sm-head">
+                                <div class="sm-avatar">R</div>
+                                <div class="sm-who">
+                                    <div class="sm-name">Rafa<span class="rs-badge">🔷 Referência</span></div>
+                                    <div class="sm-time">há 12min</div>
+                                </div>
+                            </div>
+                            <div class="sm-photo">🏖️</div>
+                            <div class="sm-actions">
+                                <span class="sm-act liked">❤️ 42</span>
+                                <span class="sm-act">💬 12</span>
+                                <span class="sm-act">📤 5</span>
+                                <span class="sm-act">🏅 Reconhecer</span>
+                            </div>
+                            <div class="sm-dots"><span class="sm-dot on"></span><span class="sm-dot"></span><span class="sm-dot"></span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cinema-feats">
+                    <div class="cinema-feat"><span class="chk">✓</span>Poste fotos, áudios gravados na hora ou só texto — do jeito que preferir</div>
+                    <div class="cinema-feat"><span class="chk">✓</span>Curta, comente e compartilhe postagens direto nas suas conversas e grupos</div>
+                    <div class="cinema-feat"><span class="chk">✓</span>1 "Reconhecimento" por semana pra quem publicou algo que valeu a pena, valendo pontos de impacto</div>
+                    <div class="cinema-feat"><span class="chk">✓</span>Selos de nível e "Destaques da semana" pra quem mais contribuiu com a comunidade</div>
+                    <div class="cinema-feat"><span class="chk">✓</span>Você decide quem vê: oculte postagens ou bloqueie quem não quiser ver no seu feed</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════ COMO FUNCIONA ════ -->
+    <section>
+        <div class="reveal">
+            <div class="eyebrow">Começar</div>
+            <h2 class="sec-title">Três passos, e pronto</h2>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-n">01</div>
+                    <div class="step-info">
+                        <div class="step-name">Crie sua conta grátis</div>
+                        <div class="step-desc">Só o e-mail e uma senha — leva menos de um minuto.</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-n">02</div>
+                    <div class="step-info">
+                        <div class="step-name">Monte sua lista de conversas</div>
+                        <div class="step-desc">Adicione contatos e crie grupos com quem você já conhece.</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-n">03</div>
+                    <div class="step-info">
+                        <div class="step-name">Converse, ligue, assista junto</div>
+                        <div class="step-desc">Mensagens, chamadas, localização e Cinema Coletivo — tudo liberado.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="privacy-card">
+                <div class="feat-icon">🔒</div>
+                <div class="feat-info">
+                    <div class="feat-name" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13.5px;">Privacidade em primeiro lugar</div>
+                    <div class="feat-desc" style="font-size:12px;color:var(--muted);margin-top:4px;">Você controla o que compartilha e com quem. Sem anúncios, sem exposição desnecessária dos seus dados.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════ CTA FINAL ════ -->
+    <section>
+        <div class="cta-final reveal">
+            <div class="eyebrow" style="justify-content:center;display:flex;">Pronto?</div>
+            <h2 class="sec-title">Comece a usar o Dee agora</h2>
+            <p class="sec-sub" style="margin-left:auto;margin-right:auto;">Gratuito. Sem anúncios. Leva menos de um minuto.</p>
+            <div class="ctas">
+                <a class="btn btn-primary" href="index.html?mode=cadastro">Criar conta grátis</a>
+                <a class="btn btn-ghost" href="index.html?mode=login">Entrar</a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="flinks">
+            <a href="termos.html">Termos de Uso</a>
+            <a href="privacidade.html">Política de Privacidade</a>
+        </div>
+        <div class="fcopy">© <span id="fyear"></span> DEE — MENSAGENS</div>
+    </footer>
+
+</div>
+
+<!-- ════ BANNER FLUTUANTE DE INSTALAÇÃO (PWA) ════ -->
+<div id="install-fab">
+    <img src="icon-512.png" alt="Dee">
+    <div class="ifab-txt">
+        <div class="ifab-title">Instalar o Dee</div>
+        <div class="ifab-sub">Acesso rápido direto da tela inicial</div>
+    </div>
+    <button class="ifab-btn" onclick="doInstall()">Instalar</button>
+    <button class="ifab-close" onclick="dismissInstallFab()">✕</button>
+</div>
+
+<!-- ════ MODAL: DOWNLOAD DO APK — fases: baixando → concluído ════ -->
+<div id="dl-overlay">
+    <div class="dl-card">
+
+        <!-- FASE 1: Baixando -->
+        <div id="dl-phase-downloading">
+            <div class="dl-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+            <h3>Baixando o Dee Full…</h3>
+            <p>O arquivo está sendo baixado. Acompanhe pela barra de notificações do Android.</p>
+            <div style="height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;margin-bottom:16px;">
+                <div id="dl-progress-bar" style="height:100%;width:0%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s ease;"></div>
+            </div>
+            <p style="font-size:11px;color:var(--muted-dim,#333);">Isso pode levar alguns segundos dependendo da sua internet.</p>
+            <button class="dl-btn-close" onclick="showDlDone()" style="margin-top:8px;">Já baixou? Ver como instalar \u2192</button>
+        </div>
+
+        <!-- FASE 2: Concluído -->
+        <div id="dl-phase-done" style="display:none;">
+            <div class="dl-icon" style="background:rgba(0,229,204,.15);border-color:rgba(0,229,204,.4);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <h3>Download concluído!</h3>
+            <p>O <strong>Dee.apk</strong> foi baixado. Siga os passos para instalar:</p>
+
+            <div style="text-align:left;display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
+                <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface,#111);border:1px solid var(--border,#222);border-radius:10px;padding:10px 12px;">
+                    <div style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#04141a;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</div>
+                    <div style="font-size:12px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>Dee.apk</strong></div>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface,#111);border:1px solid var(--border,#222);border-radius:10px;padding:10px 12px;">
+                    <div style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#04141a;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">2</div>
+                    <div style="font-size:12px;line-height:1.5;color:var(--text);">Se aparecer <strong>"Fontes desconhecidas"</strong>, toque em <strong>Configurações</strong> e ative a permissão</div>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface,#111);border:1px solid var(--border,#222);border-radius:10px;padding:10px 12px;">
+                    <div style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#04141a;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">3</div>
+                    <div style="font-size:12px;line-height:1.5;color:var(--text);">Toque em <strong>Instalar</strong> e aguarde — é rápido!</div>
+                </div>
+            </div>
+
+            <button class="dl-btn" onclick="closeDlModal()">Entendido, vou instalar!</button>
+        </div>
+
+    </div>
+</div>
+
+<!-- ════ MODAL: ESCOLHA DE INSTALAÇÃO — Dee Lite (PWA) x Dee Full (.apk) ════ -->
+<div id="install-choice-overlay" onclick="if(event.target===this) closeInstallChoice()">
+    <div class="ic-card">
+        <h3>Como você quer instalar o Dee?</h3>
+        <p class="ic-desc">As duas versões usam a mesma conta e as mesmas conversas. Você pode trocar de uma pra outra quando quiser.</p>
+
+        <button type="button" class="ic-opt" onclick="chooseInstall('lite')">
+            <span class="ic-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+            <span>
+                <div class="ic-title">Dee Lite</div>
+                <div class="ic-sub">Não pede nenhuma permissão extra do sistema. Mensagens, fotos, áudios, chamada de vídeo e notificações enquanto o app está aberto.</div>
+            </span>
+        </button>
+
+        <button type="button" class="ic-opt" onclick="chooseInstall('full')">
+            <span class="ic-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg></span>
+            <span>
+                <div class="ic-title">Dee Full <span>(recomendado)</span></div>
+                <div class="ic-sub">Baixa o .apk direto (fora da Play Store). Pede câmera, microfone e notificações — em troca: troca de câmera na chamada, viva-voz e notificação em tela cheia mesmo com o app fechado.</div>
+            </span>
+        </button>
+
+        <div id="ic-note"></div>
+        <button type="button" class="ic-cancel" onclick="closeInstallChoice()">Agora não</button>
+    </div>
+</div>
+
+<script>
+    document.getElementById('fyear').textContent = new Date().getFullYear();
+
+    // ── Mostra o link de download do .apk só em Android ──
+    // Detecção simples por user agent — não precisa ser perfeita, é só
+    // pra não oferecer um .apk pra quem tá no iPhone/desktop.
+    (function() {
+        if (/Android/i.test(navigator.userAgent)) {
+            var hint = document.getElementById('apk-hint');
+            if (hint) hint.style.display = 'block';
+        }
+    })();
+
+    // Ao clicar em baixar o .apk, avisa que o Android vai pedir permissão
+    // de "instalar apps de fontes desconhecidas" — normal, já que não veio
+    // da Play Store. Só mostra o aviso, não bloqueia o download.
+    document.querySelectorAll('a.apk-link').forEach(function(a) {
+        a.addEventListener('click', function() {
+            try { localStorage.setItem('dee_entered', '1'); } catch(e) {}
+            setTimeout(function() { openDlModal(); }, 300);
+        });
+    });
+
+    // Antes de sair desta página em direção ao app, marca (pra sempre,
+    // em localStorage — sobrevive a fechar o navegador/app) que essa
+    // pessoa já passou pela landing. Assim o index.html nunca mais
+    // devolve pra cá neste dispositivo, nem depois de logout.
+    document.querySelectorAll('a[href^="index.html"]').forEach(function(a) {
+        a.addEventListener('click', function() {
+            try { localStorage.setItem('dee_entered', '1'); } catch(e) {}
+        });
+    });
+
+    // ── Ticker infinito: monta a faixa duplicada pra loop sem costura ──
+    (function() {
+        var items = ['CHAT EM TEMPO REAL', 'CHAMADAS DE VÍDEO', 'CINEMA COLETIVO', 'LOCALIZAÇÃO AO VIVO', 'GRUPOS', 'REDE SOCIAL', 'STATUS 24H', 'PRIVACIDADE EM PRIMEIRO LUGAR'];
+        var track = document.getElementById('ticker-track');
+        var html = '';
+        for (var r = 0; r < 2; r++) {
+            items.forEach(function(t) {
+                html += '<span class="ticker-item"><b>&#9679;</b>' + t + '<span class="sep">/</span></span>';
+            });
+        }
+        track.innerHTML = html;
+    })();
+
+    // ── Navbar ganha fundo sólido ao rolar ──
+    window.addEventListener('scroll', function() {
+        document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 8);
+    }, { passive: true });
+
+    // ── Revela seções ao entrar na viewport ──
+    if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function(entries) {
+            entries.forEach(function(en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+        }, { threshold: .15 });
+        document.querySelectorAll('.reveal').forEach(function(el) { io.observe(el); });
+    } else {
+        document.querySelectorAll('.reveal').forEach(function(el) { el.classList.add('in'); });
+    }
+
+    // ── Instalação do PWA direto pela landing ──
+    var deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('install-fab').classList.add('show');
+    });
+    window.addEventListener('appinstalled', function() {
+        document.getElementById('install-fab').classList.remove('show');
+        deferredPrompt = null;
+    });
+    // ── Botão flutuante agora abre a escolha Dee Lite x Dee Full ──
+    function doInstall() {
+        document.getElementById('ic-note').style.display = 'none';
+        document.getElementById('install-choice-overlay').classList.add('show');
+    }
+    function closeInstallChoice() {
+        document.getElementById('install-choice-overlay').classList.remove('show');
+    }
+   
+    var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.3/dee.apk'; 
+
+    function chooseInstall(kind) {
+        var note = document.getElementById('ic-note');
+        note.style.display = 'none';
+
+        if (kind === 'lite') {
+            closeInstallChoice();
+            if (!deferredPrompt) {
+                var isIOSLite = /iphone|ipad|ipod/i.test(navigator.userAgent);
+                alert(isIOSLite ? 'No iPhone: toque em Compartilhar → Adicionar à Tela de Início' : 'Use a opção "Adicionar à tela inicial" ou "Instalar app" no menu do seu navegador.');
+                return;
+            }
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(function() {
+                deferredPrompt = null;
+                document.getElementById('install-fab').classList.remove('show');
+            });
+            return;
+        }
+
+        if (kind === 'full') {
+            var isAndroid = /Android/i.test(navigator.userAgent);
+            if (!isAndroid) {
+                note.textContent = 'O Dee Full (.apk) é só pra Android. No seu aparelho, use o Dee Lite.';
+                note.style.display = 'block';
+                return;
+            }
+            try { localStorage.setItem('dee_entered', '1'); } catch(e) {}
+            closeInstallChoice();
+
+            function triggerApkDownload(url) {
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'Dee.apk';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+
+            if (DEE_APK_DOWNLOAD_URL) {
+                // Abre o modal PRIMEIRO, depois dispara o download
+                openDlModal();
+                setTimeout(function() { triggerApkDownload(DEE_APK_DOWNLOAD_URL); }, 400);
+                return;
+            }
+            // Fallback: .apk hospedado no próprio Firebase
+            fetch('dee.apk', { method: 'HEAD' }).then(function(res) {
+                if (!res.ok) throw new Error('not found');
+                triggerApkDownload('dee.apk');
+                setTimeout(function() { openDlModal(); }, 200);
+            }).catch(function() {
+                // Nenhum apk disponível — avisa com o modal de escolha reaberto
+                note.textContent = 'O Dee Full ainda não está disponível pra download. Use o Dee Lite por enquanto.';
+                note.style.display = 'block';
+                document.getElementById('install-choice-overlay').classList.add('show');
+            });
+        }
+    }
+    function dismissInstallFab() { document.getElementById('install-fab').classList.remove('show'); }
+    function openDlModal() {
+        // Reseta para fase 1
+        document.getElementById('dl-phase-downloading').style.display = '';
+        document.getElementById('dl-phase-done').style.display = 'none';
+        var bar = document.getElementById('dl-progress-bar');
+        bar.style.transition = 'none';
+        bar.style.width = '0%';
+        document.getElementById('dl-overlay').classList.add('show');
+        // Anima barra ate 90% e trava — nao vai a 100% sozinha.
+        // Usuario avanca pra fase 2 clicando em "Ja baixou?"
+        setTimeout(function() { bar.style.transition = 'width 1.2s ease'; bar.style.width = '40%'; }, 100);
+        setTimeout(function() { bar.style.transition = 'width 2s ease'; bar.style.width = '72%'; }, 1400);
+        setTimeout(function() { bar.style.transition = 'width 4s ease'; bar.style.width = '90%'; }, 3600);
+    }
+    function showDlDone() {
+        // Completa a barra e transiciona pra fase 2
+        var bar = document.getElementById('dl-progress-bar');
+        bar.style.transition = 'width .3s ease';
+        bar.style.width = '100%';
+        setTimeout(function() {
+            document.getElementById('dl-phase-downloading').style.display = 'none';
+            document.getElementById('dl-phase-done').style.display = '';
+        }, 350);
+    }
+    function closeDlModal() { document.getElementById('dl-overlay').classList.remove('show'); }
+</script>
+</body>
+</html>

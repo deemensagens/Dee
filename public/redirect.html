@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#00e5cc">
+<title>Redirecionando... — Dee</title>
+
+<!-- ══════════════════════════════════════════════════════════
+     GOOGLE ADSENSE — script principal / Auto Ads, carregado no
+     <head> como o Google exige. client = ca-pub-5978910912781724.
+   ══════════════════════════════════════════════════════════ -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5978910912781724" crossorigin="anonymous"></script>
+
+<!-- ══════════════════════════════════════════════════════════
+     PÁGINA INTERSTICIAL DE REDIRECIONAMENTO (AD GATE)
+     ──────────────────────────────────────────────────────────
+     Como funciona:
+     - Todo link enviado em mensagens de chat ou em legendas de
+       posts passa a apontar para ESTA página em vez do destino
+       final (isso é feito em index.html/linkify() e em
+       social.js, via buildAdGateUrl()).
+     - O destino real vem na querystring, URL-encoded:
+         redirect.html?to=<encodeURIComponent(url)>&t=<segundos>
+     - Enquanto o anúncio (bloco do AdSense) e o tempo mínimo
+       (?t=, padrão 5s) não terminam, o botão "Continuar" fica
+       bloqueado. Passado esse tempo, o botão libera.
+     - IMPORTANTE: o redirecionamento NUNCA acontece sozinho.
+       Não existe nenhum setTimeout, evento de vídeo ou qualquer
+       outro gatilho automático que chame a navegação — a ÚNICA
+       forma de sair desta página é o usuário clicar/tocar no
+       botão "Continuar" já liberado.
+     - Enquanto espera, o usuário pode jogar o mini-game de
+       obstáculos abaixo do anúncio. É só entretenimento: jogar,
+       perder ou ignorar não muda em nada o timer nem o botão.
+     - Se um dia vocês usarem um <video> próprio como "anúncio"
+       (em vez do bloco padrão do AdSense), basta dar a esse
+       vídeo o id="ad-gate-video": este script detecta o evento
+       "ended" e libera o botão na hora (nunca redireciona
+       sozinho), sem esperar o restante do timer.
+   ══════════════════════════════════════════════════════════ -->
+
+<style>
+    :root {
+        --bg:       #030508;
+        --surface:  #0b0d12;
+        --surface2: #111420;
+        --accent:   #00e5cc;
+        --accent2:  #0088ff;
+        --text:     #e8eaf0;
+        --muted:    #6b7290;
+        --border:   #1a1d28;
+        --danger:   #ff3b5c;
+        --safe-top:    env(safe-area-inset-top, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body {
+        height: 100%; background: var(--bg); color: var(--text);
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    body {
+        display: flex; flex-direction: column; align-items: center;
+        min-height: 100%;
+        padding: calc(var(--safe-top) + 20px) 16px calc(var(--safe-bottom) + 20px);
+    }
+    .wrap { width: 100%; max-width: 520px; display: flex; flex-direction: column; align-items: center; flex: 1; }
+
+    .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 22px; }
+    .brand-logo {
+        width: 30px; height: 30px; border-radius: 9px;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 900; font-size: 14px; color: #04141a;
+    }
+    .brand-name { font-weight: 700; font-size: 15px; letter-spacing: .2px; }
+
+    .status-card {
+        width: 100%; background: var(--surface); border: 1px solid var(--border);
+        border-radius: 18px; padding: 22px 20px; text-align: center; margin-bottom: 18px;
+    }
+    .spinner {
+        width: 34px; height: 34px; margin: 0 auto 14px;
+        border-radius: 50%; border: 3px solid var(--border);
+        border-top-color: var(--accent);
+        animation: spin 0.85s linear infinite;
+    }
+    .spinner.done { animation: none; border-top-color: var(--accent); border-color: var(--accent); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status-title { font-weight: 700; font-size: 17px; margin-bottom: 4px; }
+    .status-sub { font-size: 13px; color: var(--muted); word-break: break-all; padding: 0 6px; }
+
+    .progress-track {
+        width: 100%; height: 6px; border-radius: 4px; background: var(--surface2);
+        overflow: hidden; margin-top: 16px;
+    }
+    .progress-fill {
+        height: 100%; width: 0%; border-radius: 4px;
+        background: linear-gradient(90deg, var(--accent), var(--accent2));
+        transition: width 1s linear;
+    }
+
+    /* ── Área do anúncio AdSense ── */
+    .ad-slot {
+        width: 100%; min-height: 250px; background: var(--surface);
+        border: 1px solid var(--border); border-radius: 18px;
+        display: flex; align-items: center; justify-content: center;
+        flex-direction: column; gap: 8px; margin-bottom: 18px; overflow: hidden;
+        position: relative;
+    }
+    .ad-slot-label {
+        position: absolute; top: 8px; left: 10px; font-size: 10px;
+        letter-spacing: .5px; text-transform: uppercase; color: var(--muted);
+    }
+    .ad-slot .adsbygoogle { width: 100%; }
+    .ad-fallback { color: var(--muted); font-size: 12.5px; padding: 0 16px; text-align: center; }
+
+    /* ── Mini-game: corredor de obstáculos (estilo dinossauro) ── */
+    .game-card {
+        width: 100%; background: var(--surface); border: 1px solid var(--border);
+        border-radius: 18px; padding: 16px; margin-bottom: 18px;
+    }
+    .game-head {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .game-title { font-size: 13px; font-weight: 700; }
+    .game-score { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+    .game-score b { color: var(--text); font-variant-numeric: tabular-nums; }
+    .game-canvas-wrap { border-radius: 12px; overflow: hidden; background: var(--surface2); line-height: 0; }
+    .game-canvas { display: block; width: 100%; height: 150px; touch-action: none; cursor: pointer; }
+    .game-controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+    .game-jump-btn {
+        padding: 9px 18px; border-radius: 10px; border: 1px solid var(--border);
+        background: var(--surface2); color: var(--text); font-family: inherit;
+        font-weight: 700; font-size: 13px; cursor: pointer; transition: transform .1s, border-color .2s;
+    }
+    .game-jump-btn:active { transform: scale(.96); border-color: var(--accent); }
+    .game-hint { font-size: 11px; color: var(--muted); }
+
+    .continue-btn {
+        width: 100%; padding: 15px; border-radius: 14px; border: none;
+        background: var(--surface2); color: var(--muted);
+        font-family: inherit; font-weight: 700; font-size: 15px;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        cursor: not-allowed; transition: background .2s, color .2s, transform .1s;
+    }
+    .continue-btn.ready {
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        color: #04141a; cursor: pointer;
+    }
+    .continue-btn.ready:active { transform: scale(.98); }
+    .continue-btn .cd { font-variant-numeric: tabular-nums; }
+
+    .foot-note { margin-top: 14px; font-size: 11.5px; color: var(--muted); text-align: center; line-height: 1.5; }
+    .foot-note a { color: var(--accent); text-decoration: none; }
+
+    .error-box { text-align: center; padding: 40px 16px; }
+    .error-box h1 { font-size: 18px; margin-bottom: 8px; }
+    .error-box p { color: var(--muted); font-size: 13.5px; margin-bottom: 18px; }
+    .error-box a {
+        display: inline-block; padding: 12px 22px; border-radius: 12px;
+        background: var(--surface2); color: var(--text); text-decoration: none; font-weight: 600;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .spinner { animation: none; border-top-color: var(--accent); }
+        .progress-fill { transition: none; }
+    }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+
+    <div class="brand">
+        <div class="brand-logo">D</div>
+        <div class="brand-name">Dee</div>
+    </div>
+
+    <div class="status-card">
+        <div class="spinner" id="spinner"></div>
+        <div class="status-title" id="status-title">Redirecionando…</div>
+        <div class="status-sub" id="status-sub">Preparando seu link com segurança</div>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    </div>
+
+    <div class="ad-slot" id="ad-slot">
+        <div class="ad-slot-label">Publicidade</div>
+
+        <!-- Anuncio_Pagina_Especifica_Redirect -->
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-5978910912781724"
+             data-ad-slot="9734660415"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+
+        <!-- Se um dia vocês usarem um vídeo próprio de anúncio em vez do
+             AdSense, é só colocar aqui um elemento assim (o script lá
+             embaixo detecta o fim sozinho e libera o botão — nunca
+             redireciona automaticamente):
+             <video id="ad-gate-video" src="..." autoplay playsinline muted></video>
+        -->
+
+        <div class="ad-fallback" id="ad-fallback" style="display:none">
+            O anúncio não pôde ser carregado, mas o botão libera normalmente.
+        </div>
+    </div>
+
+    <div class="game-card">
+        <div class="game-head">
+            <span class="game-title">🎮 Jogo do obstáculo</span>
+            <span class="game-score">Pontos <b id="game-score">0</b> · Recorde <b id="game-best">0</b></span>
+        </div>
+        <div class="game-canvas-wrap">
+            <canvas class="game-canvas" id="game-canvas" role="img" aria-label="Mini-jogo de pular obstáculos: toque ou pressione espaço para jogar"></canvas>
+        </div>
+        <div class="game-controls">
+            <button type="button" class="game-jump-btn" id="game-jump-btn">⤒ Pular</button>
+            <span class="game-hint">Toque no jogo, clique ou pressione espaço</span>
+        </div>
+    </div>
+
+    <button class="continue-btn" id="continue-btn" disabled>
+        <span id="continue-label">Aguarde</span>
+        <span class="cd" id="continue-cd">5s</span>
+    </button>
+
+    <div class="foot-note">
+        Este link foi verificado pelo Dee antes de te enviar ao destino final.<br>
+        Por segurança, o redirecionamento só acontece quando você toca em Continuar.
+    </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   1) REDIRECIONAMENTO — leitura da querystring, timer e
+      liberação manual do botão.
+      NENHUM redirecionamento automático acontece neste arquivo:
+      goToTarget() só é chamada dentro do listener de click do
+      botão "Continuar", em nenhum outro lugar.
+   ══════════════════════════════════════════════════════════ */
+(function () {
+    'use strict';
+
+    var params = new URLSearchParams(window.location.search);
+
+    // ── Destino (?to=) ──────────────────────────────────────
+    // URLSearchParams.get() JÁ decodifica o valor automaticamente
+    // (é o par exato do encodeURIComponent() usado em buildAdGateUrl()
+    // no index.html). NÃO chamar decodeURIComponent() de novo aqui:
+    // isso causaria um duplo decode e quebraria (ou derrubaria com
+    // erro, mostrando "link inválido" em um link válido) qualquer
+    // destino que já contivesse "%" na própria URL — comum em buscas
+    // com acento ou em redirects encadeados (?next=https%3A%2F%2F...).
+    var target = params.get('to') || '';
+
+    function isSafeHttpUrl(u) {
+        if (!u) return false;
+        try {
+            var parsed = new URL(u, window.location.href);
+            return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+        } catch (e) { return false; }
+    }
+
+    var app = document.getElementById('app');
+
+    if (!isSafeHttpUrl(target)) {
+        app.innerHTML =
+            '<div class="error-box">' +
+                '<h1>Link inválido</h1>' +
+                '<p>Não encontramos um destino válido para redirecionar.</p>' +
+                '<a href="javascript:history.length>1?history.back():window.close()">Voltar</a>' +
+            '</div>';
+        return;
+    }
+
+    // ── Tempo mínimo de espera (?t=), travado entre 3s e 60s ──
+    var minSeconds = parseInt(params.get('t'), 10);
+    if (!minSeconds || isNaN(minSeconds)) minSeconds = 5;
+    minSeconds = Math.max(3, Math.min(60, minSeconds));
+
+    var statusTitle  = document.getElementById('status-title');
+    var statusSub    = document.getElementById('status-sub');
+    var spinner      = document.getElementById('spinner');
+    var progressFill = document.getElementById('progress-fill');
+    var btn          = document.getElementById('continue-btn');
+    var btnLabel     = document.getElementById('continue-label');
+    var btnCd        = document.getElementById('continue-cd');
+    var adFallback   = document.getElementById('ad-fallback');
+
+    var hostname = '';
+    try { hostname = new URL(target).hostname.replace(/^www\./, ''); } catch (e) {}
+    statusSub.textContent = hostname ? ('Destino: ' + hostname) : 'Preparando seu link';
+
+    var ready = false;
+    var remaining = minSeconds;
+
+    // Libera o botão "Continuar". Isto SÓ habilita o clique — não
+    // navega para lugar nenhum. A navegação real só acontece no
+    // listener de click do botão, mais abaixo.
+    function unlock() {
+        if (ready) return;
+        ready = true;
+        remaining = 0;
+        spinner.classList.add('done');
+        progressFill.style.width = '100%';
+        btn.disabled = false;
+        btn.classList.add('ready');
+        btnLabel.textContent = 'Continuar';
+        btnCd.textContent = '';
+        statusTitle.textContent = 'Pronto!';
+        statusSub.textContent = hostname
+            ? ('Toque em Continuar para ir até ' + hostname)
+            : 'Toque em Continuar para prosseguir';
+    }
+
+    function goToTarget() {
+        window.location.href = target;
+    }
+
+    function tick() {
+        if (ready) return;
+        remaining -= 1;
+        var pct = Math.min(100, Math.round(((minSeconds - remaining) / minSeconds) * 100));
+        progressFill.style.width = pct + '%';
+        btnCd.textContent = Math.max(remaining, 0) + 's';
+        if (remaining <= 0) { unlock(); return; }
+        setTimeout(tick, 1000);
+    }
+    btnCd.textContent = remaining + 's';
+    setTimeout(tick, 1000);
+
+    // ── Suporte opcional a vídeo próprio como anúncio: se existir
+    //    #ad-gate-video no slot, libera o botão assim que o vídeo
+    //    terminar — nunca antes do tempo mínimo, e nunca redireciona
+    //    sozinho (só libera o clique, igual ao unlock() do timer). ──
+    var adVideo = document.getElementById('ad-gate-video');
+    if (adVideo) {
+        adVideo.addEventListener('ended', function () {
+            if (remaining > 0) return;
+            unlock();
+        });
+    }
+
+    // ── Se o bloco do AdSense não carregar (AdBlock, offline, sem
+    //    inventário etc.), avisamos — mas o botão segue liberando
+    //    normalmente pelo timer, ninguém fica travado por causa
+    //    disso. ──
+    setTimeout(function () {
+        var ins = document.querySelector('.adsbygoogle');
+        var loaded = ins && ins.getAttribute('data-adsbygoogle-status');
+        if (!loaded) adFallback.style.display = 'block';
+    }, 3000);
+
+    // Único ponto de todo o arquivo que navega para o destino final —
+    // e só roda em resposta direta a um clique/toque do usuário no
+    // botão já liberado.
+    btn.addEventListener('click', function () {
+        if (!ready) return;
+        goToTarget();
+    });
+})();
+
+/* ══════════════════════════════════════════════════════════
+   2) MINI-GAME — corredor de obstáculos (estilo dinossauro),
+      só para entreter enquanto o timer acima conta.
+      Totalmente independente do redirecionamento: jogar, perder,
+      pontuar ou ignorar o jogo não afeta o timer nem o botão
+      "Continuar" em nada.
+   ══════════════════════════════════════════════════════════ */
+(function () {
+    'use strict';
+
+    var canvas  = document.getElementById('game-canvas');
+    var ctx     = canvas.getContext('2d');
+    var jumpBtn = document.getElementById('game-jump-btn');
+    var scoreEl = document.getElementById('game-score');
+    var bestEl  = document.getElementById('game-best');
+
+    var CSS_H = 150;
+    var GRAVITY = 0.9;
+    var JUMP_VELOCITY = -13;
+
+    var W = 0, H = CSS_H, GROUND_Y = 0, DPR = 1;
+    var state = 'idle'; // idle | running | over
+    var best = 0, score = 0, frame = 0, speed = 4.2;
+    var obstacles = [];
+    var rafId = null;
+
+    var player = { x: 26, y: 0, w: 22, h: 26, vy: 0, onGround: true };
+
+    function resize() {
+        var cssWidth = Math.max(260, canvas.parentElement.clientWidth);
+        DPR = Math.min(window.devicePixelRatio || 1, 2);
+        W = cssWidth;
+        H = CSS_H;
+        canvas.style.width = W + 'px';
+        canvas.style.height = H + 'px';
+        canvas.width = Math.round(W * DPR);
+        canvas.height = Math.round(H * DPR);
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        GROUND_Y = H - 24;
+        player.y = GROUND_Y - player.h;
+        render();
+    }
+
+    function resetRun() {
+        score = 0; speed = 4.2; frame = 0; obstacles = [];
+        player.y = GROUND_Y - player.h; player.vy = 0; player.onGround = true;
+        scoreEl.textContent = '0';
+    }
+
+    function startRun() {
+        state = 'running';
+        resetRun();
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(loop);
+    }
+
+    function doJump() {
+        if (state === 'idle' || state === 'over') { startRun(); return; }
+        if (player.onGround) {
+            player.vy = JUMP_VELOCITY;
+            player.onGround = false;
+        }
+    }
+
+    function spawnObstacle() {
+        var h = 18 + Math.random() * 24;
+        var w = 12 + Math.random() * 12;
+        obstacles.push({ x: W + 10, y: GROUND_Y - h, w: w, h: h });
+    }
+
+    function update() {
+        frame++;
+        speed = Math.min(9.5, 4.2 + score * 0.012);
+
+        player.vy += GRAVITY;
+        player.y += player.vy;
+        if (player.y >= GROUND_Y - player.h) {
+            player.y = GROUND_Y - player.h;
+            player.vy = 0;
+            player.onGround = true;
+        }
+
+        var gap = Math.max(42, 78 - Math.floor(score / 5));
+        if (frame % gap === 0) spawnObstacle();
+
+        for (var i = obstacles.length - 1; i >= 0; i--) {
+            obstacles[i].x -= speed;
+            if (obstacles[i].x + obstacles[i].w < 0) obstacles.splice(i, 1);
+        }
+
+        if (frame % 6 === 0) {
+            score += 1;
+            scoreEl.textContent = String(score);
+        }
+
+        for (var j = 0; j < obstacles.length; j++) {
+            var o = obstacles[j];
+            if (player.x < o.x + o.w && player.x + player.w > o.x &&
+                player.y < o.y + o.h && player.y + player.h > o.y) {
+                endRun();
+                break;
+            }
+        }
+    }
+
+    function endRun() {
+        state = 'over';
+        if (score > best) { best = score; bestEl.textContent = String(best); }
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, W, H);
+
+        ctx.strokeStyle = 'rgba(232,234,240,.22)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, GROUND_Y + 1);
+        ctx.lineTo(W, GROUND_Y + 1);
+        ctx.stroke();
+
+        ctx.fillStyle = '#00e5cc';
+        var r = 5;
+        ctx.beginPath();
+        ctx.moveTo(player.x + r, player.y);
+        ctx.arcTo(player.x + player.w, player.y, player.x + player.w, player.y + player.h, r);
+        ctx.arcTo(player.x + player.w, player.y + player.h, player.x, player.y + player.h, r);
+        ctx.arcTo(player.x, player.y + player.h, player.x, player.y, r);
+        ctx.arcTo(player.x, player.y, player.x + player.w, player.y, r);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#ff3b5c';
+        for (var i = 0; i < obstacles.length; i++) {
+            ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacles[i].w, obstacles[i].h);
+        }
+
+        ctx.textAlign = 'center';
+        if (state === 'idle') {
+            ctx.fillStyle = 'rgba(232,234,240,.8)';
+            ctx.font = '600 13px sans-serif';
+            ctx.fillText('Toque, clique ou espaço para jogar', W / 2, H / 2 + 4);
+        } else if (state === 'over') {
+            ctx.fillStyle = 'rgba(3,5,8,.55)';
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = '#e8eaf0';
+            ctx.font = '700 15px sans-serif';
+            ctx.fillText('Fim de jogo — ' + score + ' pontos', W / 2, H / 2 - 6);
+            ctx.font = '600 12px sans-serif';
+            ctx.fillStyle = 'rgba(232,234,240,.8)';
+            ctx.fillText('Toque para jogar de novo', W / 2, H / 2 + 16);
+        }
+    }
+
+    function loop() {
+        update();
+        render();
+        if (state === 'running') {
+            rafId = requestAnimationFrame(loop);
+        } else {
+            rafId = null;
+        }
+    }
+
+    function onPress(e) {
+        e.preventDefault();
+        doJump();
+    }
+
+    canvas.addEventListener('pointerdown', onPress, { passive: false });
+    jumpBtn.addEventListener('pointerdown', onPress, { passive: false });
+    window.addEventListener('keydown', function (e) {
+        if (e.code === 'Space' || e.code === 'ArrowUp') onPress(e);
+    });
+    window.addEventListener('resize', resize);
+
+    resize();
+})();
+</script>
+</body>
+</html>

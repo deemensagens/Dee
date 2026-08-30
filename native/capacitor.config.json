@@ -1,0 +1,60 @@
+{
+  "appId": "br.com.deemensagens.app",
+  "appName": "Dee",
+  "webDir": "../public",
+  "bundledWebRuntime": false,
+
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "url": "https://dee-mensagens.firebaseapp.com",
+    "allowNavigation": [
+      "dee-mensagens.firebaseapp.com",
+      "dee-mensagens.web.app",
+      "*.firebaseapp.com",
+      "*.web.app",
+      "*.googleapis.com",
+      "*.gstatic.com",
+      "accounts.google.com",
+      "*.google.com",
+      "github.com",
+      "*.githubusercontent.com",
+      "*.cloudflareworkers.com",
+      "*.workers.dev",
+      "unpkg.com",
+      "cdnjs.cloudflare.com"
+    ]
+  },
+
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+
+  "ios": {
+    "contentInset": "always",
+    "scrollEnabled": true,
+    "limitsNavigationsToAppBoundDomains": false
+  },
+
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 800,
+      "backgroundColor": "#030508",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#030508"
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    }
+  }
+}

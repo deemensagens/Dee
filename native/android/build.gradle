@@ -1,0 +1,59 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.13.0'
+        classpath 'com.google.gms:google-services:4.4.4'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+apply from: "variables.gradle"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+// ════════════════════════════════════════════════════════════════
+// Corrige o erro "Namespace not specified" em plugins antigos do
+// Capacitor (como capacitor-plugin-audio-toggle) que não foram
+// atualizados pra declarar o namespace exigido pelas versões mais
+// novas do Android Gradle Plugin. Sem isso, o build falha mesmo o
+// plugin funcionando normalmente.
+//
+// Cole este bloco no FINAL do arquivo android/build.gradle
+// (o build.gradle da RAIZ do projeto Android, não o de dentro de
+// android/app/).
+// ════════════════════════════════════════════════════════════════
+allprojects {
+    afterEvaluate { project ->
+        if (project.plugins.hasPlugin('com.android.library') || project.plugins.hasPlugin('com.android.application')) {
+            def androidExt = project.extensions.findByName('android')
+            if (androidExt != null && androidExt.hasProperty('namespace') && (androidExt.namespace == null || androidExt.namespace == '')) {
+                def manifestFile = project.file('src/main/AndroidManifest.xml')
+                def pkg = null
+                if (manifestFile.exists()) {
+                    def manifestText = manifestFile.text
+                    def matcher = manifestText =~ /package="([^"]+)"/
+                    if (matcher.find()) {
+                        pkg = matcher.group(1)
+                    }
+                }
+                androidExt.namespace = pkg ?: "com.getcapacitor.plugin.${project.name.replaceAll('[^a-zA-Z0-9]', '')}"
+            }
+        }
+    }
+}

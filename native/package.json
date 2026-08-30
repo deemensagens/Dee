@@ -1,0 +1,39 @@
+{
+  "name": "dee-native",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Empacotamento nativo (Android/iOS) do Dee Mensagens via Capacitor, reaproveitando o PWA existente em ../public sem duplicar código.",
+  "scripts": {
+    "add:android": "npx cap add android",
+    "add:ios": "npx cap add ios",
+    "sync": "npx cap sync",
+    "sync:android": "npx cap sync android",
+    "sync:ios": "npx cap sync ios",
+    "open:android": "npx cap open android",
+    "open:ios": "npx cap open ios",
+    "run:android": "npx cap run android",
+    "run:ios": "npx cap run ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
+
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/status-bar": "^8.0.3",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/keyboard": "^8.0.5",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/share": "^8.0.1",
+
+    "@capacitor/camera": "^8.2.3",
+    "@capacitor/push-notifications": "^8.1.2",
+    "@capacitor/local-notifications": "^8.3.1",
+
+    "capacitor-plugin-audio-toggle": "^1.0.29",
+    "@capgo/capacitor-incoming-call-kit": "^8.2.7"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.0"
+  }
+}
