@@ -1875,13 +1875,13 @@
             <div style="width:56px;height:56px;border-radius:16px;background:rgba(0,229,204,.15);border:1px solid rgba(0,229,204,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </div>
-            <h2 style="margin-bottom:6px;font-size:17px;">Baixando o Dee.apk…</h2>
+            <h2 style="margin-bottom:6px;font-size:17px;">Baixando o DeeMensagens_v1.3.apk…</h2>
             <p class="about-dee-desc" style="margin-bottom:18px;font-size:12.5px;">O download já começou (11 MB, leva poucos segundos). Assim que terminar, siga os passos abaixo:</p>
 
             <div style="text-align:left;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                     <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</div>
-                    <div style="font-size:12.5px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>Dee.apk</strong>.</div>
+                    <div style="font-size:12.5px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.3.apk</strong>.</div>
                 </div>
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                     <div style="width:22px;height:22px;border-radius:50%;background:var(--accent2,var(--accent));color:#000;font-family:'Syne',sans-serif;font-weight:900;font-size:9.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">OU</div>
@@ -1913,7 +1913,7 @@
         <div style="text-align:left;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;font-size:12.5px;line-height:1.5;color:var(--text);">
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Abra <strong>Ajustes → Apps → Chrome → Notificações</strong> e ative tudo.</div>
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Ainda em Ajustes → Apps → Chrome, desative a <strong>otimização de bateria</strong> (às vezes chamada "economia de energia" ou "iniciar automaticamente").</div>
-            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Mesmo sem notificação, o arquivo já está salvo — abra o app <strong>Arquivos</strong> ou o <strong>Gerenciador de Downloads</strong> do celular e procure por <strong>Dee.apk</strong> na pasta Downloads.</div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Mesmo sem notificação, o arquivo já está salvo — abra o app <strong>Arquivos</strong> ou o <strong>Gerenciador de Downloads</strong> do celular e procure por <strong>DeeMensagens_v1.3.apk</strong> na pasta Downloads.</div>
         </div>
         <div class="mbtns"><button class="mbtn sec" onclick="closeModal('dl-troubleshoot-modal')">Fechar</button></div>
     </div>
@@ -1925,7 +1925,7 @@
      tocar na pílula de novo. Some sozinha depois de um tempo. -->
 <div id="apk-dl-pill" style="display:none;position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;background:var(--surface,#111);border:1px solid var(--accent);border-radius:999px;padding:9px 16px;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;" onclick="reopenApkInstructions()">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" style="flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">Baixando Dee.apk — toque p/ instalar</span>
+    <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">Baixando DeeMensagens_v1.3.apk — toque p/ instalar</span>
 </div>
 
 <div id="install-choice-modal" class="overlay">
@@ -1958,6 +1958,52 @@
         <div id="install-choice-note" style="display:none; font-size:12px; color:var(--muted); background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-top:12px; line-height:1.5;"></div>
 
         <div class="mbtns" style="margin-top:14px;"><button class="mbtn sec" onclick="closeModal('install-choice-modal')">Agora não</button></div>
+    </div>
+</div>
+
+<!-- ════ MODAL: INSTALAÇÃO DO DEE LITE (PWA) ════
+     Antes, escolher "Lite" só disparava o prompt nativo do navegador (ou
+     um toast avulso no iOS) e não dava nenhum retorno — a pessoa não
+     sabia se tinha dado certo nem onde procurar o app depois. Agora esse
+     modal cobre as 3 situações: aguardando confirmação do prompt nativo,
+     passo a passo manual (quando o navegador não oferece prompt, ex.
+     iOS/Safari), e confirmação de sucesso (disparada pelo evento
+     'appinstalled', que dispara não importa qual dos dois caminhos a
+     pessoa usou). -->
+<div id="lite-confirm-modal" class="overlay">
+    <div class="mcard" style="max-width:340px; text-align:center; padding:28px 22px 20px;">
+
+        <!-- Fase 1: prompt nativo do navegador foi aberto, aguardando a pessoa confirmar -->
+        <div id="lite-phase-installing">
+            <div style="width:56px;height:56px;border-radius:16px;background:rgba(0,229,204,.15);border:1px solid rgba(0,229,204,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+            <h2 style="margin-bottom:6px;font-size:17px;">Instalando o Dee Lite…</h2>
+            <p class="about-dee-desc" style="margin-bottom:18px;font-size:12.5px;">É rápido — confirme na caixinha que o navegador abriu. O ícone do Dee vai aparecer na sua tela inicial em poucos segundos, e a gente avisa aqui assim que terminar.</p>
+            <div class="mbtns"><button class="mbtn sec" onclick="closeModal('lite-confirm-modal')">Fechar</button></div>
+        </div>
+
+        <!-- Fase 2: navegador sem prompt automático (iOS/Safari ou outros) — passo a passo manual -->
+        <div id="lite-phase-manual" style="display:none;">
+            <div style="width:56px;height:56px;border-radius:16px;background:rgba(0,229,204,.15);border:1px solid rgba(0,229,204,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M4 4h16v16H4z" opacity="0"/><path d="M12 3v14M6 11l6 6 6-6"/><path d="M5 21h14"/></svg>
+            </div>
+            <h2 style="margin-bottom:6px;font-size:17px;">Instalar o Dee Lite</h2>
+            <p class="about-dee-desc" style="margin-bottom:14px;font-size:12.5px;">Seu navegador não abre a instalação automática — siga os passos abaixo:</p>
+            <div id="lite-manual-steps" style="text-align:left;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;"></div>
+            <div class="mbtns"><button class="mbtn pri" onclick="closeModal('lite-confirm-modal')">Entendido!</button></div>
+        </div>
+
+        <!-- Fase 3: instalação confirmada com sucesso (evento 'appinstalled') -->
+        <div id="lite-phase-success" style="display:none;">
+            <div style="width:56px;height:56px;border-radius:16px;background:rgba(0,229,204,.15);border:1px solid rgba(0,229,204,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>
+            </div>
+            <h2 style="margin-bottom:6px;font-size:17px;">Dee Lite instalado! ✅</h2>
+            <p class="about-dee-desc" style="margin-bottom:18px;font-size:12.5px;">Procure o ícone do Dee na sua tela inicial (ou na gaveta de apps) — é por ali que você abre a partir de agora, sem precisar do navegador.</p>
+            <div class="mbtns"><button class="mbtn pri" onclick="closeModal('lite-confirm-modal')">Show!</button></div>
+        </div>
+
     </div>
 </div>
 
@@ -3436,6 +3482,16 @@ window.addEventListener('appinstalled', function() {
     document.getElementById('install-btn-welcome').classList.remove('visible');
     document.getElementById('install-sidebar-btn').style.display = 'none';
     deferredPrompt = null; notify('Dee instalado!', 'ok');
+
+    // Se o modal de instalação do Lite ainda estiver aberto (pessoa ainda
+    // olhando a fase "instalando..." ou "siga os passos"), troca pra fase
+    // de sucesso automaticamente — dispara independente de qual caminho
+    // (prompt automático ou "Adicionar à Tela de Início" manual) levou
+    // à instalação, então cobre os dois casos com a mesma confirmação.
+    var liteModal = document.getElementById('lite-confirm-modal');
+    if (liteModal && liteModal.classList.contains('open')) {
+        showLitePhase('success');
+    }
 });
 // ══════════════════════════════════════════════════════════
 //  Escolha Dee Lite (PWA, sem permissões extras) x Dee Full
@@ -3447,7 +3503,7 @@ window.addEventListener('appinstalled', function() {
 var DEE_FULL_ANDROID_URL = ''; // ex: 'https://play.google.com/store/apps/details?id=br.com.deemensagens.app'
 var DEE_FULL_IOS_URL     = ''; // ex: 'https://apps.apple.com/app/idXXXXXXXXX'
 
-var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.3/dee.apk';
+var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.3/DeeMensagens_v1.3.apk';
 // ── Esse valor acima é só o FALLBACK (usado se a chamada à API do GitHub
 // abaixo falhar, ex.: sem internet no momento do clique). Na prática, o
 // link de download real passa a ser sempre buscado dinamicamente da
@@ -3540,18 +3596,32 @@ function chooseInstall(kind) {
 
     if (kind === 'lite') {
         closeModal('install-choice-modal');
+
+        // Navegador não suporta o prompt automático de instalação (ex.:
+        // iOS/Safari, ou Android fora do Chrome) — mostra passo a passo
+        // manual em vez de só um toast que some sozinho.
         if (!deferredPrompt) {
-            var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-            notify(isIOS ? 'No iPhone: toque em Compartilhar → Adicionar à Tela de Início' : 'Use o menu do navegador para instalar', 'info');
+            showLiteManualInstructions();
             return;
         }
+
+        // Navegador suporta prompt automático — abre o modal já na fase
+        // "instalando" pra pessoa não ficar sem feedback nenhum enquanto
+        // decide. O evento 'appinstalled' (lá em cima) troca pra "sucesso"
+        // sozinho quando a instalação realmente terminar.
+        openModal('lite-confirm-modal');
+        showLitePhase('installing');
+
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then(function(r) {
-            if (r.outcome === 'accepted') notify('Instalando Dee Lite...', 'ok');
             deferredPrompt = null;
             document.getElementById('install-banner').classList.remove('show');
             document.getElementById('install-btn-welcome').classList.remove('visible');
             document.getElementById('install-sidebar-btn').style.display = 'none';
+
+            // Se a pessoa recusou no prompt do navegador, fecha o modal —
+            // não faz sentido continuar mostrando "instalando...".
+            if (r.outcome !== 'accepted') closeModal('lite-confirm-modal');
         });
         return;
     }
@@ -3606,6 +3676,41 @@ function chooseInstall(kind) {
         closeModal('install-choice-modal');
         downloadDeeApk();
     }
+}
+
+// Alterna entre as 3 fases do modal de instalação do Dee Lite:
+// 'installing' (aguardando prompt), 'manual' (passo a passo) ou 'success'.
+function showLitePhase(phase) {
+    ['installing', 'manual', 'success'].forEach(function(p) {
+        var el = document.getElementById('lite-phase-' + p);
+        if (el) el.style.display = (p === phase) ? 'block' : 'none';
+    });
+}
+
+// Monta o passo a passo certo pra cada plataforma (iOS usa "Compartilhar
+// → Adicionar à Tela de Início"; Android/desktop usa o menu do navegador)
+// e abre o modal já na fase manual.
+function showLiteManualInstructions() {
+    var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    var steps = isIOS ? [
+        ['Toque no ícone <strong>Compartilhar</strong> (o quadrado com a seta pra cima), na barra do Safari.'],
+        ['Role a lista e toque em <strong>Adicionar à Tela de Início</strong>.'],
+        ['Toque em <strong>Adicionar</strong>, no canto superior — o ícone do Dee já aparece na tela inicial.']
+    ] : [
+        ['Toque no menu <strong>⋮</strong> (três pontinhos) no canto do navegador.'],
+        ['Toque em <strong>Instalar app</strong> ou <strong>Adicionar à tela inicial</strong>.'],
+        ['Confirme tocando em <strong>Instalar</strong>.']
+    ];
+    var html = '';
+    steps.forEach(function(s, i) {
+        html += '<div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">' +
+                    '<div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#000;font-family:\'Syne\',sans-serif;font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">' + (i + 1) + '</div>' +
+                    '<div style="font-size:12.5px;line-height:1.5;color:var(--text);">' + s[0] + '</div>' +
+                '</div>';
+    });
+    document.getElementById('lite-manual-steps').innerHTML = html;
+    openModal('lite-confirm-modal');
+    showLitePhase('manual');
 }
 
 // ══════════════════════════════════════════════════════════
