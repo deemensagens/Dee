@@ -31,9 +31,16 @@
        outro gatilho automático que chame a navegação — a ÚNICA
        forma de sair desta página é o usuário clicar/tocar no
        botão "Continuar" já liberado.
-     - Enquanto espera, o usuário pode jogar o mini-game de
-       obstáculos abaixo do anúncio. É só entretenimento: jogar,
-       perder ou ignorar não muda em nada o timer nem o botão.
+     - Enquanto espera, o usuário vê um conteúdo real sobre por que
+       esse passo existe (não é só enfeite — é isso que tira a página
+       da categoria "tela sem conteúdo" nas políticas do AdSense).
+       Ler esse conteúdo não é obrigatório nem afeta o timer/botão.
+     - IMPORTANTE (política do AdSense): não colocar de volta nenhum
+       tipo de jogo/mini-game nesta página. O próprio guia oficial do
+       AdSense cita "interstitial pages" e "game interfaces" como duas
+       categorias separadas onde anúncios de conteúdo não são
+       permitidos — esta página já é a primeira; não pode virar as
+       duas ao mesmo tempo.
      - Se um dia vocês usarem um <video> próprio como "anúncio"
        (em vez do bloco padrão do AdSense), basta dar a esse
        vídeo o id="ad-gate-video": este script detecta o evento
@@ -117,28 +124,26 @@
     .ad-slot .adsbygoogle { width: 100%; }
     .ad-fallback { color: var(--muted); font-size: 12.5px; padding: 0 16px; text-align: center; }
 
-    /* ── Mini-game: corredor de obstáculos (estilo dinossauro) ── */
-    .game-card {
+    /* ── Bloco de conteúdo real (por que este passo existe) ──
+       Isto NÃO é enfeite: é conteúdo genuíno do editor, necessário
+       pra página não cair em "screens without publisher-content"
+       nas políticas do AdSense. */
+    .info-card {
         width: 100%; background: var(--surface); border: 1px solid var(--border);
-        border-radius: 18px; padding: 16px; margin-bottom: 18px;
+        border-radius: 18px; padding: 20px; margin-bottom: 18px;
     }
-    .game-head {
-        display: flex; align-items: center; justify-content: space-between;
-        gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
+    .info-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .info-text { font-size: 13px; line-height: 1.65; color: var(--muted); margin-bottom: 12px; }
+    .info-text:last-child { margin-bottom: 0; }
+    .info-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .info-list li {
+        font-size: 12.5px; line-height: 1.5; color: var(--muted);
+        display: flex; align-items: flex-start; gap: 8px;
     }
-    .game-title { font-size: 13px; font-weight: 700; }
-    .game-score { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
-    .game-score b { color: var(--text); font-variant-numeric: tabular-nums; }
-    .game-canvas-wrap { border-radius: 12px; overflow: hidden; background: var(--surface2); line-height: 0; }
-    .game-canvas { display: block; width: 100%; height: 150px; touch-action: none; cursor: pointer; }
-    .game-controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-    .game-jump-btn {
-        padding: 9px 18px; border-radius: 10px; border: 1px solid var(--border);
-        background: var(--surface2); color: var(--text); font-family: inherit;
-        font-weight: 700; font-size: 13px; cursor: pointer; transition: transform .1s, border-color .2s;
+    .info-list li::before {
+        content: "•"; color: var(--accent); font-weight: 700; flex-shrink: 0;
     }
-    .game-jump-btn:active { transform: scale(.96); border-color: var(--accent); }
-    .game-hint { font-size: 11px; color: var(--muted); }
+    .info-list strong { color: var(--text); }
 
     .continue-btn {
         width: 100%; padding: 15px; border-radius: 14px; border: none;
@@ -212,18 +217,17 @@
         </div>
     </div>
 
-    <div class="game-card">
-        <div class="game-head">
-            <span class="game-title">🎮 Jogo do obstáculo</span>
-            <span class="game-score">Pontos <b id="game-score">0</b> · Recorde <b id="game-best">0</b></span>
-        </div>
-        <div class="game-canvas-wrap">
-            <canvas class="game-canvas" id="game-canvas" role="img" aria-label="Mini-jogo de pular obstáculos: toque ou pressione espaço para jogar"></canvas>
-        </div>
-        <div class="game-controls">
-            <button type="button" class="game-jump-btn" id="game-jump-btn">⤒ Pular</button>
-            <span class="game-hint">Toque no jogo, clique ou pressione espaço</span>
-        </div>
+    <div class="info-card">
+        <div class="info-title">🛡️ Por que esse passo existe</div>
+        <p class="info-text">
+            Links compartilhados em conversas e publicações podem levar a páginas fora do nosso controle — incluindo sites de phishing que imitam bancos, redes sociais ou serviços conhecidos para roubar senhas e dados. Por isso, antes de sair do Dee, mostramos exatamente para onde você vai e esperamos alguns segundos antes de liberar o botão, dando tempo de conferir o endereço acima.
+        </p>
+        <p class="info-text">Enquanto aguarda, alguns sinais que vale sempre observar em qualquer link, dentro ou fora do Dee:</p>
+        <ul class="info-list">
+            <li><strong>Endereço estranho:</strong> letras trocadas, números no lugar de letras (ex. "paypa1.com") ou domínios que não batem com a empresa real.</li>
+            <li><strong>Pressa ou ameaça:</strong> mensagens como "sua conta será bloqueada" ou "oferta expira em minutos" são táticas clássicas pra te fazer clicar sem pensar.</li>
+            <li><strong>Pedido de senha fora do app oficial:</strong> nenhum serviço sério pede login em uma página que chegou por link de terceiros.</li>
+        </ul>
     </div>
 
     <button class="continue-btn" id="continue-btn" disabled>
@@ -365,184 +369,6 @@
         if (!ready) return;
         goToTarget();
     });
-})();
-
-/* ══════════════════════════════════════════════════════════
-   2) MINI-GAME — corredor de obstáculos (estilo dinossauro),
-      só para entreter enquanto o timer acima conta.
-      Totalmente independente do redirecionamento: jogar, perder,
-      pontuar ou ignorar o jogo não afeta o timer nem o botão
-      "Continuar" em nada.
-   ══════════════════════════════════════════════════════════ */
-(function () {
-    'use strict';
-
-    var canvas  = document.getElementById('game-canvas');
-    var ctx     = canvas.getContext('2d');
-    var jumpBtn = document.getElementById('game-jump-btn');
-    var scoreEl = document.getElementById('game-score');
-    var bestEl  = document.getElementById('game-best');
-
-    var CSS_H = 150;
-    var GRAVITY = 0.9;
-    var JUMP_VELOCITY = -13;
-
-    var W = 0, H = CSS_H, GROUND_Y = 0, DPR = 1;
-    var state = 'idle'; // idle | running | over
-    var best = 0, score = 0, frame = 0, speed = 4.2;
-    var obstacles = [];
-    var rafId = null;
-
-    var player = { x: 26, y: 0, w: 22, h: 26, vy: 0, onGround: true };
-
-    function resize() {
-        var cssWidth = Math.max(260, canvas.parentElement.clientWidth);
-        DPR = Math.min(window.devicePixelRatio || 1, 2);
-        W = cssWidth;
-        H = CSS_H;
-        canvas.style.width = W + 'px';
-        canvas.style.height = H + 'px';
-        canvas.width = Math.round(W * DPR);
-        canvas.height = Math.round(H * DPR);
-        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-        GROUND_Y = H - 24;
-        player.y = GROUND_Y - player.h;
-        render();
-    }
-
-    function resetRun() {
-        score = 0; speed = 4.2; frame = 0; obstacles = [];
-        player.y = GROUND_Y - player.h; player.vy = 0; player.onGround = true;
-        scoreEl.textContent = '0';
-    }
-
-    function startRun() {
-        state = 'running';
-        resetRun();
-        if (rafId) cancelAnimationFrame(rafId);
-        rafId = requestAnimationFrame(loop);
-    }
-
-    function doJump() {
-        if (state === 'idle' || state === 'over') { startRun(); return; }
-        if (player.onGround) {
-            player.vy = JUMP_VELOCITY;
-            player.onGround = false;
-        }
-    }
-
-    function spawnObstacle() {
-        var h = 18 + Math.random() * 24;
-        var w = 12 + Math.random() * 12;
-        obstacles.push({ x: W + 10, y: GROUND_Y - h, w: w, h: h });
-    }
-
-    function update() {
-        frame++;
-        speed = Math.min(9.5, 4.2 + score * 0.012);
-
-        player.vy += GRAVITY;
-        player.y += player.vy;
-        if (player.y >= GROUND_Y - player.h) {
-            player.y = GROUND_Y - player.h;
-            player.vy = 0;
-            player.onGround = true;
-        }
-
-        var gap = Math.max(42, 78 - Math.floor(score / 5));
-        if (frame % gap === 0) spawnObstacle();
-
-        for (var i = obstacles.length - 1; i >= 0; i--) {
-            obstacles[i].x -= speed;
-            if (obstacles[i].x + obstacles[i].w < 0) obstacles.splice(i, 1);
-        }
-
-        if (frame % 6 === 0) {
-            score += 1;
-            scoreEl.textContent = String(score);
-        }
-
-        for (var j = 0; j < obstacles.length; j++) {
-            var o = obstacles[j];
-            if (player.x < o.x + o.w && player.x + player.w > o.x &&
-                player.y < o.y + o.h && player.y + player.h > o.y) {
-                endRun();
-                break;
-            }
-        }
-    }
-
-    function endRun() {
-        state = 'over';
-        if (score > best) { best = score; bestEl.textContent = String(best); }
-    }
-
-    function render() {
-        ctx.clearRect(0, 0, W, H);
-
-        ctx.strokeStyle = 'rgba(232,234,240,.22)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, GROUND_Y + 1);
-        ctx.lineTo(W, GROUND_Y + 1);
-        ctx.stroke();
-
-        ctx.fillStyle = '#00e5cc';
-        var r = 5;
-        ctx.beginPath();
-        ctx.moveTo(player.x + r, player.y);
-        ctx.arcTo(player.x + player.w, player.y, player.x + player.w, player.y + player.h, r);
-        ctx.arcTo(player.x + player.w, player.y + player.h, player.x, player.y + player.h, r);
-        ctx.arcTo(player.x, player.y + player.h, player.x, player.y, r);
-        ctx.arcTo(player.x, player.y, player.x + player.w, player.y, r);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = '#ff3b5c';
-        for (var i = 0; i < obstacles.length; i++) {
-            ctx.fillRect(obstacles[i].x, obstacles[i].y, obstacles[i].w, obstacles[i].h);
-        }
-
-        ctx.textAlign = 'center';
-        if (state === 'idle') {
-            ctx.fillStyle = 'rgba(232,234,240,.8)';
-            ctx.font = '600 13px sans-serif';
-            ctx.fillText('Toque, clique ou espaço para jogar', W / 2, H / 2 + 4);
-        } else if (state === 'over') {
-            ctx.fillStyle = 'rgba(3,5,8,.55)';
-            ctx.fillRect(0, 0, W, H);
-            ctx.fillStyle = '#e8eaf0';
-            ctx.font = '700 15px sans-serif';
-            ctx.fillText('Fim de jogo — ' + score + ' pontos', W / 2, H / 2 - 6);
-            ctx.font = '600 12px sans-serif';
-            ctx.fillStyle = 'rgba(232,234,240,.8)';
-            ctx.fillText('Toque para jogar de novo', W / 2, H / 2 + 16);
-        }
-    }
-
-    function loop() {
-        update();
-        render();
-        if (state === 'running') {
-            rafId = requestAnimationFrame(loop);
-        } else {
-            rafId = null;
-        }
-    }
-
-    function onPress(e) {
-        e.preventDefault();
-        doJump();
-    }
-
-    canvas.addEventListener('pointerdown', onPress, { passive: false });
-    jumpBtn.addEventListener('pointerdown', onPress, { passive: false });
-    window.addEventListener('keydown', function (e) {
-        if (e.code === 'Space' || e.code === 'ArrowUp') onPress(e);
-    });
-    window.addEventListener('resize', resize);
-
-    resize();
 })();
 </script>
 </body>
