@@ -1,9 +1,12 @@
 package br.com.deemensagens.app;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -26,14 +29,22 @@ import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
 public class MainActivity extends BridgeActivity {
 
     private static final String MSG_CHANNEL_ID         = "dee_messages";
     private static final String MSG_CHANNEL_HEADS_UP_ID = "dee_messages_headsup";
     private static final int    REQ_NOTIFICATION        = 1001;
 
+    private static final String PREFS_NAME           = "dee_prefs";
+    private static final String PREF_AUTOSTART_SHOWN = "autostart_prompt_shown";
+
     private float   lastTop = 0, lastBottom = 0, lastLeft = 0, lastRight = 0;
-    private boolean hasInsets = false;
+    private boolean hasInsets     = false;
+    private boolean isFirstResume = true;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -86,6 +97,23 @@ public class MainActivity extends BridgeActivity {
         });
 
         webView.post(() -> ViewCompat.requestApplyInsets(webView));
+
+        // ══════════════════════════════════════════════════════════
+        //  COLD START FIX — ColorOS / RealmeUI / OxygenOS (Realme, Oppo,
+        //  OnePlus) demoram mais que outras ROMs pra reportar o tamanho
+        //  real da barra de navegação logo na primeira abertura do app.
+        //  O primeiro callback de insets às vezes chega com bottom=0
+        //  (valor "provisório"), e nada dispara um novo pedido sozinho
+        //  nesse momento — só reaplicarInsets() cobria esse caso, mas ela
+        //  só roda em onResume/onWindowFocusChanged, que não disparam de
+        //  novo logo depois do onCreate. Pedimos de novo em intervalos
+        //  crescentes só nos primeiros segundos de vida da Activity, pra
+        //  pegar o valor certo assim que a ROM terminar de calcular o
+        //  layout real das barras do sistema.
+        // ══════════════════════════════════════════════════════════
+        mainHandler.postDelayed(() -> ViewCompat.requestApplyInsets(webView), 300);
+        mainHandler.postDelayed(() -> ViewCompat.requestApplyInsets(webView), 800);
+        mainHandler.postDelayed(() -> ViewCompat.requestApplyInsets(webView), 1800);
     }
 
     // ══════════════════════════════════════════════════════════
@@ -106,6 +134,17 @@ public class MainActivity extends BridgeActivity {
     public void onResume() {
         super.onResume();
         reaplicarInsets();
+
+        // Pula a primeiríssima chamada (é só a abertura normal do app,
+        // logo após o onCreate) — a partir da segunda vez que o app volta
+        // ao primeiro plano (ex.: voltando da tela de bateria que acabamos
+        // de abrir), é seguro oferecer a tela de "Início automático",
+        // porque o usuário já viu/respondeu os pedidos anteriores.
+        if (isFirstResume) {
+            isFirstResume = false;
+        } else {
+            maybeRequestAutostartPermission();
+        }
     }
 
     @Override
@@ -172,6 +211,98 @@ public class MainActivity extends BridgeActivity {
                 startActivity(fallback);
             } catch (Exception ignored) {}
         }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  INÍCIO AUTOMÁTICO — segunda camada de bateria de ROMs chinesas
+    // ══════════════════════════════════════════════════════════
+    //  Xiaomi (MIUI), Oppo/Realme/OnePlus (ColorOS/RealmeUI/OxygenOS),
+    //  Vivo e Huawei/Honor têm um gerenciador de energia PRÓPRIO, além
+    //  do padrão do Android. Mesmo com "ignorar otimização de bateria"
+    //  concedido (API oficial, já tratada acima), essas ROMs ainda podem
+    //  matar o app e impedir o FCM de acordá-lo, a menos que o usuário
+    //  ative manualmente "Início automático" (ou nome equivalente) —
+    //  não existe uma API do Android pra isso, cada fabricante tem sua
+    //  própria tela, então detectamos a marca e levamos direto pra ela.
+    //  Em aparelhos sem essa camada extra (Samsung, Motorola, Google,
+    //  LG...) esse método simplesmente não faz nada.
+    private void maybeRequestAutostartPermission() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_AUTOSTART_SHOWN, false)) return; // já mostramos uma vez
+
+        Intent target = autostartIntentForManufacturer();
+        if (target == null) return; // marca sem essa tela extra conhecida
+
+        prefs.edit().putBoolean(PREF_AUTOSTART_SHOWN, true).apply();
+
+        new AlertDialog.Builder(this)
+            .setTitle("Um passo a mais pra não perder mensagens")
+            .setMessage("Seu celular tem um controle de bateria próprio, além do que você já liberou. Na tela que vai abrir, ative \"Início automático\" (ou nome parecido) para o Dee — sem isso, notificações podem não chegar com o app fechado.")
+            .setPositiveButton("Abrir configurações", (dialog, which) -> {
+                try {
+                    startActivity(target);
+                } catch (Exception e) {
+                    openAppDetailsSettingsFallback();
+                }
+            })
+            .setNegativeButton("Agora não", null)
+            .setCancelable(true)
+            .show();
+    }
+
+    // Monta a lista de telas conhecidas pra marca do aparelho atual e
+    // devolve a primeira que realmente existir nesse dispositivo
+    // específico (o nome do componente muda de versão pra versão da
+    // ROM, por isso a lista de tentativas em vez de um valor único).
+    private Intent autostartIntentForManufacturer() {
+        String manufacturer = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase(Locale.ROOT);
+        List<Intent> candidates = new ArrayList<>();
+
+        if (manufacturer.contains("xiaomi")) {
+            candidates.add(component("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"));
+        } else if (manufacturer.contains("oppo") || manufacturer.contains("realme") || manufacturer.contains("oneplus")) {
+            // ColorOS / RealmeUI / OxygenOS compartilham a mesma base hoje —
+            // tentamos várias variantes conhecidas, porque o componente
+            // muda de versão pra versão da ROM e de marca pra marca.
+            candidates.add(component("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity"));
+            candidates.add(component("com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity"));
+            candidates.add(component("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity"));
+            candidates.add(component("com.coloros.oppoguardelf", "com.coloros.oppoguardelf.activity.WhiteListAddActivity"));
+            candidates.add(component("com.oneplus.security", "com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity"));
+        } else if (manufacturer.contains("vivo")) {
+            candidates.add(component("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"));
+            candidates.add(component("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity"));
+        } else if (manufacturer.contains("huawei") || manufacturer.contains("honor")) {
+            candidates.add(component("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"));
+            candidates.add(component("com.huawei.systemmanager", "com.huawei.systemmanager.optimize.process.ProtectActivity"));
+        } else if (manufacturer.contains("asus")) {
+            candidates.add(component("com.asus.mobilemanager", "com.asus.mobilemanager.autostart.AutoStartActivity"));
+        } else {
+            return null; // Samsung, Motorola, Google, LG etc. não têm essa camada extra
+        }
+
+        for (Intent candidate : candidates) {
+            if (candidate.resolveActivity(getPackageManager()) != null) return candidate;
+        }
+        return null; // nenhuma variante conhecida existe nesse aparelho específico
+    }
+
+    private Intent component(String pkg, String cls) {
+        Intent intent = new Intent();
+        intent.setComponent(new ComponentName(pkg, cls));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        return intent;
+    }
+
+    // Se a tela específica da marca não existir/não abrir por algum
+    // motivo, cai pelo menos na tela de detalhes do app — de lá o
+    // usuário ainda consegue chegar manualmente nas opções de bateria.
+    private void openAppDetailsSettingsFallback() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception ignored) {}
     }
 
     @Override

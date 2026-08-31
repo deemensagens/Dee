@@ -39,6 +39,9 @@
   },
 
   "plugins": {
+    "SystemBars": {
+      "insetsHandling": "disable"
+    },
     "SplashScreen": {
       "launchShowDuration": 800,
       "backgroundColor": "#030508",
