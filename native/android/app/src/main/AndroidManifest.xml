@@ -29,6 +29,24 @@
             </intent-filter>
         </service>
 
+        <!-- Tela invisível que atende a chamada num toque só, a partir do
+             botão "Atender" da notificação. Existe porque o Android 10+
+             proíbe abrir telas a partir do segundo plano: o botão original
+             do plugin ia para um BroadcastReceiver e a abertura era barrada.
+             Apontando o botão para uma Activity, o sistema concede o mesmo
+             privilégio que já dá ao tocar no corpo da notificação.
+             Tema translúcido e sem barra: o usuário não chega a vê-la. -->
+        <activity
+            android:name=".CallAnswerActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:showOnLockScreen="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+
+
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
@@ -69,6 +87,12 @@
 
     <!-- Câmera traseira e frontal (fotos, vídeo chamada) -->
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Localização: usada para enviar sua localização numa conversa.
+         Sem estas duas, o navegador embutido no app recusa o pedido e o
+         mapa mostrava "permissão de localização negada". -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />

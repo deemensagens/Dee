@@ -38,9 +38,16 @@ public class MainActivity extends BridgeActivity {
     private static final String MSG_CHANNEL_ID         = "dee_messages";
     private static final String MSG_CHANNEL_HEADS_UP_ID = "dee_messages_headsup";
     private static final int    REQ_NOTIFICATION        = 1001;
+    private static final int    REQ_LOCATION            = 1002;
 
     private static final String PREFS_NAME           = "dee_prefs";
     private static final String PREF_AUTOSTART_SHOWN = "autostart_prompt_shown";
+    private static final String PREF_FSI_SHOWN       = "fsi_prompt_shown";
+    private static final String PREF_OVERLAY_SHOWN   = "overlay_prompt_shown";
+
+    // Piso mínimo (em dp) do espaço reservado embaixo da barra de digitar.
+    // 48dp é a altura padrão da barra de navegação de 3 botões do Android.
+    private static final float MIN_BOTTOM_INSET_DP = 48f;
 
     private float   lastTop = 0, lastBottom = 0, lastLeft = 0, lastRight = 0;
     private boolean hasInsets     = false;
@@ -49,6 +56,12 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
+        // Registra a ponte de permissões nativas ANTES do super.onCreate —
+        // é a ordem exigida pelo Capacitor para plugins próprios. Ela deixa
+        // a tela de Configurações do app instalado ler e abrir as permissões
+        // reais do Android (ver DeePermissionsPlugin.java).
+        registerPlugin(DeePermissionsPlugin.class);
+
         super.onCreate(savedInstanceState);
 
         // 1. Cria canais ANTES de tudo — se não existirem quando a
@@ -70,8 +83,18 @@ public class MainActivity extends BridgeActivity {
             );
             Insets ime = windowInsets.getInsets(WindowInsetsCompat.Type.ime());
 
+            // Piso mínimo de 48dp no valor injetado pro app (só existe aqui,
+            // no APK nativo — o PWA no navegador não passa por este código,
+            // então não é afetado). 48dp é o padrão do Android pra altura de
+            // barra de navegação de 3 botões; garante que a barra de digitar
+            // nunca fique colada nos botões do celular mesmo se o sistema
+            // reportar um valor errado/zerado pra essa ROM específica.
+            float bottomPx = Math.max(bars.bottom, ime.bottom);
+            float bottomDp = pxToCssPx((int) bottomPx, density);
+            boolean keyboardVisible = ime.bottom > bars.bottom;
+
             lastTop    = pxToCssPx(bars.top,    density);
-            lastBottom = pxToCssPx(Math.max(bars.bottom, ime.bottom), density);
+            lastBottom = keyboardVisible ? bottomDp : Math.max(bottomDp, 48f);
             lastLeft   = pxToCssPx(bars.left,   density);
             lastRight  = pxToCssPx(bars.right,  density);
             hasInsets  = true;
@@ -143,7 +166,14 @@ public class MainActivity extends BridgeActivity {
         if (isFirstResume) {
             isFirstResume = false;
         } else {
-            maybeRequestAutostartPermission();
+            // Um diálogo por vez, em cascata: só oferecemos o próximo
+            // pedido se o anterior não apareceu agora, para não empilhar
+            // várias caixas na cara do usuário de uma só vez.
+            if (!maybeRequestAutostartPermission()) {
+                if (!maybeRequestFullScreenIntentPermission()) {
+                    maybeRequestOverlayPermission();
+                }
+            }
         }
     }
 
@@ -181,6 +211,19 @@ public class MainActivity extends BridgeActivity {
                         REQ_NOTIFICATION
                 );
             }
+        }
+
+        // Localização: usada ao enviar sua localização numa conversa.
+        // Pedimos junto das demais na primeira abertura para o mapa não
+        // falhar depois, no meio do envio.
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{ Manifest.permission.ACCESS_FINE_LOCATION,
+                                  Manifest.permission.ACCESS_COARSE_LOCATION },
+                    REQ_LOCATION
+            );
         }
 
         // Otimização de bateria — crítico para notificações com app fechado.
@@ -226,18 +269,18 @@ public class MainActivity extends BridgeActivity {
     //  própria tela, então detectamos a marca e levamos direto pra ela.
     //  Em aparelhos sem essa camada extra (Samsung, Motorola, Google,
     //  LG...) esse método simplesmente não faz nada.
-    private void maybeRequestAutostartPermission() {
+    private boolean maybeRequestAutostartPermission() {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        if (prefs.getBoolean(PREF_AUTOSTART_SHOWN, false)) return; // já mostramos uma vez
+        if (prefs.getBoolean(PREF_AUTOSTART_SHOWN, false)) return false; // já mostramos uma vez
 
         Intent target = autostartIntentForManufacturer();
-        if (target == null) return; // marca sem essa tela extra conhecida
+        if (target == null) return false; // marca sem essa tela extra conhecida
 
         prefs.edit().putBoolean(PREF_AUTOSTART_SHOWN, true).apply();
 
         new AlertDialog.Builder(this)
             .setTitle("Um passo a mais pra não perder mensagens")
-            .setMessage("Seu celular tem um controle de bateria próprio, além do que você já liberou. Na tela que vai abrir, ative \"Início automático\" (ou nome parecido) para o Dee — sem isso, notificações podem não chegar com o app fechado.")
+            .setMessage("Seu celular tem um controle de bateria próprio, além do que você já liberou. Na tela que vai abrir, procure por \"Gerenciamento de inicialização\" ou \"Início automático\" e ative o Dee lá — sem isso, notificações podem não chegar com o app fechado.")
             .setPositiveButton("Abrir configurações", (dialog, which) -> {
                 try {
                     startActivity(target);
@@ -248,6 +291,7 @@ public class MainActivity extends BridgeActivity {
             .setNegativeButton("Agora não", null)
             .setCancelable(true)
             .show();
+        return true;
     }
 
     // Monta a lista de telas conhecidas pra marca do aparelho atual e
@@ -261,13 +305,24 @@ public class MainActivity extends BridgeActivity {
         if (manufacturer.contains("xiaomi")) {
             candidates.add(component("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"));
         } else if (manufacturer.contains("oppo") || manufacturer.contains("realme") || manufacturer.contains("oneplus")) {
-            // ColorOS / RealmeUI / OxygenOS compartilham a mesma base hoje —
-            // tentamos várias variantes conhecidas, porque o componente
-            // muda de versão pra versão da ROM e de marca pra marca.
+            // ColorOS / RealmeUI 6.0+ renomeou o app pra "com.coloros.phonemanager"
+            // (confirmado via análise de APK real — a versão antiga do pacote,
+            // "com.coloros.safecenter", não existe mais nos aparelhos atuais).
+            // Em vez de adivinhar o nome da tela interna de "Início automático"
+            // (que muda a cada versão da ROM e já erramos duas vezes tentando
+            // isso), abrimos o app inteiro pelo próprio launcher — muito mais
+            // confiável, porque só depende do nome do pacote (confirmado),
+            // não de um caminho interno que pode não existir nessa versão.
+            Intent phoneManager = getPackageManager().getLaunchIntentForPackage("com.coloros.phonemanager");
+            if (phoneManager != null) {
+                phoneManager.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                candidates.add(phoneManager);
+            }
+            // Variantes antigas, como fallback pra ROMs mais antigas que talvez
+            // ainda usem o nome de pacote anterior.
             candidates.add(component("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity"));
             candidates.add(component("com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity"));
             candidates.add(component("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity"));
-            candidates.add(component("com.coloros.oppoguardelf", "com.coloros.oppoguardelf.activity.WhiteListAddActivity"));
             candidates.add(component("com.oneplus.security", "com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity"));
         } else if (manufacturer.contains("vivo")) {
             candidates.add(component("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"));
@@ -357,11 +412,133 @@ public class MainActivity extends BridgeActivity {
     private void injectSafeAreaInsets(@NonNull WebView webView,
                                       float top, float bottom,
                                       float left, float right) {
+        // ══════════════════════════════════════════════════════════
+        //  POR QUE EXISTE UMA VARIÁVEL PRÓPRIA (--dee-inset-bottom)
+        // ══════════════════════════════════════════════════════════
+        //  As variáveis --safe-area-inset-* NÃO são exclusivas nossas: o
+        //  plugin interno SystemBars do Capacitor 8 escreve nas MESMAS
+        //  variáveis, e em algumas ROMs ele grava 0 depois da gente
+        //  (workaround interno dele para um bug do Chromium). Quem escreve
+        //  por último vence, então nosso valor era sobrescrito por 0 e a
+        //  barra de digitar colava no rodapé.
+        //
+        //  --dee-inset-bottom é um nome que só existe aqui, então ninguém
+        //  mais sobrescreve. O <style> injetado abaixo usa SÓ essa variável
+        //  (com !important), o que torna o resultado independente da briga
+        //  acima. E como toda essa injeção roda apenas dentro do WebView do
+        //  APK, o site e o PWA no navegador não são afetados em nada.
+        // ══════════════════════════════════════════════════════════
         String js =
             "document.documentElement.style.setProperty('--safe-area-inset-top','"    + top    + "px');"
           + "document.documentElement.style.setProperty('--safe-area-inset-bottom','" + bottom + "px');"
           + "document.documentElement.style.setProperty('--safe-area-inset-left','"   + left   + "px');"
-          + "document.documentElement.style.setProperty('--safe-area-inset-right','"  + right  + "px');";
+          + "document.documentElement.style.setProperty('--safe-area-inset-right','"  + right  + "px');"
+          + "document.documentElement.style.setProperty('--dee-inset-bottom','"       + bottom + "px');"
+          + "(function(){"
+          + "  var id='dee-native-layout-fix';"
+          + "  var host=document.head||document.documentElement;"
+          + "  if(!host) return;"
+          + "  var s=document.getElementById(id);"
+          + "  if(!s){ s=document.createElement('style'); s.id=id; host.appendChild(s); }"
+          + "  if(s.getAttribute('data-done')==='1') return;"
+          + "  s.textContent="
+          + "    '.input-bar{padding-bottom:calc(var(--dee-inset-bottom,0px) + 8px) !important;}'"
+          + "  + '.me-bar{padding-bottom:calc(var(--dee-inset-bottom,0px) + 10px) !important;}'"
+          + "  + '.cam-controls{padding-bottom:calc(var(--dee-inset-bottom,0px) + 16px) !important;}';"
+          + "  s.setAttribute('data-done','1');"
+          + "})();";
         webView.post(() -> webView.evaluateJavascript(js, null));
     }
+
+    // ══════════════════════════════════════════════════════════
+    //  TELA CHEIA DE CHAMADA (Android 14+) — permissão especial
+    // ══════════════════════════════════════════════════════════
+    //  Até o Android 13, declarar USE_FULL_SCREEN_INTENT no manifest era
+    //  suficiente para uma chamada recebida cobrir a tela inteira. A partir
+    //  do Android 14 isso virou uma "permissão de acesso especial": só apps
+    //  cuja função principal é telefonia/alarme recebem automaticamente, e
+    //  os demais precisam pedir ao usuário. Se a permissão não estiver
+    //  concedida, a notificação de chamada é rebaixada para um aviso comum
+    //  (não cobre a tela) — que é exatamente o sintoma relatado.
+    //
+    //  Este app declara a permissão no manifest mas nunca checava nem pedia,
+    //  então em Android 14/15/16 a tela cheia simplesmente não acontecia.
+    private boolean maybeRequestFullScreenIntentPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false; // < Android 14: já vem liberado
+
+        NotificationManager nm = ContextCompat.getSystemService(this, NotificationManager.class);
+        if (nm == null) return false;
+        if (nm.canUseFullScreenIntent()) return false; // já concedida, nada a fazer
+
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_FSI_SHOWN, false)) return false; // só pedimos uma vez
+        prefs.edit().putBoolean(PREF_FSI_SHOWN, true).apply();
+
+        new AlertDialog.Builder(this)
+            .setTitle("Permitir tela cheia nas chamadas")
+            .setMessage("Para uma chamada de voz ou vídeo aparecer em tela cheia (como uma ligação normal) mesmo com o Dee fechado, o Android precisa de uma autorização extra. Na tela que abrir, ative o Dee na lista.")
+            .setPositiveButton("Abrir configurações", (dialog, which) -> {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    // Algumas ROMs não aceitam a intent com o package embutido;
+                    // nesse caso abrimos a lista geral, onde o usuário acha o Dee.
+                    try {
+                        startActivity(new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT));
+                    } catch (Exception ignored) {
+                        openAppDetailsSettingsFallback();
+                    }
+                }
+            })
+            .setNegativeButton("Agora não", null)
+            .setCancelable(true)
+            .show();
+        return true;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  EXIBIR SOBRE OUTROS APPS — necessária para a tela cheia da
+    //  chamada abrir sozinha com o celular em uso
+    // ══════════════════════════════════════════════════════════
+    //  O Android 10+ proíbe um app de abrir telas a partir do segundo
+    //  plano. Com o celular BLOQUEADO isso não é problema, porque quem
+    //  abre a tela é o próprio sistema (via fullScreenIntent). Mas com o
+    //  celular desbloqueado e em uso, sem essa permissão a chamada vira
+    //  só um aviso no topo, em vez de cobrir a tela como uma ligação.
+    //
+    //  "Exibir sobre outros aplicativos" (SYSTEM_ALERT_WINDOW) é uma das
+    //  exceções oficiais dessa regra — por isso pedimos aqui. É a mesma
+    //  permissão que apps de chamada costumam pedir na primeira abertura.
+    private boolean maybeRequestOverlayPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false;
+        if (Settings.canDrawOverlays(this)) return false; // já concedida
+
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (prefs.getBoolean(PREF_OVERLAY_SHOWN, false)) return false; // só pedimos uma vez
+        prefs.edit().putBoolean(PREF_OVERLAY_SHOWN, true).apply();
+
+        new AlertDialog.Builder(this)
+            .setTitle("Para as chamadas abrirem em tela cheia")
+            .setMessage("Sem esta autorização, uma chamada recebida aparece só como um aviso no topo enquanto você usa o celular, em vez de cobrir a tela como uma ligação normal. Na tela que abrir, ative o Dee.")
+            .setPositiveButton("Abrir configurações", (dialog, which) -> {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
+                    } catch (Exception ignored) {
+                        openAppDetailsSettingsFallback();
+                    }
+                }
+            })
+            .setNegativeButton("Agora não", null)
+            .setCancelable(true)
+            .show();
+        return true;
+    }
+
 }

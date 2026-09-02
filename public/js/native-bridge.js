@@ -72,5 +72,50 @@
         return false;
     };
 
+    // ══════════════════════════════════════════════════════════
+    //  Permissões do Android (só existem no app instalado)
+    //  ──────────────────────────────────────────────────────────
+    //  No site e no PWA, quem manda são as permissões do NAVEGADOR
+    //  (Notification API, getUserMedia) — e a tela de Configurações
+    //  continua mostrando exatamente essas lá, sem mudança nenhuma.
+    //
+    //  Dentro do app instalado é outra história: as permissões que fazem
+    //  o Dee funcionar são as do Android (notificação, bateria, início
+    //  automático, tela cheia de chamada, exibir sobre outros apps), e
+    //  elas não podem ser lidas nem alteradas por JavaScript. Estas duas
+    //  funções conversam com o plugin nativo (DeePermissionsPlugin.java)
+    //  para ler o estado real e abrir a tela certa do sistema.
+    //
+    //  Observação importante: nenhum app consegue CONCEDER essas
+    //  permissões por conta própria — o Android exige o toque do usuário
+    //  na tela do sistema. Por isso "open" só leva a pessoa até lá.
+    // ══════════════════════════════════════════════════════════
+    function pluginPermissoes() {
+        var p = global.Capacitor && global.Capacitor.Plugins;
+        return (p && p.DeePermissions) || null;
+    }
+
+    // Devolve um objeto com o estado de cada permissão, ou null quando não
+    // estamos no app instalado (site/PWA) — quem chama usa isso para saber
+    // que deve mostrar a versão web da tela.
+    DeeNative.checkPermissions = async function () {
+        if (!isNative) return null;
+        var plugin = pluginPermissoes();
+        if (!plugin || !plugin.check) return null;
+        try { return await plugin.check(); }
+        catch (e) { return null; }
+    };
+
+    // Abre a tela do sistema correspondente. "what" aceita:
+    // 'notifications' | 'battery' | 'overlay' | 'fullScreen' | 'autostart'
+    // qualquer outro valor abre a tela de detalhes do app.
+    DeeNative.openPermission = async function (what) {
+        if (!isNative) return false;
+        var plugin = pluginPermissoes();
+        if (!plugin || !plugin.open) return false;
+        try { await plugin.open({ what: what || 'app' }); return true; }
+        catch (e) { return false; }
+    };
+
     global.DeeNative = DeeNative;
 })(window);

@@ -56,7 +56,12 @@ export default {
       return json({ error: 'missing_fields' }, 400);
     }
     const isCall = type === 'call';
-    if (isCall && (!toUid || !callId)) {
+    // Aviso de que a chamada acabou antes de ser atendida — serve para
+    // fechar a tela de chamada no aparelho de quem ia receber, mesmo com
+    // o app dele totalmente fechado (ver notifyCallCanceledPush no
+    // index.html e o tratamento em DeeMessagingService.java).
+    const isCallCancel = type === 'call_cancel';
+    if ((isCall || isCallCancel) && (!toUid || !callId)) {
       return json({ error: 'missing_call_fields' }, 400);
     }
 
@@ -92,8 +97,48 @@ export default {
     //    - Mensagem normal: notification+data juntos — o próprio Android
     //      já mostra a notificação sozinho com o app fechado/em segundo
     //      plano, sem precisar de nada especial do lado nativo.
-    const results = await Promise.all(targets.map((t) => {
-      const message = isCall
+    //
+    //  CONTADOR DO ÍCONE (badgeCount)
+    //  Quando o app está fechado, quem desenha a notificação é o Android,
+    //  não o nosso código — então o número que aparece em cima do ícone só
+    //  pode vir pronto no push, no campo notification_count. Esse número
+    //  precisa existir no servidor, porque o contador do app (unreadCounts)
+    //  vive só na memória do aparelho de quem recebe, e o Worker não tem
+    //  como enxergar isso.
+    //  Como funciona: aqui somamos +1 em usuarios/{uid}.badgeCount a cada
+    //  mensagem e mandamos o total novo no push. Quando a pessoa abre o app
+    //  e lê, o próprio app grava o total real de volta nesse mesmo campo
+    //  (ver syncBadgeCountToServer no index.html) — é isso que faz o número
+    //  zerar em vez de só crescer para sempre.
+    //  Chamada não entra nessa conta: chamada perdida não é "mensagem não
+    //  lida", e o payload dela nem tem bloco notification.
+    const results = await Promise.all(targets.map(async (t) => {
+      let badge = 0;
+      if (!isCall && !isCallCancel) {
+        badge = await bumpBadgeCount(projectId, accessToken, t.uid);
+      }
+
+      const androidNotification = {
+        channel_id: 'dee_messages', // precisa bater com MSG_CHANNEL_ID no MainActivity.java
+        // Sem isto, a notificação montada pelo próprio Android (o que
+        // acontece quando o app está FECHADO) saía sem som — só vibrava.
+        // Com o app aberto quem desenha é o nosso código, que já tocava o
+        // som; por isso o problema só aparecia com o app fechado.
+        // 'default' usa o som padrão do canal dee_messages.
+        sound: 'default'
+      };
+      if (badge > 0) androidNotification.notification_count = badge;
+
+      const message = isCallCancel
+        ? {
+            token: t.fcmToken,
+            data: {
+              type: 'call_cancel',
+              callId: String(callId),
+            },
+            android: { priority: 'high' },
+          }
+        : isCall
         ? {
             token: t.fcmToken,
             data: {
@@ -118,7 +163,7 @@ export default {
             },
             android: {
               priority: 'high',
-              notification: { channel_id: 'dee_messages' }, // precisa bater com MSG_CHANNEL_ID no MainActivity.java
+              notification: androidNotification,
             },
           };
       return sendFcm(projectId, accessToken, message).then(() => true).catch(() => false);
@@ -260,6 +305,47 @@ async function getGroupFcmTokens(projectId, accessToken, groupId, fromUid) {
     }
   }
   return out;
+}
+
+// ── Firestore REST: soma +1 em usuarios/{uid}.badgeCount e devolve o
+//    total novo, pra mandar no push como notification_count.
+//
+//    Usamos um "fieldTransform" de increment em vez de ler-somar-gravar
+//    porque o incremento é feito pelo próprio servidor do Firestore, de
+//    forma atômica: se duas mensagens chegarem no mesmo instante, nenhuma
+//    sobrescreve a outra e o total fica certo.
+//
+//    Se qualquer coisa falhar, devolvemos 0 — nesse caso o push sai sem o
+//    campo notification_count e a notificação aparece normalmente, só sem
+//    o número. Ou seja: nunca deixamos o contador atrapalhar a entrega da
+//    mensagem em si. ──
+async function bumpBadgeCount(projectId, accessToken, uid) {
+  try {
+    const base = `projects/${projectId}/databases/(default)/documents`;
+    const resp = await fetch(`https://firestore.googleapis.com/v1/${base}:commit`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        writes: [
+          {
+            transform: {
+              document: `${base}/usuarios/${uid}`,
+              fieldTransforms: [
+                { fieldPath: 'badgeCount', increment: { integerValue: '1' } },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+    if (!resp.ok) return 0;
+    const out = await resp.json();
+    const novo = out?.writeResults?.[0]?.transformResults?.[0]?.integerValue;
+    const n = novo ? parseInt(novo, 10) : 0;
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch (e) {
+    return 0;
+  }
 }
 
 // ── Envia de fato a notificação pelo FCM HTTP v1 ──

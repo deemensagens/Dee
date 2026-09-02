@@ -442,6 +442,7 @@
     footer .flinks { display: flex; justify-content: center; gap: 16px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
     footer .flinks a:hover, footer .flinks a:active { color: var(--accent); }
     footer .fcopy { margin-top: 14px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--muted-dim); }
+    footer .fver  { margin-top: 6px;  font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--muted-dim); }
 
     /* ══════════ BANNER FLUTUANTE DE INSTALAÇÃO ══════════ */
     #install-fab {
@@ -1124,6 +1125,11 @@
             <a href="privacidade.html">Política de Privacidade</a>
         </div>
         <div class="fcopy">© <span id="fyear"></span> DEE — MENSAGENS</div>
+        <!-- Versão lida direto do sw.js (const CACHE), igual o "Sobre o Dee"
+             faz no index.html. Nunca precisa ser atualizada à mão aqui:
+             quando o sw.js for publicado com um CACHE novo, este número
+             acompanha sozinho. -->
+        <div class="fver">Versão <span id="landing-version">…</span></div>
     </footer>
 
 </div>
@@ -1163,12 +1169,12 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <h3>Download concluído!</h3>
-            <p>O <strong>DeeMensagens_v1.4.apk</strong> foi baixado. Siga os passos para instalar:</p>
+            <p>O <strong>DeeMensagens_v1.4.3.apk</strong> foi baixado. Siga os passos para instalar:</p>
 
             <div style="text-align:left;display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface,#111);border:1px solid var(--border,#222);border-radius:10px;padding:10px 12px;">
                     <div style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#04141a;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</div>
-                    <div style="font-size:12px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.4.apk</strong></div>
+                    <div style="font-size:12px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.4.3.apk</strong></div>
                 </div>
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface,#111);border:1px solid var(--border,#222);border-radius:10px;padding:10px 12px;">
                     <div style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#04141a;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">2</div>
@@ -1246,6 +1252,37 @@
 
 <script>
     document.getElementById('fyear').textContent = new Date().getFullYear();
+
+    // ══════════════════════════════════════════════════════════
+    //  VERSÃO NO RODAPÉ — lida do sw.js, igual o app faz
+    // ══════════════════════════════════════════════════════════
+    //  Mesma lógica do "Sobre o Dee" no index.html: em vez de deixar o
+    //  número escrito na mão aqui (que sempre acaba esquecido e
+    //  desatualizado), lemos o `const CACHE = '...'` do sw.js publicado.
+    //  Assim, toda vez que você publicar um sw.js com CACHE novo, este
+    //  rodapé acompanha sozinho, sem precisar editar a landing.
+    //
+    //  cache: 'no-store' + parâmetro com a data garantem que estamos lendo
+    //  o sw.js que está no ar agora, não uma cópia velha do navegador.
+    (function () {
+        var el = document.getElementById('landing-version');
+        if (!el) return;
+        fetch('./sw.js?_v=' + Date.now(), { cache: 'no-store' })
+            .then(function (res) {
+                if (!res.ok) throw new Error('sw.js indisponível');
+                return res.text();
+            })
+            .then(function (text) {
+                var m = String(text || '').match(/CACHE\s*=\s*['"]([^'"]+)['"]/);
+                if (m && m[1]) el.textContent = m[1];
+                else el.parentNode.style.display = 'none';
+            })
+            .catch(function () {
+                // Offline ou erro pontual: some com a linha inteira em vez
+                // de deixar um "…" perdido no rodapé.
+                el.parentNode.style.display = 'none';
+            });
+    })();
 
     // ── Mostra o link de download do .apk só em Android ──
     // Detecção simples por user agent — não precisa ser perfeita, é só
@@ -1334,7 +1371,7 @@
         document.getElementById('install-choice-overlay').classList.remove('show');
     }
    
-    var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.4/DeeMensagens_v1.4.apk'; 
+    var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.4.3/DeeMensagens_v1.4.3.apk'; 
 
     function chooseInstall(kind) {
         var note = document.getElementById('ic-note');

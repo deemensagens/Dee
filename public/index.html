@@ -213,13 +213,20 @@
         .perm-action { flex-shrink: 0; }
         .perm-btn { padding: 8px 14px; border-radius: 9px; border: none; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 11.5px; cursor: pointer; background: var(--surface3); color: var(--text); transition: .2s; white-space: nowrap; }
         .perm-btn:hover { box-shadow: 0 2px 12px rgba(0,229,204,.25); }
-        .perm-btn.granted { background: linear-gradient(135deg, var(--online), #00a854); color: #000; cursor: default; }
-        .perm-btn.denied { background: var(--surface3); color: var(--danger); cursor: default; }
+        /* Concedido: propositalmente NÃO parece mais um botão de ação.
+           Antes era outro gradiente sólido, quase igual ao "Permitir", e a
+           pessoa não percebia a diferença. Agora fica com fundo apagado,
+           borda e texto verdes — lê-se como um selo de "pronto", não como
+           algo em que ainda falta tocar. */
+        .perm-btn.granted { background: rgba(0,230,118,.12); border: 1.5px solid var(--online); color: var(--online); cursor: default; box-shadow: none; }
+        .perm-btn.granted:hover { box-shadow: none; }
+        .perm-btn.denied { background: rgba(255,59,92,.12); border: 1.5px solid var(--danger); color: var(--danger); cursor: default; box-shadow: none; }
         .perm-btn.pri { background: linear-gradient(135deg, var(--accent), #00b8a8); color: #000; }
         .perm-btn-all { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 14px; margin-bottom: 4px; background: linear-gradient(135deg, var(--accent), #00b8a8); color: #000; border: none; border-radius: 12px; font-family: 'Syne', sans-serif; font-weight: 900; font-size: 12.5px; letter-spacing: .4px; cursor: pointer; transition: box-shadow .2s, transform .1s, opacity .2s; box-shadow: 0 4px 20px rgba(0,229,204,.25); }
         .perm-btn-all:hover { box-shadow: 0 6px 28px rgba(0,229,204,.4); }
         .perm-btn-all:active { transform: scale(.98); }
-        .perm-btn-all.granted { background: linear-gradient(135deg, var(--online), #00a854); opacity: .85; cursor: default; }
+        .perm-btn-all.granted { background: rgba(0,230,118,.12); border: 1.5px solid var(--online); color: var(--online); opacity: 1; cursor: default; box-shadow: none; }
+        .perm-btn-all.granted:hover { box-shadow: none; }
         .perm-btn-all:disabled { opacity: .6; cursor: wait; }
         .perm-all-note { text-align: center; font-size: 11px; color: var(--muted); margin-bottom: 18px; line-height: 1.4; }
         .perm-ios-note { display: none; margin-top: 16px; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
@@ -1856,7 +1863,7 @@
             <strong id="about-dee-version">Verificando...</strong>
         </div>
         <div class="about-dee-update-status" id="about-dee-update-status"></div>
-        <button class="mbtn pri" id="about-dee-check-btn" style="width:100%;margin-top:12px;" onclick="checkForAppUpdate()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Procurar atualização</button>
+        <button class="mbtn pri" id="about-dee-check-btn" style="width:100%;margin-top:12px;" onclick="checkForAppUpdateManual()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Procurar atualização</button>
         <div class="mbtns"><button class="mbtn sec" onclick="closeModal('about-dee-modal')">Fechar</button></div>
     </div>
 </div>
@@ -1875,13 +1882,13 @@
             <div style="width:56px;height:56px;border-radius:16px;background:rgba(0,229,204,.15);border:1px solid rgba(0,229,204,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </div>
-            <h2 style="margin-bottom:6px;font-size:17px;">Baixando o DeeMensagens_v1.4.apk…</h2>
+            <h2 style="margin-bottom:6px;font-size:17px;">Baixando o DeeMensagens_v1.4.3.apk…</h2>
             <p class="about-dee-desc" style="margin-bottom:18px;font-size:12.5px;">O download já começou (11 MB, leva poucos segundos). Assim que terminar, siga os passos abaixo:</p>
 
             <div style="text-align:left;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                     <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</div>
-                    <div style="font-size:12.5px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.4.apk</strong>.</div>
+                    <div style="font-size:12.5px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.4.3.apk</strong>.</div>
                 </div>
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                     <div style="width:22px;height:22px;border-radius:50%;background:var(--accent2,var(--accent));color:#000;font-family:'Syne',sans-serif;font-weight:900;font-size:9.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">OU</div>
@@ -1913,7 +1920,7 @@
         <div style="text-align:left;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;font-size:12.5px;line-height:1.5;color:var(--text);">
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Abra <strong>Ajustes → Apps → Chrome → Notificações</strong> e ative tudo.</div>
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Ainda em Ajustes → Apps → Chrome, desative a <strong>otimização de bateria</strong> (às vezes chamada "economia de energia" ou "iniciar automaticamente").</div>
-            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Mesmo sem notificação, o arquivo já está salvo — abra o app <strong>Arquivos</strong> ou o <strong>Gerenciador de Downloads</strong> do celular e procure por <strong>DeeMensagens_v1.4.apk</strong> na pasta Downloads.</div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Mesmo sem notificação, o arquivo já está salvo — abra o app <strong>Arquivos</strong> ou o <strong>Gerenciador de Downloads</strong> do celular e procure por <strong>DeeMensagens_v1.4.3.apk</strong> na pasta Downloads.</div>
         </div>
         <div class="mbtns"><button class="mbtn sec" onclick="closeModal('dl-troubleshoot-modal')">Fechar</button></div>
     </div>
@@ -1925,7 +1932,7 @@
      tocar na pílula de novo. Some sozinha depois de um tempo. -->
 <div id="apk-dl-pill" style="display:none;position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;background:var(--surface,#111);border:1px solid var(--accent);border-radius:999px;padding:9px 16px;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;" onclick="reopenApkInstructions()">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" style="flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">Baixando DeeMensagens_v1.4.apk — toque p/ instalar</span>
+    <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">Baixando DeeMensagens_v1.4.3.apk — toque p/ instalar</span>
 </div>
 
 <div id="install-choice-modal" class="overlay">
@@ -2367,11 +2374,27 @@
     <div class="mcard">
         <h2 style="margin-bottom:14px;"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configurações</h2>
 
-        <div class="nset-perm-banner" id="nset-perm-banner">
+        <!-- ════ PERMISSÕES DO ANDROID — só aparece no app instalado ════
+             No site e no PWA quem manda são as permissões do navegador
+             (os blocos marcados com class="nset-web-only" abaixo). Já no
+             APK essas permissões do navegador não controlam nada de real:
+             o que faz o Dee funcionar são as permissões do Android. Por
+             isso, dentro do app, escondemos os blocos web e mostramos
+             estes aqui — cada linha lê o estado de verdade pelo plugin
+             nativo e leva direto para a tela certa do sistema.
+             Ver: renderNativePermRows() e DeePermissionsPlugin.java ════ -->
+        <div id="nset-native-perms" style="display:none;">
+            <div class="nset-note" style="margin-top:0;margin-bottom:14px;">
+                Estas são as permissões que o Dee precisa do Android para funcionar. O sistema exige que você confirme cada uma na tela dele — toque em "Abrir" para ir direto ao lugar certo.
+            </div>
+            <div id="nset-native-perms-rows"></div>
+        </div>
+
+        <div class="nset-perm-banner nset-web-only" id="nset-perm-banner">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> As notificações de chamada estão bloqueadas nas permissões do seu navegador. Habilite manualmente nas configurações do site para recebê-las.
         </div>
 
-        <div class="nset-row">
+        <div class="nset-row nset-web-only">
             <div class="nset-info">
                 <div class="nset-title">Ativar Notificações de Chamadas</div>
                 <div class="nset-desc">Receba um alerta mesmo com o app minimizado ou em outra aba.</div>
@@ -2383,7 +2406,7 @@
             </label>
         </div>
 
-        <div class="nset-row">
+        <div class="nset-row nset-web-only">
             <div class="nset-info">
                 <div class="nset-title">Ativar Notificações de Mensagens</div>
                 <div class="nset-desc">Mostra o nome de quem mandou e uma prévia da mensagem no topo da tela, mesmo com o Dee minimizado. Ao tocar, abre direto a conversa.</div>
@@ -2395,7 +2418,7 @@
             </label>
         </div>
 
-        <div class="nset-row">
+        <div class="nset-row nset-web-only">
             <div class="nset-info">
                 <div class="nset-title">Ativar Notificações de Status</div>
                 <div class="nset-desc">Avisa quando um amigo publica um novo status e quando alguém curte o seu, mesmo com o Dee minimizado. Ao tocar, abre direto o status.</div>
@@ -2407,7 +2430,7 @@
             </label>
         </div>
 
-        <div class="nset-row">
+        <div class="nset-row nset-web-only">
             <div class="nset-info">
                 <div class="nset-title">Ativar Notificações de Amigos</div>
                 <div class="nset-desc">Avisa quando alguém te envia um pedido de amizade, mesmo com o Dee minimizado. Ao tocar, abre direto a aba Amigos.</div>
@@ -2420,12 +2443,12 @@
         </div>
 
         <!-- ════ PERMISSÕES: câmera e microfone, mesmas da tela inicial ════ -->
-        <div class="nset-note" style="margin-top:0;margin-bottom:16px;">Estas são as mesmas permissões pedidas quando você criou sua conta. Você pode ativar ou desativar cada uma quando quiser — o Dee vai respeitar essa escolha ao tentar usar a câmera ou o microfone.</div>
+        <div class="nset-note nset-web-only" style="margin-top:0;margin-bottom:16px;">Estas são as mesmas permissões pedidas quando você criou sua conta. Você pode ativar ou desativar cada uma quando quiser — o Dee vai respeitar essa escolha ao tentar usar a câmera ou o microfone.</div>
 
-        <div class="nset-perm-banner" id="nset-perm-banner-mic">
+        <div class="nset-perm-banner nset-web-only" id="nset-perm-banner-mic">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> O microfone está bloqueado nas permissões do seu navegador. Habilite manualmente nas configurações do site para usá-lo no Dee.
         </div>
-        <div class="nset-row">
+        <div class="nset-row nset-web-only">
             <div class="nset-info">
                 <div class="nset-title">Microfone</div>
                 <div class="nset-desc">Usado para gravar áudios e em chamadas de voz/vídeo.</div>
@@ -2437,10 +2460,10 @@
             </label>
         </div>
 
-        <div class="nset-perm-banner" id="nset-perm-banner-cam">
+        <div class="nset-perm-banner nset-web-only" id="nset-perm-banner-cam">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> A câmera está bloqueada nas permissões do seu navegador. Habilite manualmente nas configurações do site para usá-la no Dee.
         </div>
-        <div class="nset-row">
+        <div class="nset-row nset-web-only">
             <div class="nset-info">
                 <div class="nset-title">Câmera</div>
                 <div class="nset-desc">Usada em chamadas de vídeo e para tirar fotos pelo app.</div>
@@ -2591,6 +2614,10 @@
     <div class="cfw-controls" id="lfw-host-controls">
         <button class="cfw-mute-btn" id="lfw-cam-btn" onclick="toggleLiveCam()" title="Câmera"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>
         <button class="cfw-mute-btn" id="lfw-mic-btn" onclick="toggleLiveMic()" title="Microfone"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
+        <!-- Trocar câmera na live: só faz sentido no app instalado (Android),
+             onde existe câmera traseira de verdade. No site/PWA o botão fica
+             escondido — quem exibe é showLiveFlipCamIfNative(). -->
+        <button class="cfw-mute-btn" id="lfw-flip-cam-btn" onclick="toggleLiveCamera()" title="Trocar câmera" style="display:none;"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
         <span style="flex:1;"></span>
         <span class="cfw-guest-tag">Você está ao vivo</span>
     </div>
@@ -3231,6 +3258,74 @@ function saveLastRead(key, ts) {
         map[key] = ts;
         localStorage.setItem(LAST_READ_KEY, JSON.stringify(map));
     } catch(e) {}
+    salvarLeiturasNaConta();
+}
+
+// ══════════════════════════════════════════════════════════
+//  REGISTRO DE LEITURA TAMBÉM NA CONTA (não só no aparelho)
+// ══════════════════════════════════════════════════════════
+//  Antes, o que você já tinha lido ficava guardado APENAS no
+//  localStorage do aparelho. Ao desinstalar e instalar de novo — ou ao
+//  entrar na mesma conta em outro celular — esse registro sumia junto,
+//  e todas as conversas voltavam a aparecer como se nunca tivessem sido
+//  abertas. As mensagens continuavam certas; o que estava errado era só
+//  a marcação de "não lida".
+//
+//  Agora o mesmo registro é espelhado no documento do usuário no
+//  Firestore. O aparelho continua sendo a fonte rápida (leitura
+//  instantânea, sem esperar rede), e a conta serve de backup: ao entrar,
+//  os dois são combinados pegando sempre a data MAIS RECENTE de cada
+//  conversa — assim nem o celular desfaz o que a conta sabia, nem o
+//  contrário.
+//
+//  A gravação é adiada em 2s (debounce) porque abrir uma conversa pode
+//  chamar saveLastRead várias vezes seguidas; sem isso seriam várias
+//  escritas no Firestore por uma única leitura.
+// ══════════════════════════════════════════════════════════
+var _leiturasTimer = null;
+function salvarLeiturasNaConta() {
+    if (typeof me === 'undefined' || !me || !me.uid) return;
+    clearTimeout(_leiturasTimer);
+    _leiturasTimer = setTimeout(function() {
+        try {
+            db.collection('usuarios').doc(me.uid)
+              .update({ lastReadMap: loadLastReadMap() })
+              .catch(function(){});
+        } catch (e) {}
+    }, 2000);
+}
+
+// Chamada no login: traz o registro salvo na conta e combina com o que
+// existe neste aparelho, mantendo sempre a data mais recente de cada lado.
+async function restaurarLeiturasDaConta() {
+    if (typeof me === 'undefined' || !me || !me.uid) return;
+    try {
+        var doc = await db.collection('usuarios').doc(me.uid).get();
+        var daConta = (doc.exists && doc.data() && doc.data().lastReadMap) || null;
+        if (!daConta) return;
+
+        var local = loadLastReadMap();
+        var mudou = false;
+        Object.keys(daConta).forEach(function(k) {
+            var remoto = Number(daConta[k]) || 0;
+            var atual  = Number(local[k])   || 0;
+            if (remoto > atual) { local[k] = remoto; mudou = true; }
+        });
+
+        if (mudou) {
+            localStorage.setItem(LAST_READ_KEY, JSON.stringify(local));
+            // Refaz os listeners de contagem com o registro já corrigido:
+            // sem isso, os selos continuariam mostrando os números antigos
+            // até chegar alguma mensagem nova.
+            try {
+                Object.keys(chatNotifUnsubs).forEach(function(k) {
+                    try { chatNotifUnsubs[k](); } catch (e) {}
+                    delete chatNotifUnsubs[k];
+                });
+                if (typeof syncGlobalMsgListeners === 'function') syncGlobalMsgListeners();
+            } catch (e) {}
+        }
+    } catch (e) { /* offline ou sem permissão: seguimos só com o local */ }
 }
 // Roda só UMA VEZ (por aparelho): na primeira vez que este recurso entra em
 // ação, marca "lido até agora" pra todas as conversas já existentes, em vez
@@ -3279,6 +3374,45 @@ function updateUnreadGlobalUI() {
     }
     updateFaviconBadge(total);
     updateTabBadges();
+    syncBadgeCountToServer(total);
+}
+
+// ══════════════════════════════════════════════════════════
+//  CONTADOR DO ÍCONE NO APP INSTALADO (APK)
+// ══════════════════════════════════════════════════════════
+//  No app instalado, quando ele está FECHADO, quem desenha a notificação
+//  é o Android — nosso código nem chega a rodar. Por isso o número que
+//  aparece em cima do ícone precisa vir pronto dentro do push, e o
+//  servidor (Cloudflare Worker) é quem monta esse push.
+//
+//  Só que o contador daqui (unreadCounts) vive na memória deste
+//  aparelho: o Worker não tem como enxergar. A ponte é o campo
+//  usuarios/{uid}.badgeCount no Firestore:
+//    - o Worker soma +1 nele a cada mensagem enviada pra você;
+//    - esta função grava o total REAL de volta sempre que você lê algo.
+//  Sem a segunda parte, o número só cresceria e nunca zeraria.
+//
+//  Detalhes de implementação:
+//    - Espera 1,2s antes de gravar (debounce). Abrir uma conversa com
+//      várias mensagens dispara esta função várias vezes seguidas; sem
+//      isso seriam várias escritas no Firestore por um único toque.
+//    - Não grava se o valor não mudou desde a última vez.
+//    - Falha silenciosa: se a escrita não der certo (offline, por
+//      exemplo), o app continua funcionando normalmente — só o número do
+//      ícone fica desatualizado até a próxima sincronização.
+// ══════════════════════════════════════════════════════════
+var badgeSyncTimer = null;
+var lastBadgeSynced = -1;
+function syncBadgeCountToServer(total) {
+    if (typeof me === 'undefined' || !me || !me.uid) return;
+    if (total === lastBadgeSynced) return;
+    clearTimeout(badgeSyncTimer);
+    badgeSyncTimer = setTimeout(function() {
+        lastBadgeSynced = total;
+        db.collection('usuarios').doc(me.uid)
+          .update({ badgeCount: total })
+          .catch(function() { lastBadgeSynced = -1; }); // deixa tentar de novo depois
+    }, 1200);
 }
 // Conta quantas CONVERSAS (não mensagens) têm pendências: quantos chats
 // individuais têm mensagem não lida e quantos grupos têm mensagem não lida,
@@ -3503,7 +3637,7 @@ window.addEventListener('appinstalled', function() {
 var DEE_FULL_ANDROID_URL = ''; // ex: 'https://play.google.com/store/apps/details?id=br.com.deemensagens.app'
 var DEE_FULL_IOS_URL     = ''; // ex: 'https://apps.apple.com/app/idXXXXXXXXX'
 
-var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.4/DeeMensagens_v1.4.apk';
+var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.4.3/DeeMensagens_v1.4.3.apk';
 // ── Esse valor acima é só o FALLBACK (usado se a chamada à API do GitHub
 // abaixo falhar, ex.: sem internet no momento do clique). Na prática, o
 // link de download real passa a ser sempre buscado dinamicamente da
@@ -4499,11 +4633,33 @@ async function refreshPermButtonsUI() {
     var savedNotif = loadNotifSettings();
     if (savedNotif && savedNotif.micEnabled) applyPermBtnState(micBtn, 'granted');
     if (savedNotif && savedNotif.camEnabled) applyPermBtnState(camBtn, 'granted');
+
+    // ══════════════════════════════════════════════════════════
+    //  APP INSTALADO: lemos o estado REAL do Android
+    // ══════════════════════════════════════════════════════════
+    //  Antes dependíamos do que ficou salvo localmente da última vez que
+    //  getUserMedia funcionou. O problema: se a pessoa concedesse a
+    //  permissão pela tela do sistema (ou já a tivesse de antes), o app
+    //  não ficava sabendo e o botão continuava escrito "Permitir" — que
+    //  é justamente o motivo de parecer que nada mudava depois de
+    //  permitir. Agora perguntamos direto ao Android, pela ponte nativa,
+    //  e o botão passa a refletir a verdade.
+    // ══════════════════════════════════════════════════════════
+    if (isNativeAndroid && window.DeeNative && window.DeeNative.checkPermissions) {
+        try {
+            var real = await window.DeeNative.checkPermissions();
+            if (real) {
+                applyPermBtnState(micBtn, real.microphone ? 'granted' : 'prompt');
+                applyPermBtnState(camBtn, real.camera ? 'granted' : 'prompt');
+                if (real.notifications) applyPermBtnState(notifBtn, 'granted');
+            }
+        } catch (e) { /* sem a ponte, seguimos com o estado salvo acima */ }
+    }
+
     // A Permissions API (navigator.permissions.query) tem suporte instável
     // pra 'microphone'/'camera' na WebView do Android e às vezes devolve
-    // 'prompt' mesmo já concedida — no app nativo confiamos só no que foi
-    // salvo localmente (acima) pra não "desmarcar" um botão que já
-    // funcionou de verdade.
+    // 'prompt' mesmo já concedida — no app nativo confiamos na ponte
+    // nativa acima, que lê o estado verdadeiro do sistema.
     if (!isNativeAndroid) {
         setPermBtnFromQuery('microphone', 'perm-btn-mic');
         setPermBtnFromQuery('camera', 'perm-btn-cam');
@@ -4867,7 +5023,107 @@ function openNotifSettings() {
     updateNotifPermBanner();
     refreshMediaPermSwitches();
     renderBlockedList();
+    aplicarModoDeConfiguracoes();
     openModal('notif-settings-modal');
+}
+
+// ══════════════════════════════════════════════════════════
+//  CONFIGURAÇÕES: versão do navegador x versão do app instalado
+// ══════════════════════════════════════════════════════════
+//  Site e PWA continuam exatamente como sempre foram: os interruptores
+//  de notificação, microfone e câmera ali controlam permissões reais do
+//  navegador, que é de onde essas coisas dependem.
+//
+//  Dentro do app instalado, esses mesmos interruptores não controlam
+//  nada de real — quem manda são as permissões do Android. Então lá
+//  escondemos os blocos do navegador e mostramos, no lugar, as
+//  permissões que de fato fazem o app funcionar, cada uma com o estado
+//  verdadeiro lido do sistema.
+//
+//  O resto da tela (toques, apenas vibrar, usuários bloqueados) serve
+//  aos dois e continua aparecendo em ambos.
+// ══════════════════════════════════════════════════════════
+async function aplicarModoDeConfiguracoes() {
+    var nativo = !!(window.DeeNative && window.DeeNative.isNative);
+    var blocoNativo = document.getElementById('nset-native-perms');
+
+    document.querySelectorAll('.nset-web-only').forEach(function(el) {
+        el.style.display = nativo ? 'none' : '';
+    });
+    if (blocoNativo) blocoNativo.style.display = nativo ? '' : 'none';
+    if (!nativo) return;
+
+    var estado = null;
+    try { estado = await window.DeeNative.checkPermissions(); } catch (e) {}
+    renderNativePermRows(estado);
+}
+
+function renderNativePermRows(estado) {
+    var box = document.getElementById('nset-native-perms-rows');
+    if (!box) return;
+
+    if (!estado) {
+        box.innerHTML = '<div class="nset-desc" style="padding:8px 2px;">Não foi possível ler as permissões agora. Feche e abra as Configurações para tentar de novo.</div>';
+        return;
+    }
+
+    // "ok: null" = o Android não permite consultar esse estado (é o caso
+    // do Início automático, que nenhuma ROM expõe). Nesses casos mostramos
+    // o atalho sem afirmar se está ligado ou não, em vez de chutar.
+    var linhas = [
+        { id: 'notifications', titulo: 'Notificações',            desc: 'Sem isto o Dee não consegue avisar de mensagens e chamadas.', ok: estado.notifications },
+        { id: 'battery',       titulo: 'Bateria sem restrição',   desc: 'Impede o sistema de encerrar o Dee e travar as notificações.', ok: estado.battery },
+        { id: 'overlay',       titulo: 'Exibir sobre outros apps', desc: 'Faz a chamada cobrir a tela mesmo enquanto você usa outro app.', ok: estado.overlay },
+        { id: 'fullScreen',    titulo: 'Tela cheia nas chamadas', desc: 'Permite a chamada aparecer como uma ligação, em tela cheia.',   ok: estado.fullScreen },
+        { id: 'app',           titulo: 'Câmera e microfone',      desc: 'Necessários para chamadas de vídeo, áudios e fotos.',          ok: (estado.camera && estado.microphone) },
+        { id: 'app',           titulo: 'Localização',             desc: 'Usada só quando você escolhe enviar sua localização numa conversa.', ok: estado.location }
+    ];
+
+    if (estado.autostartSupported) {
+        linhas.splice(2, 0, {
+            id: 'autostart', titulo: 'Início automático',
+            desc: 'Seu aparelho tem um controle extra de bateria. Sem ele, as notificações param quando o app é fechado.',
+            ok: null
+        });
+    }
+
+    var html = '';
+    linhas.forEach(function(l) {
+        var etiqueta, cor;
+        if (l.ok === true)       { etiqueta = 'Permitido'; cor = 'var(--online)'; }
+        else if (l.ok === false) { etiqueta = 'Pendente';  cor = 'var(--danger)'; }
+        else                     { etiqueta = 'Verificar'; cor = 'var(--muted)'; }
+
+        html += '<div class="nset-row">' +
+                    '<div class="nset-info">' +
+                        '<div class="nset-title">' + esc(l.titulo) +
+                            ' <span style="font-size:11px;font-weight:700;color:' + cor + ';margin-left:6px;">' + etiqueta + '</span>' +
+                        '</div>' +
+                        '<div class="nset-desc">' + esc(l.desc) + '</div>' +
+                    '</div>' +
+                    '<button class="mbtn sec" style="padding:6px 14px;font-size:12px;white-space:nowrap;" ' +
+                        'onclick="abrirPermissaoNativa(\'' + l.id + '\')">' +
+                        (l.ok === true ? 'Rever' : 'Abrir') +
+                    '</button>' +
+                '</div>';
+    });
+
+    box.innerHTML = html;
+}
+
+async function abrirPermissaoNativa(what) {
+    if (!window.DeeNative || !window.DeeNative.openPermission) return;
+    var ok = await window.DeeNative.openPermission(what);
+    if (!ok) { notify('Não foi possível abrir as configurações do sistema', 'warn'); return; }
+
+    // Quando a pessoa voltar da tela do sistema, relemos o estado para os
+    // rótulos refletirem o que ela acabou de fazer.
+    var aoVoltar = function() {
+        document.removeEventListener('visibilitychange', aoVoltar);
+        if (document.visibilityState !== 'visible') return;
+        setTimeout(function() { aplicarModoDeConfiguracoes(); }, 400);
+    };
+    document.addEventListener('visibilitychange', aoVoltar);
 }
 
 // ── MODERAÇÃO: lista de usuários bloqueados, com opção de desbloquear ──
@@ -5874,6 +6130,36 @@ function notifyIncomingCallPush(toUid, callIdVal, hasVideo) {
     }).catch(function(){});
 }
 
+// ══════════════════════════════════════════════════════════
+//  AVISAR QUE A CHAMADA ACABOU (para fechar a tela do outro lado)
+// ══════════════════════════════════════════════════════════
+//  Com o app do destinatário FECHADO, quem desenhou a tela de chamada
+//  foi o push — não o app. Então, quando quem ligou desiste, o
+//  documento no Firestore muda para "ended", mas do outro lado não há
+//  nenhum código rodando para perceber isso: a tela ficava lá, tocando,
+//  até a pessoa tocar em alguma coisa. E se ela tocasse em "Atender",
+//  entrava numa chamada que já não existia mais.
+//
+//  Este segundo push resolve: avisa o aparelho que aquela chamada
+//  terminou, e o lado nativo encerra a tela e a notificação.
+// ══════════════════════════════════════════════════════════
+function notifyCallCanceledPush(toUid, callIdVal) {
+    if (!me || !DEE_PUSH_WORKER_URL || DEE_PUSH_WORKER_URL.indexOf('SEU-SUBDOMINIO') !== -1) return;
+    if (!toUid || !callIdVal) return;
+
+    fetch(DEE_PUSH_WORKER_URL + '/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Dee-Secret': DEE_PUSH_SHARED_SECRET },
+        body: JSON.stringify({
+            fromUid: me.uid,
+            fromName: me.nome || 'Alguém',
+            toUid: toUid,
+            type: 'call_cancel',
+            callId: callIdVal
+        })
+    }).catch(function(){});
+}
+
 // Se o app foi aberto porque a pessoa compartilhou algo de OUTRO app (ex.:
 // comprovante do banco, foto da galeria) e escolheu o Dee na folha de
 // compartilhamento do Android, a URL chega com ?share=1 (ver o redirect em
@@ -5903,6 +6189,7 @@ function initApp() {
     listenGroups();
     listenConvActivity();
     listenBlockedUsers();
+    restaurarLeiturasDaConta();
     checkForAppUpdate();
     listenAds();
     listenStatuses();
@@ -9735,8 +10022,7 @@ function watchLiveAsViewer() {
 
 // ── Alternar câmera/mic durante a transmissão (não encerra nada, reversível
 //    na hora — sem pedir permissão de novo, diferente de minimizar). ──
-function toggleLiveCam() {
-    if (!liveIsHost || !liveLocalStream || liveMinimized) return;
+function toggleLiveCam() {    if (!liveIsHost || !liveLocalStream || liveMinimized) return;
     var t = liveLocalStream.getVideoTracks()[0];
     if (!t) return;
     liveCamOn = !liveCamOn;
@@ -9744,6 +10030,76 @@ function toggleLiveCam() {
     var ref = liveMsgRef();
     if (ref) ref.update({ 'liveState.camOn': liveCamOn }).catch(function(){});
     updateLiveHostControlsUI();
+}
+
+// ── Trocar câmera (frontal/traseira) durante uma transmissão ao vivo.
+//    Existe só no app instalado; no site/PWA o botão fica escondido.
+//
+//    Mesma correção da chamada de vídeo: no Android a câmera é exclusiva,
+//    então é obrigatório PARAR a atual antes de abrir a outra — senão o
+//    sistema devolve a mesma câmera de novo. Depois de trocar, a nova
+//    track é enviada para todos os espectadores conectados via
+//    replaceTrack, sem derrubar nem renegociar nenhuma conexão.
+let liveCamFacing = 'user';
+async function toggleLiveCamera() {
+    if (!liveIsHost || !liveLocalStream || liveMinimized) return;
+
+    var newFacing = liveCamFacing === 'user' ? 'environment' : 'user';
+    var oldTrack  = liveLocalStream.getVideoTracks()[0];
+    var estavaLigada = liveCamOn;
+
+    if (oldTrack) oldTrack.stop();
+
+    var newStream = null;
+    try {
+        newStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { exact: newFacing } } });
+    } catch (e) {
+        try {
+            newStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: newFacing } });
+        } catch (e2) { newStream = null; }
+    }
+
+    // Se a nova câmera não abriu, recupera a anterior para a live não
+    // ficar sem imagem no meio da transmissão.
+    if (!newStream) {
+        try { newStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: liveCamFacing } }); }
+        catch (e) { notify('Não foi possível trocar de câmera', 'warn'); return; }
+        notify('Não foi possível trocar de câmera', 'warn');
+    } else {
+        liveCamFacing = newFacing;
+    }
+
+    var newTrack = newStream.getVideoTracks()[0];
+    if (!newTrack) return;
+
+    // Respeita o estado do botão de câmera: se estava desligada, a nova
+    // entra desligada também, em vez de voltar a transmitir sozinha.
+    newTrack.enabled = estavaLigada;
+
+    // Repassa a nova track para cada espectador conectado.
+    Object.keys(livePeerConns || {}).forEach(function(k) {
+        var pc = livePeerConns[k];
+        if (!pc || !pc.getSenders) return;
+        var sender = pc.getSenders().find(function(s) { return s.track && s.track.kind === 'video'; });
+        if (sender) { try { sender.replaceTrack(newTrack); } catch (e) {} }
+    });
+
+    if (oldTrack) liveLocalStream.removeTrack(oldTrack);
+    liveLocalStream.addTrack(newTrack);
+
+    var localEl = document.getElementById('lfw-local-video') || document.getElementById('lfw-video');
+    if (localEl) {
+        localEl.srcObject = liveLocalStream;
+        localEl.classList.toggle('mirror', liveCamFacing === 'user');
+    }
+}
+
+// Mostra o botão de trocar câmera da live só no app instalado.
+function showLiveFlipCamIfNative() {
+    var b = document.getElementById('lfw-flip-cam-btn');
+    if (!b) return;
+    var nativo = !!(window.DeeNative && window.DeeNative.isNative);
+    b.style.display = nativo ? '' : 'none';
 }
 
 function toggleLiveMic() {
@@ -9762,6 +10118,7 @@ function updateLiveHostControlsUI() {
     var micBtn = document.getElementById('lfw-mic-btn');
     if (camBtn) camBtn.classList.toggle('off', !liveCamOn);
     if (micBtn) micBtn.classList.toggle('off', !liveMicOn);
+    showLiveFlipCamIfNative();
     updateLiveCamOffOverlay(liveCamOn, null);
 }
 
@@ -10195,8 +10552,8 @@ function ensureBubbleMap(container, lat, lng) {
     var entry = locBubbleMaps.get(container);
     if (entry) { entry.map.setView([lat, lng]); entry.marker.setLatLng([lat, lng]); return entry; }
     var map = L.map(container, { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false, tap: false, attributionControl: true }).setView([lat, lng], 15);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap, © CARTO', maxZoom: 19, subdomains: 'abcd', detectRetina: true
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19, detectRetina: true
     }).addTo(map);
     var marker = L.marker([lat, lng]).addTo(map);
     entry = { map: map, marker: marker };
@@ -10311,8 +10668,8 @@ function ensureBubbleRouteMap(container, stops, geometry) {
     if (entry) return entry;
     if (!stops || stops.length < 1) return;
     var map = L.map(container, { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false, tap: false, attributionControl: true });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap, © CARTO', maxZoom: 19, subdomains: 'abcd', detectRetina: true
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19, detectRetina: true
     }).addTo(map);
     stops.forEach(function(s, i) {
         var icon = L.divIcon({ className: '', html: '<div class="locp-route-pin">' + (i + 1) + '</div>', iconSize: [22, 22], iconAnchor: [11, 11] });
@@ -10367,8 +10724,8 @@ function openLocationPickerModal() {
                 keyboard: true,
                 tap: true
             }).setView([startLat, startLng], startZoom);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '© OpenStreetMap, © CARTO', maxZoom: 20, subdomains: 'abcd', detectRetina: true
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap', maxZoom: 19, detectRetina: true
             }).addTo(locpMap);
             locpMarker = L.marker([startLat, startLng], { draggable: true }).addTo(locpMap);
             locpMarker.on('dragend', function() { var p = locpMarker.getLatLng(); onLocpPointChosen(p.lat, p.lng); });
@@ -12059,6 +12416,14 @@ async function endCall() {
     // é "completed" com a duração até agora.
     if (callRole === 'caller') {
         logCallToChat(callState === 'active' || callState === 'connecting' ? 'completed' : 'canceled');
+
+        // Se ainda estava tocando do outro lado (ninguém atendeu), avisa o
+        // aparelho dele para fechar a tela de chamada. Sem isso, com o app
+        // fechado lá, a tela ficaria aberta indefinidamente — não há código
+        // rodando naquele aparelho para notar a mudança no Firestore.
+        if (callState !== 'active' && callState !== 'connecting') {
+            notifyCallCanceledPush(callPartnerUid, id);
+        }
     }
     try { await db.collection('calls').doc(id).update({ status: 'ended', updatedAt: Date.now() }); }
     catch(e) { console.warn('Falha ao avisar o outro lado que a chamada encerrou:', e); }
@@ -12288,21 +12653,61 @@ async function toggleCallSpeaker() {
 async function toggleCallCamera() {
     if (callType !== 'video' || !callLocalStream) return;
     var newFacing = callCamFacing === 'user' ? 'environment' : 'user';
-    var newStream;
+
+    var oldTrack = callLocalStream.getVideoTracks()[0];
+
+    // ══════════════════════════════════════════════════════════
+    //  POR QUE PARAR A CÂMERA ANTIGA ANTES DE PEDIR A NOVA
+    // ══════════════════════════════════════════════════════════
+    //  No Android a câmera é um recurso exclusivo: enquanto a frontal
+    //  estiver aberta, pedir a traseira ou falha ou devolve a MESMA
+    //  câmera de novo — que era exatamente o sintoma (o botão existia,
+    //  mas a imagem continuava frontal). A tela de tirar foto sempre
+    //  funcionou justamente porque ela para o stream antes de trocar.
+    //
+    //  Se a nova câmera falhar por qualquer motivo, reabrimos a antiga
+    //  logo abaixo, para o usuário nunca ficar sem vídeo na chamada.
+    // ══════════════════════════════════════════════════════════
+    if (oldTrack) oldTrack.stop();
+
+    var newStream = null;
     try {
-        newStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: newFacing } });
-    } catch(e) {
-        notify('Não foi possível trocar de câmera: ' + friendlyError(e), 'warn');
+        newStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { exact: newFacing } } });
+    } catch (e) {
+        // 'exact' falha em aparelhos sem a câmera pedida (ex.: sem traseira).
+        // Tentamos de novo sem o 'exact', que aceita a câmera mais próxima.
+        try {
+            newStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: newFacing } });
+        } catch (e2) {
+            newStream = null;
+        }
+    }
+
+    if (!newStream) {
+        // Não conseguiu a nova: recupera a câmera anterior para não deixar
+        // a chamada sem imagem nenhuma.
+        try {
+            var back = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: callCamFacing } });
+            var backTrack = back.getVideoTracks()[0];
+            if (backTrack && callPC) {
+                var s0 = callPC.getSenders().find(function(s) { return s.track && s.track.kind === 'video'; });
+                if (s0) { try { await s0.replaceTrack(backTrack); } catch(e) {} }
+            }
+            if (oldTrack) callLocalStream.removeTrack(oldTrack);
+            if (backTrack) callLocalStream.addTrack(backTrack);
+            setupLocalVideoPreview();
+        } catch (e) {}
+        notify('Não foi possível trocar de câmera', 'warn');
         return;
     }
+
     var newTrack = newStream.getVideoTracks()[0];
-    var oldTrack = callLocalStream.getVideoTracks()[0];
 
     if (callPC) {
         var sender = callPC.getSenders().find(function(s) { return s.track && s.track.kind === 'video'; });
         if (sender) { try { await sender.replaceTrack(newTrack); } catch(e) {} }
     }
-    if (oldTrack) { oldTrack.stop(); callLocalStream.removeTrack(oldTrack); }
+    if (oldTrack) callLocalStream.removeTrack(oldTrack);
     callLocalStream.addTrack(newTrack);
     callCamFacing = newFacing;
     setupLocalVideoPreview();
@@ -12653,7 +13058,15 @@ function openAboutDeeModal() {
 // com a baseline. Se for igual, avisa que já está atualizado; se for
 // diferente, pergunta antes de atualizar (mesmo mecanismo do "puxar para
 // atualizar": limpa Cache Storage + desregistra o Service Worker + recarrega).
-async function checkForAppUpdate() {
+// ══════════════════════════════════════════════════════════
+//  ATENÇÃO AO NOME DESTA FUNÇÃO
+//  Ela já se chamou "checkForAppUpdate", igual à que roda no login —
+//  e como esta é declarada depois, sobrescrevia a outra. Resultado: a
+//  abertura do app executava a checagem MANUAL e mostrava o aviso
+//  "você já está na versão mais recente" toda vez, mesmo sem ninguém
+//  ter pedido. Renomeada para deixar claro que é a do botão.
+// ══════════════════════════════════════════════════════════
+async function checkForAppUpdateManual() {
     var btn = document.getElementById('about-dee-check-btn');
     var statusEl = document.getElementById('about-dee-update-status');
     var verEl = document.getElementById('about-dee-version');
