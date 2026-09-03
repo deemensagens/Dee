@@ -62,6 +62,32 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- ══ LINKS DO DEE ABREM DENTRO DO PRÓPRIO APP ══
+                 Sem isto, tocar num link de perfil compartilhado
+                 (.../index.html?perfil=UID) abria o navegador, mesmo com o
+                 Dee instalado. E como o navegador não tem a sessão do app,
+                 a pessoa caía na tela de login em vez de ver o perfil.
+
+                 Com este filtro o Android entrega o link para o próprio
+                 Dee, que já está logado, e o perfil abre na hora (quem
+                 recebe e trata o link é o initNativeProfileDeepLink, no
+                 index.html).
+
+                 O autoVerify="true" faz o Android checar o arquivo
+                 .well-known/assetlinks.json publicado no site: quando ele
+                 confere, o link abre direto no app, sem perguntar nada.
+                 Enquanto o arquivo não estiver publicado, o app aparece
+                 como opção em "Abrir links compatíveis", nas informações
+                 do Dee — nunca deixa de funcionar, só pede um toque a
+                 mais na primeira vez. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="dee-mensagens.web.app" />
+                <data android:scheme="https" android:host="dee-mensagens.firebaseapp.com" />
+            </intent-filter>
+
             <meta-data
                 android:name="android.max_aspect"
                 android:value="2.4" />

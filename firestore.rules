@@ -517,7 +517,14 @@ service cloud.firestore {
     // admin() pode limpar se precisar de uma faxina manual.
     // =========================
     match /social_notifications/{id} {
-      allow read: if signedIn() && resource.data.toUid == request.auth.uid;
+      // Quem RECEBEU o aviso lê o próprio aviso, como sempre. Quem ENVIOU
+      // também pode consultar os que criou — é o que permite, ao excluir
+      // uma postagem, apagar junto os avisos que ela gerou nos amigos.
+      // Sem isso ficava uma bolinha vermelha em cima de "Comunidade"
+      // apontando para uma postagem que não existe mais. Não expõe nada
+      // novo: é o próprio conteúdo que a pessoa acabou de enviar.
+      allow read: if signedIn() &&
+        (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid);
       allow create: if signedIn() &&
         request.resource.data.fromUid == request.auth.uid &&
         request.resource.data.toUid != request.auth.uid;

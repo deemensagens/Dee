@@ -117,5 +117,39 @@
         catch (e) { return false; }
     };
 
+    // ══════════════════════════════════════════════════════════
+    //  Tela apagada com o rosto encostado (chamada de voz)
+    //  ──────────────────────────────────────────────────────────
+    //  Nenhuma página web consegue apagar a tela do celular nem desligar
+    //  o toque — isso é coisa que só o Android faz. Por isso quem executa
+    //  é o plugin nativo (DeeProximityPlugin.java), e estas duas funções
+    //  são só o atalho para chamá-lo de dentro do JavaScript da chamada.
+    //
+    //  No site e no PWA elas simplesmente não fazem nada e devolvem false,
+    //  então o comportamento por lá continua exatamente o mesmo de sempre.
+    // ══════════════════════════════════════════════════════════
+    function pluginProximidade() {
+        var p = global.Capacitor && global.Capacitor.Plugins;
+        return (p && p.DeeProximity) || null;
+    }
+
+    DeeNative.startProximityLock = async function () {
+        if (!isNative) return false;
+        var plugin = pluginProximidade();
+        if (!plugin || !plugin.start) return false;
+        try {
+            var r = await plugin.start();
+            return !!(r && r.supported);
+        } catch (e) { return false; }
+    };
+
+    DeeNative.stopProximityLock = async function () {
+        if (!isNative) return false;
+        var plugin = pluginProximidade();
+        if (!plugin || !plugin.stop) return false;
+        try { await plugin.stop(); return true; }
+        catch (e) { return false; }
+    };
+
     global.DeeNative = DeeNative;
 })(window);

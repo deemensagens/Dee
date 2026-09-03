@@ -491,6 +491,38 @@
         .reaction-chip.mine { background: var(--me); border-color: var(--accent); }
         .reaction-chip .rc-count { font-size: 11px; font-weight: 800; color: var(--accent); font-family: 'Syne', sans-serif; }
 
+        /* ── CURTIDA NA MENSAGEM ──
+           Estas três classes são criadas pelo JavaScript (ver renderLikes),
+           mas nunca tiveram regra nenhuma aqui: a folha de estilo só tinha
+           as regras antigas de "reactions", de uma versão anterior. Sem
+           estilo, o <button> da curtida era desenhado pelo próprio Android
+           com a aparência crua dele — um retângulo cinza/escuro sem forma,
+           que aparecia solto dentro da conversa como se a tela estivesse
+           falhando. */
+        .likes-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; padding: 0 4px; position: relative; }
+        .mwrap.me   .likes-row { justify-content: flex-end; }
+        .mwrap.them .likes-row { justify-content: flex-start; }
+        .like-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 3px 9px; font-size: 12px; font-family: inherit; color: var(--text); cursor: pointer; user-select: none; line-height: 1.3; transition: transform .15s, border-color .15s; }
+        .like-chip:hover { transform: scale(1.06); border-color: var(--accent); }
+        .like-chip.mine { background: var(--me); border-color: var(--accent); }
+        .like-chip .lc-count { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 11px; color: var(--accent); }
+
+        /* ── "TOQUE PARA CARREGAR" (mídia guardada em partes) e barra de
+           progresso de envio/download. Mesma história das classes acima:
+           existiam só no JavaScript (renderVideoDownloadPh), sem nenhuma
+           regra de estilo, então vinham com a aparência padrão do sistema. */
+        .video-download-ph { display: flex; align-items: center; gap: 10px; padding: 4px 2px; cursor: pointer; }
+        .vd-icon { width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0; background: rgba(0,229,204,.1); display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 16px; }
+        .vd-info { flex: 1; min-width: 0; }
+        .vd-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .vd-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+        .vd-btn { flex-shrink: 0; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 11px; color: var(--accent); background: rgba(0,229,204,.1); border: 1px solid rgba(0,229,204,.2); padding: 6px 10px; border-radius: 8px; white-space: nowrap; }
+        .upload-progress { margin-top: 8px; }
+        .up-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+        .up-bar-bg { width: 100%; height: 4px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+        .up-bar-fill { height: 100%; width: 0%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .2s ease; }
+        .up-pct { font-size: 10.5px; color: var(--muted); text-align: right; margin-top: 3px; font-variant-numeric: tabular-nums; }
+
         /* ── MEDIA ── */
         .media-img { max-width: 100%; width: auto; max-height: 260px; border-radius: 10px; display: block; cursor: zoom-in; }
 
@@ -509,7 +541,14 @@
         .share-target-row { display: flex; align-items: center; gap: 10px; padding: 8px 4px; cursor: pointer; border-radius: 8px; }
         .share-target-row:hover { background: var(--surface2); }
         .share-target-row input { flex-shrink: 0; }
-        .share-target-row label { flex: 1; cursor: pointer; font-size: 13px; }
+        .share-target-row label { flex: 1; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+        /* Foto de quem vai receber. Só o nome não bastava: com nomes
+           parecidos dava pra mandar pra pessoa errada sem perceber —
+           a foto é o que diferencia de olho, na hora. */
+        .share-av { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; overflow: hidden; background: var(--surface2); border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 900; font-size: 14px; color: var(--accent); }
+        .share-av.grp { color: var(--accent2); }
+        .share-av .av-img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+        .share-target-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
         /* ── IMAGE VIEWER ── */
         #img-viewer { position: fixed; inset: 0; background: rgba(0,0,0,.94); z-index: 1000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); flex-direction: column; gap: 12px; padding: 20px; }
@@ -533,10 +572,22 @@
         .ap-track { position: relative; height: 28px; display: flex; align-items: center; cursor: pointer; }
         .ap-rail  { width: 100%; height: 3px; border-radius: 2px; background: rgba(255,255,255,.08); position: relative; overflow: hidden; }
         .ap-fill  { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; width: 0%; }
-        .ap-thumb { position: absolute; top: 50%; transform: translateY(-50%); left: 0%; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); margin-left: -6px; }
+        .ap-thumb { position: absolute; top: 50%; left: 0%; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); }
         .ap-waveform { display: flex; align-items: center; gap: 2px; height: 20px; overflow: hidden; }
-        .ap-bar { width: 2px; border-radius: 2px; flex-shrink: 0; background: rgba(0,229,204,.25); }
+        .ap-bar { width: 2px; min-width: 2px; flex: 0 0 2px; border-radius: 2px; background: rgba(0,229,204,.25); transform: translateZ(0); }
         .ap-bar.active { background: var(--accent); }
+        /* ── BLINDAGEM VISUAL DO PLAYER DE ÁUDIO ──
+           O <audio> aqui é só o "motor" que toca o som: quem desenha o
+           player (botão, tempo, barra e ondas) é o HTML/CSS acima. Em
+           várias WebViews do Android esse <audio> ainda reservava uma
+           caixa própria e chegava a pintar restos dos controles nativos
+           dentro dela — era isso que aparecia como blocos escuros soltos
+           em cima do desenho. Escondê-lo não muda nada na reprodução.
+           O "isolation" garante que o player tenha a própria camada de
+           desenho, então nenhuma sobra de outra parte da tela vaza pra
+           dentro dele (nem o contrário). */
+        .audio-player audio { display: none !important; width: 0 !important; height: 0 !important; }
+        .audio-player { isolation: isolate; }
         .media-ph { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); padding: 6px 0; }
         .video-msg-wrap { display: flex; flex-direction: column; gap: 6px; }
         .video-dl-btn { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; font-size: 11px; font-family: 'Syne', sans-serif; font-weight: 700; color: var(--accent); background: rgba(0,229,204,.1); border: 1px solid rgba(0,229,204,.2); padding: 5px 10px; border-radius: 8px; text-decoration: none; transition: background .15s; }
@@ -1882,13 +1933,13 @@
             <div style="width:56px;height:56px;border-radius:16px;background:rgba(0,229,204,.15);border:1px solid rgba(0,229,204,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </div>
-            <h2 style="margin-bottom:6px;font-size:17px;">Baixando o DeeMensagens_v1.4.5.apk…</h2>
+            <h2 style="margin-bottom:6px;font-size:17px;">Baixando o DeeMensagens_v1.4.6.apk…</h2>
             <p class="about-dee-desc" style="margin-bottom:18px;font-size:12.5px;">O download já começou (11 MB, leva poucos segundos). Assim que terminar, siga os passos abaixo:</p>
 
             <div style="text-align:left;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                     <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</div>
-                    <div style="font-size:12.5px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.4.5.apk</strong>.</div>
+                    <div style="font-size:12.5px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.4.6.apk</strong>.</div>
                 </div>
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                     <div style="width:22px;height:22px;border-radius:50%;background:var(--accent2,var(--accent));color:#000;font-family:'Syne',sans-serif;font-weight:900;font-size:9.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">OU</div>
@@ -1920,7 +1971,7 @@
         <div style="text-align:left;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;font-size:12.5px;line-height:1.5;color:var(--text);">
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Abra <strong>Ajustes → Apps → Chrome → Notificações</strong> e ative tudo.</div>
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Ainda em Ajustes → Apps → Chrome, desative a <strong>otimização de bateria</strong> (às vezes chamada "economia de energia" ou "iniciar automaticamente").</div>
-            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Mesmo sem notificação, o arquivo já está salvo — abra o app <strong>Arquivos</strong> ou o <strong>Gerenciador de Downloads</strong> do celular e procure por <strong>DeeMensagens_v1.4.5.apk</strong> na pasta Downloads.</div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Mesmo sem notificação, o arquivo já está salvo — abra o app <strong>Arquivos</strong> ou o <strong>Gerenciador de Downloads</strong> do celular e procure por <strong>DeeMensagens_v1.4.6.apk</strong> na pasta Downloads.</div>
         </div>
         <div class="mbtns"><button class="mbtn sec" onclick="closeModal('dl-troubleshoot-modal')">Fechar</button></div>
     </div>
@@ -1932,7 +1983,7 @@
      tocar na pílula de novo. Some sozinha depois de um tempo. -->
 <div id="apk-dl-pill" style="display:none;position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;background:var(--surface,#111);border:1px solid var(--accent);border-radius:999px;padding:9px 16px;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;" onclick="reopenApkInstructions()">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" style="flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">Baixando DeeMensagens_v1.4.5.apk — toque p/ instalar</span>
+    <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">Baixando DeeMensagens_v1.4.6.apk — toque p/ instalar</span>
 </div>
 
 <div id="install-choice-modal" class="overlay">
@@ -3095,10 +3146,44 @@ let adCarouselActive = [];
 // ══════════════════════════════════════════════════════════
 //  CUSTOM CONFIRM
 // ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  TÍTULO DA CAIXA DE CONFIRMAÇÃO
+// ══════════════════════════════════════════════════════════
+//  Algumas chamadas passam um ícone (um <svg> escrito aqui no próprio
+//  código do Dee) na frente do texto do título. Como o título era
+//  colocado com textContent, esse desenho aparecia ESCRITO na tela como
+//  um monte de código, em vez de virar o ícone — era o que acontecia ao
+//  ativar as permissões pelas Configurações no site e no PWA.
+//
+//  Aqui as duas coisas são separadas: se o título COMEÇA com um <svg>,
+//  esse pedaço vira desenho de verdade e todo o resto continua entrando
+//  como texto puro.
+//
+//  Essa distinção importa de verdade: vários títulos incluem o nome de
+//  outra pessoa (ex.: "Bloquear Fulano?"), e nome de usuário nunca pode
+//  ser interpretado como código. Por isso a exceção vale só quando o
+//  título começa com o ícone — o que nenhum texto vindo de usuário faz.
+function setConfirmTitle(el, title) {
+    if (!el) return;
+    el.textContent = '';
+    var texto = String(title == null ? '' : title);
+    if (texto.slice(0, 4).toLowerCase() === '<svg') {
+        var fim = texto.toLowerCase().indexOf('</svg>');
+        if (fim !== -1) {
+            var icone = document.createElement('span');
+            icone.innerHTML = texto.slice(0, fim + 6); // só o desenho, vindo do nosso próprio código
+            el.appendChild(icone);
+            el.appendChild(document.createTextNode(' '));
+            texto = texto.slice(fim + 6);
+        }
+    }
+    el.appendChild(document.createTextNode(texto.replace(/^\s+/, '')));
+}
+
 function customConfirm(title, msg, okLabel, okClass) {
     return new Promise(function(resolve) {
         var modal  = document.getElementById('confirm-modal');
-        document.getElementById('confirm-title').textContent = title;
+        setConfirmTitle(document.getElementById('confirm-title'), title);
         document.getElementById('confirm-msg').textContent   = msg;
         var btnOk  = document.getElementById('confirm-ok');
         var btnCan = document.getElementById('confirm-cancel');
@@ -3714,7 +3799,7 @@ window.addEventListener('appinstalled', function() {
 var DEE_FULL_ANDROID_URL = ''; // ex: 'https://play.google.com/store/apps/details?id=br.com.deemensagens.app'
 var DEE_FULL_IOS_URL     = ''; // ex: 'https://apps.apple.com/app/idXXXXXXXXX'
 
-var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.4.5/DeeMensagens_v1.4.5.apk';
+var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.4.6/DeeMensagens_v1.4.6.apk';
 // ── Esse valor acima é só o FALLBACK (usado se a chamada à API do GitHub
 // abaixo falhar, ex.: sem internet no momento do clique). Na prática, o
 // link de download real passa a ser sempre buscado dinamicamente da
@@ -5878,6 +5963,54 @@ var pendingSharedProfileUid = null;
     }
 })();
 
+// ══════════════════════════════════════════════════════════
+//  LINK DE PERFIL ABERTO DENTRO DO APP INSTALADO (Dee Full)
+// ══════════════════════════════════════════════════════════
+//  No navegador, tocar num link ".../index.html?perfil=UID" recarrega a
+//  página inteira, e o bloco logo acima já lê o "perfil" da URL e resolve
+//  tudo sozinho.
+//
+//  No app instalado é diferente: o Android entrega o link para o app que
+//  JÁ está aberto, sem recarregar nada. Aquele bloco só roda uma vez, no
+//  carregamento, então nunca era executado de novo — e a pessoa ficava
+//  olhando a tela em que já estava, ou caía no login se o app tivesse
+//  acabado de abrir. Aqui escutamos o evento do próprio Capacitor, lemos
+//  o "perfil" da URL e abrimos o perfil na hora, sem desfazer a sessão
+//  em que a pessoa já está logada.
+(function initNativeProfileDeepLink() {
+    var plugins = window.Capacitor && window.Capacitor.Plugins;
+    var appPlugin = plugins && plugins.App;
+    if (!appPlugin || !appPlugin.addListener) return; // site/PWA: nada a fazer
+
+    function tratarUrlDeEntrada(url) {
+        if (!url) return;
+        var uid = null;
+        try { uid = new URL(url).searchParams.get('perfil'); }
+        catch (e) {
+            var m = String(url).match(/[?&]perfil=([^&#]+)/);
+            if (m) { try { uid = decodeURIComponent(m[1]); } catch (e2) { uid = m[1]; } }
+        }
+        if (!uid) return;
+        pendingSharedProfileUid = uid;
+        // Se já estamos logados e com a lista de usuários carregada, abre
+        // agora. Se o app ainda está carregando, fica guardado e o próprio
+        // listenUsers/initApp abre assim que terminar (ver as chamadas a
+        // tryResolveSharedProfile espalhadas pelo app).
+        tryResolveSharedProfile();
+    }
+
+    appPlugin.addListener('appUrlOpen', function (ev) { tratarUrlDeEntrada(ev && ev.url); });
+
+    // Cobre o caso do app ter sido ABERTO pelo link estando fechado: nesse
+    // cenário o evento acima pode disparar antes deste script existir, e a
+    // URL de origem fica guardada aqui.
+    if (appPlugin.getLaunchUrl) {
+        appPlugin.getLaunchUrl()
+            .then(function (r) { tratarUrlDeEntrada(r && r.url); })
+            .catch(function () {});
+    }
+})();
+
 // Chama assim que o usuário e allUsers estiverem prontos
 function tryResolveSharedProfile() {
     if (!pendingSharedProfileUid || !me || !allUsers.length) return;
@@ -6646,12 +6779,12 @@ async function openShareAdModal(adId) {
     friends.forEach(function(u) {
         rows += '<div class="share-target-row">' +
             '<input type="checkbox" id="sh-u-' + u.uid + '" value="u:' + u.uid + ':' + esc(u.nome) + '">' +
-            '<label for="sh-u-' + u.uid + '"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ' + esc(u.nome) + '</label></div>';
+            '<label for="sh-u-' + u.uid + '"><span class="share-av">' + avInner(u.nome, u.foto) + '</span><span class="share-target-name">' + esc(u.nome) + '</span></label></div>';
     });
     groups.forEach(function(g) {
         rows += '<div class="share-target-row">' +
             '<input type="checkbox" id="sh-g-' + g.id + '" value="g:' + g.id + ':' + esc(g.nome) + '">' +
-            '<label for="sh-g-' + g.id + '"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> ' + esc(g.nome) + '</label></div>';
+            '<label for="sh-g-' + g.id + '"><span class="share-av grp">' + grpAvInner(g.nome, g.foto) + '</span><span class="share-target-name">' + esc(g.nome) + '</span></label></div>';
     });
     list.innerHTML = rows;
 }
@@ -6771,12 +6904,12 @@ async function openShareTargetModal(payload) {
     friends.forEach(function(u) {
         rows += '<div class="share-target-row">' +
             '<input type="checkbox" id="st-u-' + u.uid + '" value="u:' + u.uid + ':' + esc(u.nome) + '">' +
-            '<label for="st-u-' + u.uid + '"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ' + esc(u.nome) + '</label></div>';
+            '<label for="st-u-' + u.uid + '"><span class="share-av">' + avInner(u.nome, u.foto) + '</span><span class="share-target-name">' + esc(u.nome) + '</span></label></div>';
     });
     groups.forEach(function(g) {
         rows += '<div class="share-target-row">' +
             '<input type="checkbox" id="st-g-' + g.id + '" value="g:' + g.id + ':' + esc(g.nome) + '">' +
-            '<label for="st-g-' + g.id + '"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> ' + esc(g.nome) + '</label></div>';
+            '<label for="st-g-' + g.id + '"><span class="share-av grp">' + grpAvInner(g.nome, g.foto) + '</span><span class="share-target-name">' + esc(g.nome) + '</span></label></div>';
     });
     list.innerHTML = rows;
 }
@@ -11331,9 +11464,23 @@ function snapMsgsToBottom(token) {
 //  CUSTOM AUDIO PLAYER
 // ══════════════════════════════════════════════════════════
 function buildAudioPlayer(src) {
-    var bars = '';
-    for (var i = 0; i < 28; i++) { var h = 4 + Math.random() * 16; bars += '<div class="ap-bar" style="height:' + h + 'px;" data-idx="' + i + '"></div>'; }
     var id = 'ap-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
+    // ── ALTURAS DO DESENHO DE ONDA ──
+    // Antes eram sorteadas com Math.random() e saíam com casas decimais
+    // (ex.: 12.8473px). Altura quebrada em 28 barrinhas lado a lado faz o
+    // Android arredondar cada uma de um jeito diferente, e era isso que
+    // deixava o desenho com aquele aspecto de pixels sujos/falhando.
+    // Agora são números inteiros e sempre os mesmos para o mesmo áudio
+    // (derivados do próprio id), então o desenho fica nítido e estável —
+    // e continua com a cara de onda de voz de sempre, sem perder detalhe.
+    var seed = 0;
+    for (var s = 0; s < id.length; s++) seed = (seed * 31 + id.charCodeAt(s)) >>> 0;
+    var bars = '';
+    for (var i = 0; i < 28; i++) {
+        seed = (seed * 1103515245 + 12345) >>> 0;
+        var h = 4 + (seed >>> 16) % 15; // inteiro de 4 a 18 px
+        bars += '<div class="ap-bar" style="height:' + h + 'px;" data-idx="' + i + '"></div>';
+    }
     var html =
         '<div class="audio-player" id="' + id + '">' +
             '<div class="ap-top">' +
@@ -12686,6 +12833,7 @@ function onCallConnected() {
     callState = 'active';
     showCallScreen('active');
     startCallTimer();
+    atualizarTravaDeProximidade();
     // Reforça o auricular quando a chamada conecta de verdade: em alguns
     // aparelhos Android o roteamento de áudio só se assenta de vez um pouco
     // depois da negociação WebRTC terminar, então uma segunda tentativa aqui
@@ -12698,6 +12846,33 @@ function onCallConnected() {
         setTimeout(reforcarAuricular, 800);
         setTimeout(reforcarAuricular, 2000);
     }
+}
+
+// ══════════════════════════════════════════════════════════
+//  TELA APAGADA COM O ROSTO ENCOSTADO (chamada de voz)
+// ══════════════════════════════════════════════════════════
+//  Numa ligação de voz a pessoa encosta o celular no rosto, e a bochecha
+//  acabava tocando na tela: isso mutava a chamada, ligava o viva-voz ou
+//  até desligava sem querer. Todo app de telefone resolve isso com o
+//  sensor de proximidade — enquanto tem algo perto do sensor, o sistema
+//  apaga a tela e ignora qualquer toque. Ao afastar, a tela volta sozinha.
+//
+//  Isso não existe em JavaScript: só o Android consegue apagar a tela e
+//  cortar o toque desse jeito. Por isso quem faz o trabalho é o plugin
+//  nativo (DeeProximityPlugin.java) e só vale dentro do app instalado —
+//  no site e no PWA nada muda, continua como sempre foi.
+//
+//  Regras: só em chamada de VOZ (em vídeo a pessoa precisa ver a tela),
+//  só enquanto a chamada está conectando ou em andamento, e só com o
+//  viva-voz DESLIGADO — se a pessoa liga o viva-voz é porque afastou o
+//  celular do rosto e quer usar a tela.
+function atualizarTravaDeProximidade() {
+    if (!window.DeeNative || !window.DeeNative.isNative) return;
+    var deveTravar = (callType === 'audio')
+                  && (callState === 'connecting' || callState === 'active')
+                  && !callSpeakerOn;
+    if (deveTravar) window.DeeNative.startProximityLock();
+    else            window.DeeNative.stopProximityLock();
 }
 
 // ── UI ──
@@ -12737,6 +12912,7 @@ function showCallScreen(state) {
         document.getElementById('call-actions-active').style.display = 'flex';
     }
     screenEl.classList.add('open');
+    atualizarTravaDeProximidade();
 }
 function hideCallScreen() { document.getElementById('call-screen').classList.remove('open'); }
 
@@ -12865,6 +13041,9 @@ async function toggleCallSpeaker() {
         btn.innerHTML = callSpeakerOn
             ? '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>'
             : '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+        // Viva-voz ligado = celular longe do rosto: solta a trava para a
+        // pessoa poder usar a tela. Desligou = volta a travar.
+        atualizarTravaDeProximidade();
     } catch(e) {
         callSpeakerOn = !callSpeakerOn; // desfaz, deu erro
         notify('Não foi possível trocar o áudio: ' + friendlyError(e), 'warn');
@@ -12991,6 +13170,9 @@ function vibrateRing() {
 function teardownCall() {
     var id = callId;
     clearIncomingCallNotification(id);
+    // Libera a tela antes de qualquer outra limpeza: se algo abaixo falhar,
+    // o celular nunca fica com a tela presa apagada depois da ligação.
+    if (window.DeeNative && window.DeeNative.isNative) window.DeeNative.stopProximityLock();
 
     if (callPC) { try { callPC.close(); } catch(e) {} callPC = null; }
     if (callLocalStream) { callLocalStream.getTracks().forEach(function(t) { t.stop(); }); callLocalStream = null; }

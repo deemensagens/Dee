@@ -54,6 +54,11 @@ public class MainActivity extends BridgeActivity {
         // reais do Android (ver DeePermissionsPlugin.java).
         registerPlugin(DeePermissionsPlugin.class);
 
+        // Ponte que apaga a tela quando o rosto encosta no celular durante
+        // uma chamada de voz, evitando que a bochecha aperte os botões da
+        // ligação sem querer (ver DeeProximityPlugin.java).
+        registerPlugin(DeeProximityPlugin.class);
+
         super.onCreate(savedInstanceState);
 
         // 1. Cria canais ANTES de tudo — se não existirem quando a
@@ -255,6 +260,65 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    // ══════════════════════════════════════════════════════════
+    //  ABRIR "EXIBIR SOBRE OUTROS APLICATIVOS" DIRETO NO DEE
+    // ══════════════════════════════════════════════════════════
+    //  Mesma lógica (e mesmo motivo) explicados em DeePermissionsPlugin:
+    //  Realme, Oppo, Xiaomi e vivo substituem a tela padrão do Android pela
+    //  versão delas e ignoram o nome do pacote, jogando a pessoa numa lista
+    //  com todos os apps do celular. Tentamos primeiro a tela da marca já
+    //  apontando pro Dee, depois a forma oficial do Android, e só por
+    //  último a lista geral.
+    private boolean abrirTelaDeSobreposicao() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false;
+
+        String pkg = getPackageName();
+        String marca = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase();
+        java.util.List<Intent> tentativas = new java.util.ArrayList<>();
+
+        if (marca.contains("xiaomi") || marca.contains("redmi") || marca.contains("poco")) {
+            Intent miui = new Intent("miui.intent.action.APP_PERM_EDITOR");
+            miui.setClassName("com.miui.securitycenter",
+                    "com.miui.permcenter.permissions.PermissionsEditorActivity");
+            miui.putExtra("extra_pkgname", pkg);
+            tentativas.add(miui);
+        } else if (marca.contains("oppo") || marca.contains("realme") || marca.contains("oneplus")) {
+            Intent oppo = new Intent();
+            oppo.setClassName("com.coloros.safecenter",
+                    "com.coloros.safecenter.permission.floatwindow.FloatWindowListActivity");
+            oppo.putExtra("packageName", pkg);
+            tentativas.add(oppo);
+
+            Intent oppoAntigo = new Intent();
+            oppoAntigo.setClassName("com.color.safecenter",
+                    "com.color.safecenter.permission.floatwindow.FloatWindowListActivity");
+            oppoAntigo.putExtra("packageName", pkg);
+            tentativas.add(oppoAntigo);
+        } else if (marca.contains("vivo")) {
+            Intent vivo = new Intent();
+            vivo.setClassName("com.vivo.permissionmanager",
+                    "com.vivo.permissionmanager.activity.PurviewTabActivity");
+            vivo.putExtra("packagename", pkg);
+            tentativas.add(vivo);
+        }
+
+        Intent oficial = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+        oficial.setData(Uri.parse("package:" + pkg));
+        tentativas.add(oficial);
+
+        tentativas.add(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
+
+        for (Intent i : tentativas) {
+            try {
+                startActivity(i);
+                return true;
+            } catch (Exception ignored) {
+                // Esta ROM não tem essa tela — tenta a próxima da lista.
+            }
+        }
+        return false;
+    }
+
     // Se a tela específica da marca não existir/não abrir por algum
     // motivo, cai pelo menos na tela de detalhes do app — de lá o
     // usuário ainda consegue chegar manualmente nas opções de bateria.
@@ -429,17 +493,11 @@ public class MainActivity extends BridgeActivity {
             .setTitle("Para as chamadas abrirem em tela cheia")
             .setMessage("Sem esta autorização, uma chamada recebida aparece só como um aviso no topo enquanto você usa o celular, em vez de cobrir a tela como uma ligação normal. Na tela que abrir, ative o Dee.")
             .setPositiveButton("Abrir configurações", (dialog, which) -> {
-                try {
-                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                    intent.setData(Uri.parse("package:" + getPackageName()));
-                    startActivity(intent);
-                } catch (Exception e) {
-                    try {
-                        startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
-                    } catch (Exception ignored) {
-                        openAppDetailsSettingsFallback();
-                    }
-                }
+                // Reaproveita a mesma rotina usada pela tela de Configurações
+                // do app: ela conhece a tela específica de cada marca e leva
+                // direto ao interruptor do Dee, em vez de largar a pessoa na
+                // lista com todos os apps do celular.
+                if (!abrirTelaDeSobreposicao()) openAppDetailsSettingsFallback();
             })
             .setNegativeButton("Agora não", null)
             .setCancelable(true)

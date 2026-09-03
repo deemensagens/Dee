@@ -42,6 +42,11 @@
     var sfLiveHostInfo        = null;  // { uid, nome, foto } — usado do lado do espectador
     var sfLiveLocalStream     = null;  // MediaStream da câmera/mic do anfitrião
     var sfLiveCamOn           = true;
+    // Câmera em uso pelo anfitrião da live: 'user' (frontal) ou 'environment'
+    // (traseira). Só troca dentro do app instalado — no site e no PWA o
+    // navegador não entrega a câmera traseira durante uma transmissão, então
+    // lá o botão nem aparece e nada muda em relação a hoje.
+    var sfLiveCamFacing       = 'user';
     var sfLiveMicOn           = true;
     var sfLivePeerConns       = {};    // anfitrião: { viewerUid: RTCPeerConnection } · espectador: { viewer: RTCPeerConnection }
     var sfLivePeerVideoSenders = {};   // anfitrião: { viewerUid: RTCRtpSender } — replaceTrack ao ligar/desligar câmera
@@ -252,7 +257,11 @@
 .sf-share-preview-title{font-size:13px;font-weight:700;font-family:"Syne",sans-serif;color:var(--text);}\
 .sf-share-target-row{display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;border-radius:8px;}\
 .sf-share-target-row:hover{background:var(--surface2);}\
-.sf-share-target-row label{flex:1;cursor:pointer;font-size:13px;}\
+.sf-share-target-row label{flex:1;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;min-width:0;}\
+.sf-share-target-row .share-av{width:34px;height:34px;border-radius:10px;flex-shrink:0;overflow:hidden;background:var(--surface2);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:"Syne",sans-serif;font-weight:900;font-size:14px;color:var(--accent);}\
+.sf-share-target-row .share-av.grp{color:var(--accent2);}\
+.sf-share-target-row .share-av .av-img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;}\
+.sf-share-target-row .share-target-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;}\
 /* ── Cartão de post compartilhado dentro do chat ── */\
 .sf-share-tag{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}\
 .sf-share-card{display:flex;gap:10px;align-items:center;cursor:pointer;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:8px;max-width:260px;}\
@@ -1346,12 +1355,21 @@
             var video = document.getElementById('sf-live-video');
             if (video && sfLiveLocalStream) { video.muted = true; video.srcObject = sfLiveLocalStream; video.play().catch(function () {}); }
             if (controls) {
+                // Trocar entre câmera frontal e traseira só funciona no app
+                // instalado. No site e no PWA o navegador não entrega a
+                // câmera traseira no meio de uma transmissão, então lá o
+                // botão nem é criado — mesma regra que já vale para a
+                // chamada de vídeo e para a Live de dentro das conversas.
+                var podeTrocarCamera = !!(window.DeeNative && window.DeeNative.isNative);
                 controls.innerHTML =
                     '<button class="sf-live-ctl-btn' + (sfLiveCamOn ? '' : ' off') + '" id="sf-live-cam-btn" title="Câmera"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>' +
                     '<button class="sf-live-ctl-btn' + (sfLiveMicOn ? '' : ' off') + '" id="sf-live-mic-btn" title="Microfone"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>' +
+                    (podeTrocarCamera ? '<button class="sf-live-ctl-btn" id="sf-live-flip-btn" title="Trocar câmera"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>' : '') +
                     '<button class="sf-live-ctl-btn end" id="sf-live-end-btn" title="Encerrar live"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/></svg></button>';
                 document.getElementById('sf-live-cam-btn').onclick = sfLiveToggleCam;
                 document.getElementById('sf-live-mic-btn').onclick = sfLiveToggleMic;
+                var flipBtn = document.getElementById('sf-live-flip-btn');
+                if (flipBtn) flipBtn.onclick = sfLiveFlipCamera;
                 document.getElementById('sf-live-end-btn').onclick = sfEndLive;
             }
             sfLiveUpdateCamOffOverlay(sfLiveCamOn);
@@ -1552,6 +1570,67 @@
         var btn = document.getElementById('sf-live-cam-btn'); if (btn) btn.classList.toggle('off', !sfLiveCamOn);
         sfLiveUpdateCamOffOverlay(sfLiveCamOn);
     }
+    // ══════════════════════════════════════════════════════════
+    //  TROCAR ENTRE CÂMERA FRONTAL E TRASEIRA DURANTE A LIVE
+    // ══════════════════════════════════════════════════════════
+    //  Só é chamada dentro do app instalado (o botão nem existe no site/PWA).
+    //
+    //  Detalhe importante do Android: a câmera é um recurso exclusivo.
+    //  Enquanto a frontal estiver aberta, pedir a traseira ou falha ou
+    //  devolve a MESMA câmera de novo. Por isso paramos a atual antes de
+    //  abrir a outra — é o mesmo caminho que já usamos na chamada de vídeo
+    //  e na Live das conversas, e é o que faz a troca funcionar de verdade.
+    //
+    //  A nova imagem é entregue a quem já está assistindo por replaceTrack,
+    //  então nenhuma conexão cai e ninguém precisa entrar de novo na live.
+    async function sfLiveFlipCamera() {
+        if (!sfLiveIsHost || !sfLiveLocalStream) return;
+
+        var novaFace     = sfLiveCamFacing === 'user' ? 'environment' : 'user';
+        var trackAntiga  = sfLiveLocalStream.getVideoTracks()[0];
+        var estavaLigada = sfLiveCamOn;
+
+        if (trackAntiga) { try { trackAntiga.stop(); } catch (e) {} }
+
+        var novoStream = null;
+        try {
+            novoStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { exact: novaFace } } });
+        } catch (e) {
+            // 'exact' falha em aparelhos que não têm a câmera pedida.
+            // Sem o 'exact', o sistema entrega a mais próxima disponível.
+            try { novoStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: novaFace } }); }
+            catch (e2) { novoStream = null; }
+        }
+
+        // Não conseguiu a nova câmera: reabre a anterior para a transmissão
+        // não ficar sem imagem no meio do caminho.
+        if (!novoStream) {
+            try { novoStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: sfLiveCamFacing } }); }
+            catch (e) { notify('Não foi possível trocar de câmera', 'warn'); return; }
+            notify('Não foi possível trocar de câmera', 'warn');
+        } else {
+            sfLiveCamFacing = novaFace;
+        }
+
+        var novaTrack = novoStream.getVideoTracks()[0];
+        if (!novaTrack) return;
+
+        // Respeita o botão de câmera: se estava desligada, a nova entra
+        // desligada também, em vez de voltar a transmitir sozinha.
+        novaTrack.enabled = estavaLigada;
+
+        // Entrega a nova imagem a cada pessoa que já está assistindo.
+        Object.keys(sfLivePeerVideoSenders || {}).forEach(function (uid) {
+            try { sfLivePeerVideoSenders[uid].replaceTrack(novaTrack); } catch (e) {}
+        });
+
+        if (trackAntiga) { try { sfLiveLocalStream.removeTrack(trackAntiga); } catch (e) {} }
+        sfLiveLocalStream.addTrack(novaTrack);
+
+        var video = document.getElementById('sf-live-video');
+        if (video) { video.srcObject = sfLiveLocalStream; video.play().catch(function () {}); }
+    }
+
     function sfLiveToggleMic() {
         if (!sfLiveIsHost || !sfLiveLocalStream) return;
         var t = sfLiveLocalStream.getAudioTracks()[0]; if (!t) return;
@@ -1619,7 +1698,7 @@
         if (sfLivePeerDocUnsub)   { sfLivePeerDocUnsub();   sfLivePeerDocUnsub   = null; }
         if (sfLivePostWatchUnsub) { sfLivePostWatchUnsub(); sfLivePostWatchUnsub = null; }
         sfLiveActivePostId = null; sfLiveIsHost = false; sfLiveHostInfo = null;
-        sfLiveCamOn = true; sfLiveMicOn = true; sfLiveViewerMuted = false;
+        sfLiveCamOn = true; sfLiveMicOn = true; sfLiveViewerMuted = false; sfLiveCamFacing = 'user';
         sfLiveViewersMap = {};
     }
 
@@ -1756,12 +1835,38 @@
                     }
                 } catch (e2) {}
             }
+            // Apaga também os avisos que esta postagem gerou nos amigos
+            // (o "começou uma live", a curtida, o comentário). Sem isso,
+            // quem recebeu continuava com a bolinha vermelha em cima de
+            // "Comunidade" apontando para algo que não existe mais — e ela
+            // só sumia porque tocar na aba marca tudo como lido, ou seja,
+            // o número desaparecia sem nunca ter havido nada pra ver.
+            sfApagarAvisosDaPostagem(postId);
+
             notify('Postagem excluída', 'ok');
             if (fromDetail) {
                 closeModal('sf-detail-modal'); sfStopCommentsListener(); sfStopDetailMedia();
                 if (sfLiveActivePostId === postId) sfLiveTeardown(); // era a live que eu tinha aberta (anfitrião ou espectador) — encerra tudo localmente
             }
         } catch (e) { notify('Erro ao excluir: ' + friendlyError(e), 'err'); }
+    }
+
+    // Apaga os avisos que EU criei para uma postagem minha que acabou de
+    // ser excluída. Melhor esforço: se falhar (sem rede, por exemplo), o
+    // aparelho de quem recebeu o aviso se encarrega de limpá-lo sozinho
+    // ao perceber que a postagem sumiu — ver sfConferirPostagensDosAvisos.
+    async function sfApagarAvisosDaPostagem(postId) {
+        if (!me || !postId) return;
+        try {
+            var snap = await db.collection('social_notifications')
+                .where('fromUid', '==', me.uid)
+                .where('postId', '==', postId)
+                .get();
+            if (snap.empty) return;
+            var batch = db.batch();
+            snap.forEach(function (d) { batch.delete(d.ref); });
+            await batch.commit();
+        } catch (e) { console.warn('Falha ao limpar avisos da postagem excluída:', e); }
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -2228,16 +2333,19 @@
                 list.innerHTML = '<div class="empty" style="padding:16px;">Adicione amigos ou crie um grupo primeiro</div>';
                 return;
             }
+            // Foto de quem vai receber, não só o nome: com nomes parecidos
+            // dava pra mandar para a pessoa errada sem perceber — a foto é
+            // o que diferencia de olho, na hora de marcar.
             var rows = '';
             friends.forEach(function (u) {
                 rows += '<div class="sf-share-target-row">' +
                     '<input type="checkbox" id="sfsh-u-' + u.uid + '" value="u:' + u.uid + '">' +
-                    '<label for="sfsh-u-' + u.uid + '"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ' + esc(u.nome) + '</label></div>';
+                    '<label for="sfsh-u-' + u.uid + '"><span class="share-av">' + avInner(u.nome, u.foto) + '</span><span class="share-target-name">' + esc(u.nome) + '</span></label></div>';
             });
             groups.forEach(function (g) {
                 rows += '<div class="sf-share-target-row">' +
                     '<input type="checkbox" id="sfsh-g-' + g.id + '" value="g:' + g.id + '">' +
-                    '<label for="sfsh-g-' + g.id + '"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> ' + esc(g.nome) + '</label></div>';
+                    '<label for="sfsh-g-' + g.id + '"><span class="share-av grp">' + (typeof grpAvInner === 'function' ? grpAvInner(g.nome, g.foto) : esc((g.nome || '?').charAt(0).toUpperCase())) + '</span><span class="share-target-name">' + esc(g.nome) + '</span></label></div>';
             });
             list.innerHTML = rows;
         }).catch(function () { list.innerHTML = '<div class="empty" style="padding:16px;">Erro ao carregar grupos</div>'; });
@@ -2501,20 +2609,89 @@
             .onSnapshot(function (snap) {
                 var mineCount = 0, liveCount = 0;
                 snap.forEach(function (d) {
-                    if (d.data().type === 'live') liveCount++; else mineCount++;
+                    var n = d.data();
+                    // Aviso de uma postagem que já foi apagada não conta:
+                    // não existe nada pra ver do outro lado da bolinha.
+                    if (n.postId && sfPostagensApagadas[n.postId]) return;
+                    if (n.type === 'live') liveCount++; else mineCount++;
                 });
                 sfNotifUnread = mineCount;
                 sfLiveNotifUnread = liveCount;
                 sfUpdateNotifBadge();
+                sfConferirPostagensDosAvisos(snap.docs);
                 if (!firstSnapshot) {
                     snap.docChanges().forEach(function (change) {
-                        if (change.type === 'added') {
-                            sfHandleNewNotification(Object.assign({ id: change.doc.id }, change.doc.data()));
-                        }
+                        if (change.type !== 'added') return;
+                        var novo = Object.assign({ id: change.doc.id }, change.doc.data());
+                        if (novo.postId && sfPostagensApagadas[novo.postId]) return;
+                        sfHandleNewNotification(novo);
                     });
                 }
                 firstSnapshot = false;
             }, function (err) { console.error('social notifications:', err); });
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  AVISO DE POSTAGEM QUE JÁ FOI APAGADA
+    // ══════════════════════════════════════════════════════════
+    //  Quando alguém publica (ou começa uma live) e apaga logo em seguida,
+    //  o aviso já gravado para cada amigo continuava no banco. Resultado:
+    //  a bolinha vermelha ficava em cima de "Comunidade" sem existir
+    //  postagem nenhuma pra ver, e só sumia porque tocar na aba marca tudo
+    //  como lido — o número desaparecia sem nunca ter havido novidade.
+    //
+    //  Quem apaga a postagem agora apaga os avisos dela também (ver
+    //  sfApagarAvisosDaPostagem). Isto aqui é a rede de segurança: cobre
+    //  os avisos que já ficaram presos no banco antes desta correção, e
+    //  também o caso daquela limpeza falhar por falta de rede. Cada
+    //  aparelho confere se a postagem citada ainda existe; se não existe,
+    //  o aviso deixa de contar e é apagado.
+    //
+    //  Cada postagem é conferida UMA vez e o resultado fica guardado em
+    //  memória, então abrir o app não dispara uma consulta por aviso.
+    var sfPostagensExistentes = {}; // postId -> true (confirmada existente)
+    var sfPostagensApagadas   = {}; // postId -> true (não existe mais)
+    var sfConferindoPostagem  = {}; // postId -> true (consulta em andamento)
+
+    function sfConferirPostagensDosAvisos(docs) {
+        if (!docs || !docs.length) return;
+        docs.forEach(function (d) {
+            var postId = (d.data() || {}).postId;
+            if (!postId) return;
+            if (sfPostagensExistentes[postId] || sfPostagensApagadas[postId] || sfConferindoPostagem[postId]) return;
+            sfConferindoPostagem[postId] = true;
+            db.collection('social_posts').doc(postId).get().then(function (snap) {
+                delete sfConferindoPostagem[postId];
+                if (snap.exists) { sfPostagensExistentes[postId] = true; return; }
+                sfPostagensApagadas[postId] = true;
+                sfApagarMeusAvisosDaPostagem(postId);
+            }).catch(function () {
+                // Sem rede ou erro momentâneo: não apaga nada e tenta de
+                // novo no próximo snapshot. Melhor uma bolinha a mais do
+                // que sumir com um aviso de algo que ainda existe.
+                delete sfConferindoPostagem[postId];
+            });
+        });
+    }
+
+    // Apaga os avisos que EU recebi de uma postagem que não existe mais.
+    // Como a exclusão dispara o próprio listener acima, o contador e a
+    // bolinha se corrigem sozinhos logo em seguida.
+    async function sfApagarMeusAvisosDaPostagem(postId) {
+        if (!me || !postId) return;
+        try {
+            var snap = await db.collection('social_notifications')
+                .where('toUid', '==', me.uid)
+                .where('postId', '==', postId)
+                .get();
+            if (snap.empty) return;
+            var batch = db.batch();
+            snap.forEach(function (d) { batch.delete(d.ref); });
+            await batch.commit();
+        } catch (e) {
+            // Já paramos de contar esse aviso; apagar é só faxina.
+            console.warn('Falha ao limpar aviso de postagem inexistente:', e);
+        }
     }
 
     function sfHandleNewNotification(n) {
@@ -3164,6 +3341,7 @@
         sfBlockedUsers = []; sfHiddenPosts = []; sfOptionsPost = null;
         sfPinned = null; sfPinnedPost = null;
         sfNotifUnread = 0; sfLiveNotifUnread = 0; sfUpdateNotifBadge();
+        sfPostagensExistentes = {}; sfPostagensApagadas = {}; sfConferindoPostagem = {};
         // Voz Dee: limpa o cache de pontuação/reconhecimento ao deslogar,
         // pra não vazar dados de uma conta pra outra no mesmo dispositivo.
         sfImpactEvents = null; sfImpactEventsAt = 0; sfImpactEventsLoading = null;

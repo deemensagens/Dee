@@ -115,10 +115,9 @@ public class DeePermissionsPlugin extends Plugin {
                     break;
 
                 case "overlay":
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                        intent.setData(Uri.parse("package:" + getContext().getPackageName()));
-                    }
+                    // Tratado à parte porque cada marca tem a própria tela.
+                    if (abrirTelaDeSobreposicao()) { call.resolve(); return; }
+                    intent = null; // nada funcionou: cai no fallback lá embaixo
                     break;
 
                 case "fullScreen":
@@ -151,6 +150,83 @@ public class DeePermissionsPlugin extends Plugin {
         } catch (Exception e) {
             call.reject("Não foi possível abrir as configurações");
         }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  "EXIBIR SOBRE OUTROS APLICATIVOS" — ABRIR DIRETO NO DEE
+    // ══════════════════════════════════════════════════════════
+    //  A forma oficial do Android (ACTION_MANAGE_OVERLAY_PERMISSION com o
+    //  nome do pacote junto) já pede para abrir direto na tela do Dee. Só
+    //  que várias marcas — Realme, Oppo, Xiaomi, vivo — trocam essa tela
+    //  pela versão própria delas e ignoram o pacote, jogando a pessoa
+    //  naquela lista gigante com todos os apps do celular, onde ela tem
+    //  que procurar o Dee no meio de dezenas de outros.
+    //
+    //  Aqui tentamos, em ordem: primeiro a tela específica da marca já
+    //  apontando para o Dee, depois a forma oficial do Android com o
+    //  pacote, e só se as duas falharem é que caímos na lista geral.
+    //  Assim, na prática, a pessoa chega direto no interruptor certo.
+    //
+    //  Devolve true se conseguiu abrir alguma tela; false se nenhuma
+    //  funcionou (aí quem chamou usa o fallback padrão).
+    private boolean abrirTelaDeSobreposicao() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false;
+
+        String pkg = getContext().getPackageName();
+        String marca = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase();
+        java.util.List<Intent> tentativas = new java.util.ArrayList<>();
+
+        // 1) Tela da própria marca, já apontando para o Dee
+        if (marca.contains("xiaomi") || marca.contains("redmi") || marca.contains("poco")) {
+            Intent miui = new Intent("miui.intent.action.APP_PERM_EDITOR");
+            miui.setClassName("com.miui.securitycenter",
+                    "com.miui.permcenter.permissions.PermissionsEditorActivity");
+            miui.putExtra("extra_pkgname", pkg);
+            tentativas.add(miui);
+        } else if (marca.contains("oppo") || marca.contains("realme") || marca.contains("oneplus")) {
+            Intent oppo = new Intent();
+            oppo.setClassName("com.coloros.safecenter",
+                    "com.coloros.safecenter.permission.floatwindow.FloatWindowListActivity");
+            oppo.putExtra("packageName", pkg);
+            tentativas.add(oppo);
+
+            Intent oppoAntigo = new Intent();
+            oppoAntigo.setClassName("com.color.safecenter",
+                    "com.color.safecenter.permission.floatwindow.FloatWindowListActivity");
+            oppoAntigo.putExtra("packageName", pkg);
+            tentativas.add(oppoAntigo);
+        } else if (marca.contains("vivo")) {
+            Intent vivo = new Intent();
+            vivo.setClassName("com.vivo.permissionmanager",
+                    "com.vivo.permissionmanager.activity.PurviewTabActivity");
+            vivo.putExtra("packagename", pkg);
+            tentativas.add(vivo);
+        } else if (marca.contains("huawei") || marca.contains("honor")) {
+            Intent huawei = new Intent();
+            huawei.setClassName("com.huawei.systemmanager",
+                    "com.huawei.notificationmanager.ui.NotificationManagmentActivity");
+            tentativas.add(huawei);
+        }
+
+        // 2) Forma oficial do Android, com o pacote do Dee embutido —
+        //    na maioria dos aparelhos isso já abre a tela certa
+        Intent oficial = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+        oficial.setData(Uri.parse("package:" + pkg));
+        tentativas.add(oficial);
+
+        // 3) Último recurso: a lista geral (é o comportamento antigo)
+        tentativas.add(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
+
+        for (Intent i : tentativas) {
+            try {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(i);
+                return true;
+            } catch (Exception ignored) {
+                // Esta ROM não tem essa tela — tenta a próxima da lista.
+            }
+        }
+        return false;
     }
 
     // Telas de "Início automático" das ROMs que têm essa camada extra.

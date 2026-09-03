@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "br.com.deemensagens.app",
+      "sha256_cert_fingerprints": ["COLE_AQUI_O_SHA256_DA_SUA_CHAVE"]
+    }
+  }
+]
