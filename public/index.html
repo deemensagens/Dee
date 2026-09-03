@@ -10188,7 +10188,6 @@ function toggleLiveCam() {    if (!liveIsHost || !liveLocalStream || liveMinimiz
 //    sistema devolve a mesma câmera de novo. Depois de trocar, a nova
 //    track é enviada para todos os espectadores conectados via
 //    replaceTrack, sem derrubar nem renegociar nenhuma conexão.
-let liveCamFacing = 'user';
 async function toggleLiveCamera() {
     if (!liveIsHost || !liveLocalStream || liveMinimized) return;
 
