@@ -4,7 +4,6 @@ import android.Manifest;
 import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -29,9 +28,6 @@ import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 
 public class MainActivity extends BridgeActivity {
 
@@ -41,13 +37,9 @@ public class MainActivity extends BridgeActivity {
     private static final int    REQ_LOCATION            = 1002;
 
     private static final String PREFS_NAME           = "dee_prefs";
-    private static final String PREF_AUTOSTART_SHOWN = "autostart_prompt_shown";
     private static final String PREF_FSI_SHOWN       = "fsi_prompt_shown";
     private static final String PREF_OVERLAY_SHOWN   = "overlay_prompt_shown";
 
-    // Piso mínimo (em dp) do espaço reservado embaixo da barra de digitar.
-    // 48dp é a altura padrão da barra de navegação de 3 botões do Android.
-    private static final float MIN_BOTTOM_INSET_DP = 48f;
 
     private float   lastTop = 0, lastBottom = 0, lastLeft = 0, lastRight = 0;
     private boolean hasInsets     = false;
@@ -169,10 +161,17 @@ public class MainActivity extends BridgeActivity {
             // Um diálogo por vez, em cascata: só oferecemos o próximo
             // pedido se o anterior não apareceu agora, para não empilhar
             // várias caixas na cara do usuário de uma só vez.
-            if (!maybeRequestAutostartPermission()) {
-                if (!maybeRequestFullScreenIntentPermission()) {
-                    maybeRequestOverlayPermission();
-                }
+            //
+            // O antigo pedido de "Início automático" foi REMOVIDO daqui de
+            // propósito. Ele nasceu quando ainda achávamos que a ROM estava
+            // barrando as notificações — mas a causa real era outra (o
+            // Worker recusando os pushes). Depois de corrigida, os testes
+            // mostraram que as notificações chegam sem essa configuração,
+            // então o pedido virou só um incômodo na abertura do app.
+            // O atalho continua disponível, sem insistência, na tela de
+            // Configurações (ver DeePermissionsPlugin.java).
+            if (!maybeRequestFullScreenIntentPermission()) {
+                maybeRequestOverlayPermission();
             }
         }
     }
@@ -254,99 +253,6 @@ public class MainActivity extends BridgeActivity {
                 startActivity(fallback);
             } catch (Exception ignored) {}
         }
-    }
-
-    // ══════════════════════════════════════════════════════════
-    //  INÍCIO AUTOMÁTICO — segunda camada de bateria de ROMs chinesas
-    // ══════════════════════════════════════════════════════════
-    //  Xiaomi (MIUI), Oppo/Realme/OnePlus (ColorOS/RealmeUI/OxygenOS),
-    //  Vivo e Huawei/Honor têm um gerenciador de energia PRÓPRIO, além
-    //  do padrão do Android. Mesmo com "ignorar otimização de bateria"
-    //  concedido (API oficial, já tratada acima), essas ROMs ainda podem
-    //  matar o app e impedir o FCM de acordá-lo, a menos que o usuário
-    //  ative manualmente "Início automático" (ou nome equivalente) —
-    //  não existe uma API do Android pra isso, cada fabricante tem sua
-    //  própria tela, então detectamos a marca e levamos direto pra ela.
-    //  Em aparelhos sem essa camada extra (Samsung, Motorola, Google,
-    //  LG...) esse método simplesmente não faz nada.
-    private boolean maybeRequestAutostartPermission() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        if (prefs.getBoolean(PREF_AUTOSTART_SHOWN, false)) return false; // já mostramos uma vez
-
-        Intent target = autostartIntentForManufacturer();
-        if (target == null) return false; // marca sem essa tela extra conhecida
-
-        prefs.edit().putBoolean(PREF_AUTOSTART_SHOWN, true).apply();
-
-        new AlertDialog.Builder(this)
-            .setTitle("Um passo a mais pra não perder mensagens")
-            .setMessage("Seu celular tem um controle de bateria próprio, além do que você já liberou. Na tela que vai abrir, procure por \"Gerenciamento de inicialização\" ou \"Início automático\" e ative o Dee lá — sem isso, notificações podem não chegar com o app fechado.")
-            .setPositiveButton("Abrir configurações", (dialog, which) -> {
-                try {
-                    startActivity(target);
-                } catch (Exception e) {
-                    openAppDetailsSettingsFallback();
-                }
-            })
-            .setNegativeButton("Agora não", null)
-            .setCancelable(true)
-            .show();
-        return true;
-    }
-
-    // Monta a lista de telas conhecidas pra marca do aparelho atual e
-    // devolve a primeira que realmente existir nesse dispositivo
-    // específico (o nome do componente muda de versão pra versão da
-    // ROM, por isso a lista de tentativas em vez de um valor único).
-    private Intent autostartIntentForManufacturer() {
-        String manufacturer = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase(Locale.ROOT);
-        List<Intent> candidates = new ArrayList<>();
-
-        if (manufacturer.contains("xiaomi")) {
-            candidates.add(component("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"));
-        } else if (manufacturer.contains("oppo") || manufacturer.contains("realme") || manufacturer.contains("oneplus")) {
-            // ColorOS / RealmeUI 6.0+ renomeou o app pra "com.coloros.phonemanager"
-            // (confirmado via análise de APK real — a versão antiga do pacote,
-            // "com.coloros.safecenter", não existe mais nos aparelhos atuais).
-            // Em vez de adivinhar o nome da tela interna de "Início automático"
-            // (que muda a cada versão da ROM e já erramos duas vezes tentando
-            // isso), abrimos o app inteiro pelo próprio launcher — muito mais
-            // confiável, porque só depende do nome do pacote (confirmado),
-            // não de um caminho interno que pode não existir nessa versão.
-            Intent phoneManager = getPackageManager().getLaunchIntentForPackage("com.coloros.phonemanager");
-            if (phoneManager != null) {
-                phoneManager.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                candidates.add(phoneManager);
-            }
-            // Variantes antigas, como fallback pra ROMs mais antigas que talvez
-            // ainda usem o nome de pacote anterior.
-            candidates.add(component("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity"));
-            candidates.add(component("com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity"));
-            candidates.add(component("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity"));
-            candidates.add(component("com.oneplus.security", "com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity"));
-        } else if (manufacturer.contains("vivo")) {
-            candidates.add(component("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"));
-            candidates.add(component("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity"));
-        } else if (manufacturer.contains("huawei") || manufacturer.contains("honor")) {
-            candidates.add(component("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"));
-            candidates.add(component("com.huawei.systemmanager", "com.huawei.systemmanager.optimize.process.ProtectActivity"));
-        } else if (manufacturer.contains("asus")) {
-            candidates.add(component("com.asus.mobilemanager", "com.asus.mobilemanager.autostart.AutoStartActivity"));
-        } else {
-            return null; // Samsung, Motorola, Google, LG etc. não têm essa camada extra
-        }
-
-        for (Intent candidate : candidates) {
-            if (candidate.resolveActivity(getPackageManager()) != null) return candidate;
-        }
-        return null; // nenhuma variante conhecida existe nesse aparelho específico
-    }
-
-    private Intent component(String pkg, String cls) {
-        Intent intent = new Intent();
-        intent.setComponent(new ComponentName(pkg, cls));
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        return intent;
     }
 
     // Se a tela específica da marca não existir/não abrir por algum

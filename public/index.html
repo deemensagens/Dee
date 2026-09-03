@@ -1882,13 +1882,13 @@
             <div style="width:56px;height:56px;border-radius:16px;background:rgba(0,229,204,.15);border:1px solid rgba(0,229,204,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </div>
-            <h2 style="margin-bottom:6px;font-size:17px;">Baixando o DeeMensagens_v1.4.3.apk…</h2>
+            <h2 style="margin-bottom:6px;font-size:17px;">Baixando o DeeMensagens_v1.4.5.apk…</h2>
             <p class="about-dee-desc" style="margin-bottom:18px;font-size:12.5px;">O download já começou (11 MB, leva poucos segundos). Assim que terminar, siga os passos abaixo:</p>
 
             <div style="text-align:left;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                     <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</div>
-                    <div style="font-size:12.5px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.4.3.apk</strong>.</div>
+                    <div style="font-size:12.5px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.4.5.apk</strong>.</div>
                 </div>
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                     <div style="width:22px;height:22px;border-radius:50%;background:var(--accent2,var(--accent));color:#000;font-family:'Syne',sans-serif;font-weight:900;font-size:9.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">OU</div>
@@ -1920,7 +1920,7 @@
         <div style="text-align:left;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;font-size:12.5px;line-height:1.5;color:var(--text);">
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Abra <strong>Ajustes → Apps → Chrome → Notificações</strong> e ative tudo.</div>
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Ainda em Ajustes → Apps → Chrome, desative a <strong>otimização de bateria</strong> (às vezes chamada "economia de energia" ou "iniciar automaticamente").</div>
-            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Mesmo sem notificação, o arquivo já está salvo — abra o app <strong>Arquivos</strong> ou o <strong>Gerenciador de Downloads</strong> do celular e procure por <strong>DeeMensagens_v1.4.3.apk</strong> na pasta Downloads.</div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Mesmo sem notificação, o arquivo já está salvo — abra o app <strong>Arquivos</strong> ou o <strong>Gerenciador de Downloads</strong> do celular e procure por <strong>DeeMensagens_v1.4.5.apk</strong> na pasta Downloads.</div>
         </div>
         <div class="mbtns"><button class="mbtn sec" onclick="closeModal('dl-troubleshoot-modal')">Fechar</button></div>
     </div>
@@ -1932,7 +1932,7 @@
      tocar na pílula de novo. Some sozinha depois de um tempo. -->
 <div id="apk-dl-pill" style="display:none;position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;background:var(--surface,#111);border:1px solid var(--accent);border-radius:999px;padding:9px 16px;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;" onclick="reopenApkInstructions()">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" style="flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">Baixando DeeMensagens_v1.4.3.apk — toque p/ instalar</span>
+    <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">Baixando DeeMensagens_v1.4.5.apk — toque p/ instalar</span>
 </div>
 
 <div id="install-choice-modal" class="overlay">
@@ -2734,6 +2734,39 @@ const db   = firebase.firestore();
 const auth = firebase.auth();
 
 // ══════════════════════════════════════════════════════════
+//  CACHE LOCAL DO FIRESTORE (persistência offline)
+// ══════════════════════════════════════════════════════════
+//  Sem isto, TODA abertura de conversa precisava ir até o servidor
+//  antes de mostrar qualquer mensagem — mesmo aquelas que tinham
+//  acabado de ser baixadas segundos antes. Era isso que fazia aparecer
+//  "Carregando mensagens..." a cada entrada e saída, deixando o chat
+//  lento mesmo com internet boa.
+//
+//  Com a persistência ligada, o Firestore guarda as mensagens no
+//  armazenamento local do aparelho. Na próxima vez que a conversa
+//  abrir, ele entrega o histórico do cache na hora (sem rede) e só
+//  depois busca o que mudou no servidor, atualizando a tela em segundo
+//  plano. O usuário vê a conversa imediatamente.
+//
+//  Ganho extra: a conversa passa a abrir mesmo sem internet.
+//
+//  Os dois erros tratados abaixo são os únicos possíveis e nenhum é
+//  problema real:
+//   - failed-precondition: o app está aberto em várias abas ao mesmo
+//     tempo. Só uma pode manter o cache; as outras seguem online, como
+//     antes. Não afeta o app instalado, que tem uma "aba" só.
+//   - unimplemented: navegador sem suporte (raro hoje). Idem: segue
+//     funcionando online, exatamente como funcionava antes.
+// ══════════════════════════════════════════════════════════
+db.enablePersistence({ synchronizeTabs: true }).catch(function (err) {
+    if (err && err.code === 'failed-precondition') {
+        console.info('Cache local ativo em outra aba — esta seguirá online.');
+    } else if (err && err.code === 'unimplemented') {
+        console.info('Navegador sem suporte a cache local — seguindo online.');
+    }
+});
+
+// ══════════════════════════════════════════════════════════
 //  DOMÍNIOS DE E-MAIL PERMITIDOS NO CADASTRO
 // ══════════════════════════════════════════════════════════
 const ALLOWED_EMAIL_DOMAINS = [
@@ -2847,6 +2880,27 @@ let chatName         = '';
 let chatIsGroup      = false;
 let msgUnsub         = null;
 let chatClearedAt    = 0; // timestamp (ms) até onde ESTE usuário apagou a conversa atual (ver ctxDeleteConv/getClearsRef) — 0 = nunca apagou
+// Cache em memória do marcador acima, por conversa ('f_'+uid ou 'g_'+gid).
+// Evita uma ida ao servidor a cada vez que a conversa é aberta (ver
+// startListening). É preenchido na primeira abertura e atualizado quando
+// o usuário usa "excluir toda a conversa".
+let clearedAtCache   = {};
+
+// ══════════════════════════════════════════════════════════
+//  DOCUMENTO PRIVADO DO USUÁRIO
+// ══════════════════════════════════════════════════════════
+//  Guarda dados que são só do dono e que ninguém mais precisa ver:
+//  o token de notificação, o contador do ícone e o registro de leitura.
+//
+//  Antes esses campos ficavam soltos em usuarios/{uid}, um documento
+//  que QUALQUER pessoa logada podia ler. Na prática, alguém podia criar
+//  uma conta, baixar o token de notificação de todo mundo e disparar
+//  avisos falsos. Agora eles vivem numa subcoleção que só o próprio
+//  dono acessa (ver firestore.rules).
+// ══════════════════════════════════════════════════════════
+function meuDocPrivado() {
+    return db.collection('usuarios').doc(me.uid).collection('privado').doc('dados');
+}
 
 // ── CINEMA COLETIVO / WATCH PARTY ──
 let cinemaActiveDocId    = null;   // docId da mensagem "cinema" atualmente aberta na mini tela
@@ -3288,8 +3342,8 @@ function salvarLeiturasNaConta() {
     clearTimeout(_leiturasTimer);
     _leiturasTimer = setTimeout(function() {
         try {
-            db.collection('usuarios').doc(me.uid)
-              .update({ lastReadMap: loadLastReadMap() })
+            meuDocPrivado()
+              .set({ lastReadMap: loadLastReadMap() }, { merge: true })
               .catch(function(){});
         } catch (e) {}
     }, 2000);
@@ -3300,8 +3354,31 @@ function salvarLeiturasNaConta() {
 async function restaurarLeiturasDaConta() {
     if (typeof me === 'undefined' || !me || !me.uid) return;
     try {
-        var doc = await db.collection('usuarios').doc(me.uid).get();
+        var doc = await meuDocPrivado().get();
         var daConta = (doc.exists && doc.data() && doc.data().lastReadMap) || null;
+
+        // ── Migração do local antigo ──
+        // Até a v1.4.4 este registro ficava em usuarios/{uid}.lastReadMap,
+        // um documento que qualquer pessoa logada podia ler. Ele mudou de
+        // lugar por segurança. Se o novo ainda está vazio (primeira vez
+        // depois da atualização), aproveitamos o antigo e já o gravamos no
+        // lugar certo — assim ninguém volta a ver conversas antigas
+        // marcadas como não lidas por causa da mudança.
+        if (!daConta) {
+            try {
+                var antigo = await db.collection('usuarios').doc(me.uid).get();
+                var mapaAntigo = (antigo.exists && antigo.data() && antigo.data().lastReadMap) || null;
+                if (mapaAntigo) {
+                    daConta = mapaAntigo;
+                    meuDocPrivado().set({ lastReadMap: mapaAntigo }, { merge: true }).catch(function(){});
+                    // Remove o campo do documento público, que não deve
+                    // mais ficar exposto.
+                    db.collection('usuarios').doc(me.uid)
+                      .update({ lastReadMap: firebase.firestore.FieldValue.delete() })
+                      .catch(function(){});
+                }
+            } catch (e) {}
+        }
         if (!daConta) return;
 
         var local = loadLastReadMap();
@@ -3409,8 +3486,8 @@ function syncBadgeCountToServer(total) {
     clearTimeout(badgeSyncTimer);
     badgeSyncTimer = setTimeout(function() {
         lastBadgeSynced = total;
-        db.collection('usuarios').doc(me.uid)
-          .update({ badgeCount: total })
+        meuDocPrivado()
+          .set({ badgeCount: total }, { merge: true })
           .catch(function() { lastBadgeSynced = -1; }); // deixa tentar de novo depois
     }, 1200);
 }
@@ -3637,7 +3714,7 @@ window.addEventListener('appinstalled', function() {
 var DEE_FULL_ANDROID_URL = ''; // ex: 'https://play.google.com/store/apps/details?id=br.com.deemensagens.app'
 var DEE_FULL_IOS_URL     = ''; // ex: 'https://apps.apple.com/app/idXXXXXXXXX'
 
-var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.4.3/DeeMensagens_v1.4.3.apk';
+var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.4.5/DeeMensagens_v1.4.5.apk';
 // ── Esse valor acima é só o FALLBACK (usado se a chamada à API do GitHub
 // abaixo falhar, ex.: sem internet no momento do clique). Na prática, o
 // link de download real passa a ser sempre buscado dinamicamente da
@@ -5931,35 +6008,63 @@ function sharedProfileOpenChat() {
     openFriendChat(uid, nome);
 }
 
+// ══════════════════════════════════════════════════════════
+//  COMPARTILHAR (app e perfil)
+// ══════════════════════════════════════════════════════════
+//  Antes estas duas funções chamavam navigator.share direto. No
+//  navegador isso abre a folha de compartilhamento normalmente, mas na
+//  WebView do app instalado esse recurso simplesmente NÃO EXISTE — então
+//  o código caía sempre no plano B e só copiava o link. Era por isso que,
+//  dentro do APK, compartilhar não abria WhatsApp, Gmail e companhia.
+//
+//  DeeNative.share (em js/native-bridge.js) resolve isso: no app
+//  instalado usa o plugin nativo do Capacitor, que abre a folha de
+//  compartilhamento de verdade do Android; no site/PWA usa o
+//  navigator.share de sempre. Só se nenhum dos dois existir é que
+//  copiamos o link — que agora é o último recurso, não o padrão.
+// ══════════════════════════════════════════════════════════
+async function compartilharOuCopiar(title, text, url, msgCopiado) {
+    var abriu = false;
+    try {
+        if (window.DeeNative && window.DeeNative.share) {
+            abriu = await window.DeeNative.share({ title: title, text: text, url: url });
+        } else if (navigator.share) {
+            await navigator.share({ title: title, text: text, url: url });
+            abriu = true;
+        }
+    } catch (e) { abriu = true; } // pessoa cancelou a folha: não é erro
+
+    if (abriu) return;
+
+    try {
+        await navigator.clipboard.writeText(url);
+        notify(msgCopiado, 'ok');
+    } catch (e) {
+        notify('Não foi possível copiar o link', 'err');
+    }
+}
+
 // ── Forma 1: compartilhar o app (landing) ──
 function shareApp() {
     closeModal('share-modal');
-    var url   = 'https://dee-mensagens.web.app/landing.html';
-    var title = 'Dee — Mensagens';
-    var text  = 'Conheça o Dee! Mensagens, chamadas de vídeo e muito mais.';
-    if (navigator.share) {
-        navigator.share({ title: title, text: text, url: url }).catch(function() {});
-    } else {
-        navigator.clipboard.writeText(url).then(function() {
-            notify('Link copiado!', 'ok');
-        }).catch(function() { notify('Não foi possível copiar o link', 'err'); });
-    }
+    compartilharOuCopiar(
+        'Dee — Mensagens',
+        'Conheça o Dee! Mensagens, chamadas de vídeo e muito mais.',
+        'https://dee-mensagens.web.app/landing.html',
+        'Link copiado!'
+    );
 }
 
 // ── Forma 2: compartilhar o próprio perfil ──
 function shareMyProfile() {
     closeModal('share-modal');
     if (!me) return;
-    var url   = 'https://dee-mensagens.web.app/index.html?perfil=' + me.uid;
-    var title = 'Adicione-me no Dee!';
-    var text  = (me.nome || 'Alguém') + ' quer conversar com você no Dee.';
-    if (navigator.share) {
-        navigator.share({ title: title, text: text, url: url }).catch(function() {});
-    } else {
-        navigator.clipboard.writeText(url).then(function() {
-            notify('Link do seu perfil copiado!', 'ok');
-        }).catch(function() { notify('Não foi possível copiar o link', 'err'); });
-    }
+    compartilharOuCopiar(
+        'Adicione-me no Dee!',
+        (me.nome || 'Alguém') + ' quer conversar com você no Dee.',
+        'https://dee-mensagens.web.app/index.html?perfil=' + me.uid,
+        'Link do seu perfil copiado!'
+    );
 }
 
 
@@ -6049,7 +6154,12 @@ async function registerNativePushToken() {
 
         push.addListener('registration', function(token) {
             if (!token || !token.value || !me) return;
-            db.collection('usuarios').doc(me.uid).update({ fcmToken: token.value }).catch(function(){});
+            meuDocPrivado().set({ fcmToken: token.value }, { merge: true }).catch(function(){});
+            // Limpa o token que ficava no documento público, de instalações
+            // anteriores — senão ele continuaria exposto para sempre.
+            db.collection('usuarios').doc(me.uid)
+              .update({ fcmToken: firebase.firestore.FieldValue.delete() })
+              .catch(function(){});
         });
         push.addListener('registrationError', function(err) {
             console.warn('Falha ao registrar token de push nativo:', err);
@@ -6065,14 +6175,36 @@ async function registerNativePushToken() {
 //  (FCM) pro destinatário, mesmo com o app dele fechado ou a tela
 //  bloqueada. Ver cloudflare-worker/ na raiz do projeto.
 //
-//  TROQUE estas duas constantes depois de fazer o deploy do Worker:
-//  - DEE_PUSH_WORKER_URL: a URL que o `wrangler deploy` mostrar no fim
-//    (algo como https://dee-push.SEU-SUBDOMINIO.workers.dev).
-//  - DEE_PUSH_SHARED_SECRET: o MESMO valor que você colocou com
-//    `wrangler secret put APP_SHARED_SECRET` no Worker.
+//  DEE_PUSH_WORKER_URL: a URL que o `wrangler deploy` mostrar no fim
+//  (algo como https://dee-push.SEU-SUBDOMINIO.workers.dev).
+//
+//  NÃO EXISTE MAIS SENHA AQUI — e isso é proposital.
+//  Antes havia uma constante DEE_PUSH_SHARED_SECRET com a senha do
+//  Worker escrita neste arquivo. Como o index.html é público, qualquer
+//  pessoa podia abrir o código-fonte do site, copiar a senha e disparar
+//  notificações falsas em nome de quem quisesse.
+//
+//  Agora cada requisição leva o token de login do próprio usuário
+//  (emitido pelo Firebase, válido por 1 hora), e o Worker o verifica
+//  com as chaves públicas do Google. Não há segredo a vazar, e o
+//  Worker ainda passa a saber quem está enviando de verdade — o que
+//  impede alguém de se passar por outra pessoa.
 // ══════════════════════════════════════════════════════════
    var DEE_PUSH_WORKER_URL     = 'https://dee-push.deemensagens.workers.dev';
-   var DEE_PUSH_SHARED_SECRET  = '87gSCXbzTk6JxpcmQEvWnsjLVOyPw41RAlh5iG02';
+
+// Monta o cabeçalho de autenticação com o token do usuário logado.
+// Devolve null se não houver ninguém logado — nesse caso quem chamou
+// simplesmente desiste de enviar (a mensagem em si já foi salva).
+async function cabecalhosDoPush() {
+    try {
+        var user = auth.currentUser;
+        if (!user) return null;
+        var idToken = await user.getIdToken();
+        return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken };
+    } catch (e) {
+        return null;
+    }
+}
 
 // Fire-and-forget de propósito: a notificação nunca deve travar nem
 // atrasar o envio da mensagem em si. Se o Worker estiver fora do ar ou
@@ -6087,7 +6219,7 @@ function notifyChatPush(previewText) {
 // Igual à de cima, mas pra quando o destino não é "a conversa que está
 // aberta na tela agora" (ex.: compartilhar um arquivo de outro app direto
 // pra um contato/grupo escolhido numa lista, sem abrir a conversa dele).
-function notifyChatPushTo(target, previewText) {
+async function notifyChatPushTo(target, previewText) {
     if (!target || (!target.toUid && !target.groupId)) return;
     bumpConvActivity(target); // sobe a conversa/grupo pro topo da lista, mesmo sem o Worker configurado
     if (!me || !DEE_PUSH_WORKER_URL || DEE_PUSH_WORKER_URL.indexOf('SEU-SUBDOMINIO') !== -1) return;
@@ -6099,9 +6231,12 @@ function notifyChatPushTo(target, previewText) {
     };
     if (target.groupId) body.groupId = target.groupId; else body.toUid = target.toUid;
 
+    var headers = await cabecalhosDoPush();
+    if (!headers) return; // ninguém logado: não há como autenticar o envio
+
     fetch(DEE_PUSH_WORKER_URL + '/notify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Dee-Secret': DEE_PUSH_SHARED_SECRET },
+        headers: headers,
         body: JSON.stringify(body)
     }).catch(function(){});
 }
@@ -6112,13 +6247,16 @@ function notifyChatPushTo(target, previewText) {
 // mesmo com o app do outro lado 100% fechado ou a tela bloqueada). Chamada
 // pelos dois lados (startVideoCall e startVoiceCall) assim que o documento
 // da chamada é criado no Firestore.
-function notifyIncomingCallPush(toUid, callIdVal, hasVideo) {
+async function notifyIncomingCallPush(toUid, callIdVal, hasVideo) {
     if (!me || !DEE_PUSH_WORKER_URL || DEE_PUSH_WORKER_URL.indexOf('SEU-SUBDOMINIO') !== -1) return;
     if (!toUid || !callIdVal) return;
 
+    var headers = await cabecalhosDoPush();
+    if (!headers) return; // ninguém logado: não há como autenticar o envio
+
     fetch(DEE_PUSH_WORKER_URL + '/notify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Dee-Secret': DEE_PUSH_SHARED_SECRET },
+        headers: headers,
         body: JSON.stringify({
             fromUid: me.uid,
             fromName: me.nome || 'Alguém',
@@ -6143,13 +6281,16 @@ function notifyIncomingCallPush(toUid, callIdVal, hasVideo) {
 //  Este segundo push resolve: avisa o aparelho que aquela chamada
 //  terminou, e o lado nativo encerra a tela e a notificação.
 // ══════════════════════════════════════════════════════════
-function notifyCallCanceledPush(toUid, callIdVal) {
+async function notifyCallCanceledPush(toUid, callIdVal) {
     if (!me || !DEE_PUSH_WORKER_URL || DEE_PUSH_WORKER_URL.indexOf('SEU-SUBDOMINIO') !== -1) return;
     if (!toUid || !callIdVal) return;
 
+    var headers = await cabecalhosDoPush();
+    if (!headers) return; // ninguém logado: não há como autenticar o envio
+
     fetch(DEE_PUSH_WORKER_URL + '/notify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Dee-Secret': DEE_PUSH_SHARED_SECRET },
+        headers: headers,
         body: JSON.stringify({
             fromUid: me.uid,
             fromName: me.nome || 'Alguém',
@@ -7276,7 +7417,14 @@ async function ctxDeleteConv() {
             var cid = convId(me.uid, ctxTargetUid);
             clearsRef = db.collection('conversas').doc(cid).collection('clears');
         }
-        await clearsRef.doc(me.uid).set({ time: Date.now() });
+        var agora = Date.now();
+        await clearsRef.doc(me.uid).set({ time: agora });
+
+        // Mantém o cache em memória alinhado com o que acabou de ser
+        // gravado — senão a conversa continuaria mostrando o histórico
+        // antigo até o app ser reaberto (ver clearedAtCache).
+        clearedAtCache[ctxTargetIsGrp ? ('g_' + ctxTargetGid) : ('f_' + ctxTargetUid)] = agora;
+
         var isCurrentChat = (!ctxTargetIsGrp && chatUid === ctxTargetUid) || (ctxTargetIsGrp && chatGid === ctxTargetGid);
         if (isCurrentChat) {
             startListening(); // recarrega a conversa aberta já aplicando o novo filtro (fica vazia a partir de agora)
@@ -11019,11 +11167,25 @@ async function startListening() {
     msgsEl.classList.remove('smooth-scroll');
     msgsEl.classList.add('loading-hist');
     var loadingOverlay = document.getElementById('msgs-loading');
-    if (loadingOverlay) loadingOverlay.classList.add('show');
     chatInitialLoadActive = true;
     var myToken = ++chatLoadToken;
     var firstBatch = true;   // true enquanto ainda não recebemos a confirmação do servidor
     var settled    = false;  // vira true quando já revelamos a lista
+
+    // ══════════════════════════════════════════════════════════
+    //  O aviso "Carregando mensagens..." agora tem um atraso.
+    //  Com o cache local do Firestore ativo, reabrir uma conversa é
+    //  praticamente instantâneo — e mostrar o aviso nesse caso só fazia
+    //  a tela piscar, dando a impressão de lentidão justamente quando
+    //  estava rápido. Agora ele só aparece se o carregamento passar de
+    //  400ms (primeira abertura, internet ruim), que é quando o aviso é
+    //  útil de verdade.
+    // ══════════════════════════════════════════════════════════
+    var loadingTimer = setTimeout(function () {
+        if (!settled && myToken === chatLoadToken && loadingOverlay) {
+            loadingOverlay.classList.add('show');
+        }
+    }, 400);
     // Segurança: se o dispositivo estiver offline e o Firestore nunca confirmar
     // com o servidor, revela do mesmo jeito depois de um tempo, usando o que
     // já tiver chegado do cache local — melhor do que ficar escondido para sempre.
@@ -11031,15 +11193,46 @@ async function startListening() {
         if (!settled && myToken === chatLoadToken) { settled = true; snapMsgsToBottom(myToken); }
     }, 2500);
 
-    // Busca até quando ESTE usuário excluiu "toda a conversa" (ctxDeleteConv).
-    // Mensagens com time <= clearedAt ficam ocultas só para ele; o outro
-    // participante (ou os demais membros do grupo) continua vendo tudo.
+    // ══════════════════════════════════════════════════════════
+    //  MARCADOR DE "EXCLUÍ TODA A CONVERSA" — agora com cache
+    // ══════════════════════════════════════════════════════════
+    //  Mensagens anteriores a este marcador ficam ocultas só para você;
+    //  o outro participante continua vendo tudo.
+    //
+    //  Antes, este valor era buscado no servidor A CADA abertura de
+    //  conversa, e o carregamento das mensagens só começava depois que
+    //  essa ida e volta terminasse. Como o marcador quase nunca muda —
+    //  só quando você mesmo usa "excluir toda a conversa", que é uma
+    //  ação local — guardá-lo em memória elimina essa espera.
+    //
+    //  Na primeira abertura de cada conversa buscamos normalmente. Nas
+    //  seguintes usamos o valor já conhecido e seguimos direto para as
+    //  mensagens, revalidando em segundo plano para não ficar
+    //  desatualizado caso você limpe a conversa em outro aparelho.
+    // ══════════════════════════════════════════════════════════
+    var chaveConversa = chatIsGroup ? ('g_' + chatGid) : ('f_' + chatUid);
     chatClearedAt = 0;
-    try {
-        var clearSnap = await getClearsRef().doc(me.uid).get();
-        if (clearSnap.exists) chatClearedAt = clearSnap.data().time || 0;
-    } catch (e) { console.error(e); }
-    if (myToken !== chatLoadToken) return; // usuário já trocou de conversa enquanto buscava o marcador
+
+    if (Object.prototype.hasOwnProperty.call(clearedAtCache, chaveConversa)) {
+        // Já conhecemos o valor: usa na hora, sem esperar a rede.
+        chatClearedAt = clearedAtCache[chaveConversa];
+        getClearsRef().doc(me.uid).get().then(function (s) {
+            var novo = (s.exists && s.data().time) || 0;
+            if (novo !== clearedAtCache[chaveConversa]) {
+                clearedAtCache[chaveConversa] = novo;
+                // Mudou em outro aparelho: recarrega esta conversa para
+                // aplicar o marcador novo.
+                if (myToken === chatLoadToken) startListening();
+            }
+        }).catch(function () {});
+    } else {
+        try {
+            var clearSnap = await getClearsRef().doc(me.uid).get();
+            chatClearedAt = (clearSnap.exists && clearSnap.data().time) || 0;
+            clearedAtCache[chaveConversa] = chatClearedAt;
+        } catch (e) { console.error(e); }
+        if (myToken !== chatLoadToken) return; // trocou de conversa enquanto buscava
+    }
 
     var msgsQuery = chatClearedAt > 0
         ? getMsgsRef().where('time', '>', chatClearedAt).orderBy('time', 'asc')
@@ -11090,12 +11283,14 @@ async function startListening() {
         if (!settled && snap.metadata.fromCache === false) {
             settled = true;
             clearTimeout(fallbackTimer);
+            clearTimeout(loadingTimer); // se terminou antes dos 400ms, o aviso nem chega a aparecer
             snapMsgsToBottom(myToken);
         }
         firstBatch = !settled;
     }, function(err) {
         console.error(err); notify('Erro ao carregar mensagens', 'err');
         clearTimeout(fallbackTimer);
+        clearTimeout(loadingTimer);
         var f = document.getElementById('msgs');
         if (f) { f.classList.remove('loading-hist'); f.classList.add('smooth-scroll'); }
         var lo = document.getElementById('msgs-loading');
@@ -12453,7 +12648,7 @@ function createCallPeerConnection(id, myCandidatesField) {
         // Força o auricular assim que o áudio remoto chega, em QUALQUER tipo de
         // chamada (antes só rodava pra chamada de voz — na de vídeo o áudio
         // ficava sem essa garantia e podia sair no viva-voz).
-        forceEarpieceOutput();
+        reforcarAuricular();
     };
     pc.onconnectionstatechange = function() {
         if (pc.connectionState === 'connected' && callState !== 'active') onCallConnected();
@@ -12498,8 +12693,11 @@ function onCallConnected() {
     // (e outra com um pequeno atraso) evita que a ligação fique presa no
     // viva-voz mesmo com a tentativa inicial já feita no ontrack.
     if (!callSpeakerOn) {
-        forceEarpieceOutput();
-        setTimeout(function() { if (!callSpeakerOn) forceEarpieceOutput(); }, 800);
+        reforcarAuricular();
+        // Segunda e terceira tentativas: em alguns aparelhos o roteamento
+        // do Android só se assenta um instante depois da conexão.
+        setTimeout(reforcarAuricular, 800);
+        setTimeout(reforcarAuricular, 2000);
     }
 }
 
@@ -12588,6 +12786,34 @@ async function forceEarpieceOutput() {
     } catch(e) {}
     els.forEach(function(el) { el.setSinkId(earpieceId).catch(function(){}); });
     return earpieceId;
+}
+
+// ══════════════════════════════════════════════════════════
+//  REFORÇAR O AURICULAR (app instalado + navegador)
+// ══════════════════════════════════════════════════════════
+//  Havia uma lacuna aqui: nos momentos em que a chamada realmente
+//  conecta e o áudio do outro lado começa a tocar, o código só usava o
+//  caminho do NAVEGADOR (forceEarpieceOutput / setSinkId). Só que, no
+//  app instalado, quem de fato decide se o som sai no auricular ou no
+//  alto-falante é o AudioManager do Android — controlado pelo plugin.
+//  Como o plugin só era acionado no início da chamada, se o Android
+//  jogasse o som no viva-voz ao começar a tocar o áudio remoto (o que
+//  acontece em vários aparelhos), nada corrigia depois.
+//
+//  Esta função reforça pelos dois caminhos ao mesmo tempo, e é chamada
+//  em todos os momentos críticos: ao atender, quando o áudio remoto
+//  chega e quando a conexão se estabelece.
+//
+//  Só age se o viva-voz estiver desligado — se a pessoa ligou o
+//  viva-voz de propósito, respeitamos a escolha dela.
+// ══════════════════════════════════════════════════════════
+async function reforcarAuricular() {
+    if (callSpeakerOn) return;
+    var plugin = getAudioTogglePlugin();
+    if (plugin) {
+        try { await plugin.selectDevice({ device: 'earpiece' }); } catch (e) {}
+    }
+    try { await forceEarpieceOutput(); } catch (e) {}
 }
 
 // ── Garante que toda chamada comece na saída de áudio padrão (fone auricular),

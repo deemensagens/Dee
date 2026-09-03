@@ -43,8 +43,37 @@ export default {
       return json({ error: 'not_found' }, 404);
     }
 
-    const secret = request.headers.get('X-Dee-Secret');
-    if (!secret || secret !== env.APP_SHARED_SECRET) {
+    // ══════════════════════════════════════════════════════════
+    //  AUTENTICAÇÃO — token do próprio usuário, não senha compartilhada
+    // ══════════════════════════════════════════════════════════
+    //  Antes, este endpoint era protegido por uma senha fixa
+    //  (X-Dee-Secret) que precisava estar escrita no index.html — ou
+    //  seja, qualquer pessoa podia abrir o código-fonte do site, copiar
+    //  a senha e disparar notificações falsas em nome de quem quisesse.
+    //
+    //  Agora o app envia o token de autenticação do Firebase do próprio
+    //  usuário logado, e nós o verificamos com as chaves públicas do
+    //  Google. Isso resolve duas coisas de uma vez:
+    //    1) não existe mais segredo algum guardado no código público;
+    //    2) sabemos QUEM está enviando de verdade — e exigimos, logo
+    //       abaixo, que o "fromUid" informado seja exatamente esse
+    //       usuário, o que impede alguém de se passar por outra pessoa.
+    // ══════════════════════════════════════════════════════════
+    const authHeader = request.headers.get('Authorization') || '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    if (!idToken) {
+      return json({ error: 'unauthorized' }, 401);
+    }
+
+    // Lemos a conta de serviço já aqui porque precisamos do project_id
+    // para validar o token (o token do Firebase é emitido PARA um projeto
+    // específico, e conferir isso evita aceitar token de outro app).
+    let serviceAccount;
+    try { serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT); }
+    catch (e) { return json({ error: 'server_misconfigured' }, 500); }
+
+    const callerUid = await verifyFirebaseIdToken(idToken, serviceAccount.project_id);
+    if (!callerUid) {
       return json({ error: 'unauthorized' }, 401);
     }
 
@@ -55,6 +84,13 @@ export default {
     if (!fromUid || (!toUid && !groupId)) {
       return json({ error: 'missing_fields' }, 400);
     }
+
+    // O remetente informado tem que ser quem realmente está autenticado.
+    // Sem esta checagem, um usuário logado poderia mandar notificação
+    // fingindo ser outro.
+    if (fromUid !== callerUid) {
+      return json({ error: 'sender_mismatch' }, 403);
+    }
     const isCall = type === 'call';
     // Aviso de que a chamada acabou antes de ser atendida — serve para
     // fechar a tela de chamada no aparelho de quem ia receber, mesmo com
@@ -64,10 +100,6 @@ export default {
     if ((isCall || isCallCancel) && (!toUid || !callId)) {
       return json({ error: 'missing_call_fields' }, 400);
     }
-
-    let serviceAccount;
-    try { serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT); }
-    catch (e) { return json({ error: 'server_misconfigured' }, 500); }
 
     const accessToken = await getAccessToken(serviceAccount, [FCM_SCOPE, FIRESTORE_SCOPE]);
     const projectId = serviceAccount.project_id;
@@ -177,7 +209,7 @@ function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Dee-Secret',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 }
 
@@ -265,9 +297,94 @@ function base64url(input) {
   return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-// ── Firestore REST: busca o fcmToken salvo em usuarios/{uid} ──
+// ══════════════════════════════════════════════════════════
+//  VERIFICAÇÃO DO TOKEN DE LOGIN DO FIREBASE
+// ══════════════════════════════════════════════════════════
+//  Confere se o token enviado pelo app é autêntico e devolve o uid de
+//  quem está logado (ou null se o token for inválido/expirado).
+//
+//  A verificação é feita com as chaves PÚBLICAS do Google — não há
+//  segredo nenhum envolvido, e é por isso que essa abordagem é segura
+//  mesmo com o código do app sendo público. Um token só pode ser
+//  emitido pelo Firebase depois de um login de verdade, e expira em
+//  1 hora.
+//
+//  Guardamos as chaves em memória por 1 hora para não buscá-las a cada
+//  notificação (o Worker fica vivo entre requisições).
+// ══════════════════════════════════════════════════════════
+const JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+let jwksCache = { keys: null, expiresAt: 0 };
+
+async function getGoogleKeys() {
+  const agora = Date.now();
+  if (jwksCache.keys && agora < jwksCache.expiresAt) return jwksCache.keys;
+  const resp = await fetch(JWKS_URL);
+  if (!resp.ok) throw new Error('jwks_fetch_failed');
+  const data = await resp.json();
+  jwksCache = { keys: data.keys || [], expiresAt: agora + 60 * 60 * 1000 };
+  return jwksCache.keys;
+}
+
+function base64urlToBytes(str) {
+  const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = b64.length % 4 ? '='.repeat(4 - (b64.length % 4)) : '';
+  const bin = atob(b64 + pad);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function base64urlToJson(str) {
+  return JSON.parse(new TextDecoder().decode(base64urlToBytes(str)));
+}
+
+async function verifyFirebaseIdToken(idToken, projectId) {
+  try {
+    const partes = idToken.split('.');
+    if (partes.length !== 3) return null;
+
+    const header  = base64urlToJson(partes[0]);
+    const payload = base64urlToJson(partes[1]);
+
+    // Confere os dados do token antes de gastar tempo com a assinatura.
+    const agoraSeg = Math.floor(Date.now() / 1000);
+    if (header.alg !== 'RS256' || !header.kid) return null;
+    if (payload.aud !== projectId) return null;
+    if (payload.iss !== 'https://securetoken.google.com/' + projectId) return null;
+    if (!payload.sub) return null;
+    if (typeof payload.exp !== 'number' || payload.exp <= agoraSeg) return null;
+    if (typeof payload.iat === 'number' && payload.iat > agoraSeg + 300) return null; // emitido "no futuro"
+
+    const keys = await getGoogleKeys();
+    const jwk = keys.find((k) => k.kid === header.kid);
+    if (!jwk) return null;
+
+    const chave = await crypto.subtle.importKey(
+      'jwk',
+      { kty: jwk.n ? 'RSA' : jwk.kty, n: jwk.n, e: jwk.e, alg: 'RS256', ext: true },
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    const assinado = new TextEncoder().encode(partes[0] + '.' + partes[1]);
+    const assinatura = base64urlToBytes(partes[2]);
+    const valido = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', chave, assinatura, assinado);
+
+    return valido ? payload.sub : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ── Firestore REST: busca o fcmToken do usuário ──
+//  O token agora fica em usuarios/{uid}/privado/dados, um documento que
+//  SÓ o próprio dono consegue ler (ver firestore.rules). Antes ele ficava
+//  solto em usuarios/{uid}, que qualquer pessoa logada podia ler — e de
+//  posse do token dava para mandar notificação para aquela pessoa.
+//  O Worker usa credencial de administrador, então continua lendo normal. ──
 async function getUserFcmToken(projectId, accessToken, uid) {
-  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/usuarios/${uid}`;
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/usuarios/${uid}/privado/dados`;
   const resp = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
   if (!resp.ok) return null;
   const doc = await resp.json();
@@ -291,7 +408,9 @@ async function getGroupFcmTokens(projectId, accessToken, groupId, fromUid) {
   const resp = await fetch(batchUrl, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ documents: memberUids.map((uid) => `${base}/usuarios/${uid}`) }),
+    // Cada token vive no doc privado do membro (ver comentário em
+    // getUserFcmToken sobre por que ele saiu de usuarios/{uid}).
+    body: JSON.stringify({ documents: memberUids.map((uid) => `${base}/usuarios/${uid}/privado/dados`) }),
   });
   if (!resp.ok) return [];
   const results = await resp.json();
@@ -300,7 +419,9 @@ async function getGroupFcmTokens(projectId, accessToken, groupId, fromUid) {
     const doc = r.found;
     const token = doc?.fields?.fcmToken?.stringValue;
     if (token) {
-      const uid = doc.name.split('/').pop();
+      // caminho: .../usuarios/{uid}/privado/dados → o uid fica 3 antes do fim
+      const partes = doc.name.split('/');
+      const uid = partes[partes.length - 3];
       out.push({ uid, fcmToken: token });
     }
   }
@@ -329,7 +450,7 @@ async function bumpBadgeCount(projectId, accessToken, uid) {
         writes: [
           {
             transform: {
-              document: `${base}/usuarios/${uid}`,
+              document: `${base}/usuarios/${uid}/privado/dados`,
               fieldTransforms: [
                 { fieldPath: 'badgeCount', increment: { integerValue: '1' } },
               ],

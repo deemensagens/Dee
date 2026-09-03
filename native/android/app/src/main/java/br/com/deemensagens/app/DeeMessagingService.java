@@ -1,7 +1,10 @@
 package br.com.deemensagens.app;
 
+import android.Manifest;
 import android.app.ActivityManager;
 import android.app.PendingIntent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.content.Context;
 import android.content.Intent;
 import android.provider.Settings;
@@ -9,6 +12,7 @@ import android.provider.Settings;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 
 import com.capacitorjs.plugins.pushnotifications.PushNotificationsPlugin;
 import com.google.firebase.messaging.FirebaseMessagingService;
@@ -285,6 +289,17 @@ public class DeeMessagingService extends FirebaseMessagingService {
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel, record.getDeclineText(), declineIntent);
 
             if (record.getTimeoutMs() > 0) b.setTimeoutAfter(record.getTimeoutMs());
+
+            // A partir do Android 13, publicar notificação exige permissão
+            // do usuário. Se ela não foi concedida, simplesmente não
+            // reescrevemos — a notificação original do plugin continua no
+            // lugar e nada quebra. (O app pede essa permissão na primeira
+            // abertura, então o caso normal é ela estar concedida.)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
 
             // Mesmo id da notificação do plugin: substitui, não duplica.
             NotificationManagerCompat.from(this).notify(record.getNotificationId(), b.build());

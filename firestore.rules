@@ -33,6 +33,22 @@ service cloud.firestore {
       allow create, update, delete: if signedIn() && request.auth.uid == uid;
     }
     // =========================
+    // DADOS PRIVADOS DO USUÁRIO
+    // Subcoleção com o que é só do dono e ninguém mais precisa ver:
+    //  - fcmToken: o endereço de notificação do aparelho. Enquanto ficava
+    //    solto em usuarios/{uid}, qualquer pessoa logada podia lê-lo e,
+    //    com ele, disparar notificações para aquela pessoa.
+    //  - badgeCount: o número que aparece no ícone do app.
+    //  - lastReadMap: até quando cada conversa foi lida (revela hábitos
+    //    de uso, então também não deve ser público).
+    // Só o próprio dono lê e escreve aqui. O Cloudflare Worker usa
+    // credencial de administrador e por isso continua acessando normal —
+    // regras não se aplicam a ele.
+    // =========================
+    match /usuarios/{uid}/privado/{docId} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+    // =========================
     // CONVERSAS
     // Só os dois participantes da conversa (extraídos do próprio ID
     // do documento, convId = uidA_uidB) podem ler ou escrever nas
@@ -439,14 +455,30 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if signedIn() && uid == request.auth.uid;
     }
+    // A sinalização abaixo aceitava escrita de QUALQUER usuário logado, o
+    // que permitiria a um estranho sobrescrever a conexão de outra pessoa
+    // e derrubar/atrapalhar a transmissão. Agora cada lado só escreve no
+    // que é seu: o anfitrião (dono do post) e o espectador daquele par.
+    // A leitura continua aberta a quem está logado, porque os dois lados
+    // precisam ler o que o outro escreveu para a conexão se estabelecer.
+    function isDonoDoPost(postId) {
+      return exists(/databases/$(database)/documents/social_posts/$(postId)) &&
+        get(/databases/$(database)/documents/social_posts/$(postId)).data.uid == request.auth.uid;
+    }
     match /social_posts/{postId}/peers/{viewerUid} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+      allow write: if signedIn() &&
+        (viewerUid == request.auth.uid || isDonoDoPost(postId));
     }
+    // Candidatos de rede do anfitrião: só ele escreve.
     match /social_posts/{postId}/peers/{viewerUid}/hostCandidates/{id} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+      allow write: if signedIn() && isDonoDoPost(postId);
     }
+    // Candidatos de rede do espectador: só aquele espectador escreve.
     match /social_posts/{postId}/peers/{viewerUid}/viewerCandidates/{id} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+      allow write: if signedIn() && viewerUid == request.auth.uid;
     }
     // =========================
     // REDE SOCIAL — OCULTAR/BLOQUEAR (preferências pessoais do feed)
