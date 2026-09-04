@@ -153,6 +153,56 @@ public class DeePermissionsPlugin extends Plugin {
     }
 
     // ══════════════════════════════════════════════════════════
+    //  ABRIR UMA LOCALIZAÇÃO NO APP DE MAPAS DO CELULAR
+    // ══════════════════════════════════════════════════════════
+    //  Antes, tocar numa localização recebida chamava window.open com um
+    //  link do Google Maps. Dentro do app isso tentava carregar a página
+    //  na própria janela do Dee, que não tem permissão para navegar até
+    //  lá — e o que aparecia era "Página da Web não disponível".
+    //
+    //  Aqui usamos o endereço "geo:", que é a forma padrão do Android de
+    //  dizer "isto é um lugar no mapa". O sistema então abre a lista de
+    //  aplicativos capazes de mostrar aquele ponto — Google Maps, Waze,
+    //  Mapas do fabricante — e a pessoa escolhe qual quer usar, do mesmo
+    //  jeito que acontece em qualquer outro app.
+    //
+    //  Se o aparelho não tiver nenhum app de mapas instalado, caímos no
+    //  link normal do Google Maps aberto no navegador, para nunca ficar
+    //  sem resposta ao toque.
+    @PluginMethod
+    public void openMap(PluginCall call) {
+        String geo   = call.getString("geo");    // ex.: geo:0,0?q=-10.9,-37.0(Local)
+        String web   = call.getString("web");    // ex.: https://www.google.com/maps?q=...
+        boolean abriu = false;
+
+        if (geo != null && !geo.isEmpty()) {
+            try {
+                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(geo));
+                // O "chooser" garante a pergunta "abrir com..." mesmo quando
+                // já existe um app definido como padrão, deixando a escolha
+                // sempre com a pessoa.
+                Intent escolha = Intent.createChooser(i, "Abrir localização com");
+                escolha.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(escolha);
+                abriu = true;
+            } catch (Exception ignored) { }
+        }
+
+        if (!abriu && web != null && !web.isEmpty()) {
+            try {
+                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(web));
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(i);
+                abriu = true;
+            } catch (Exception ignored) { }
+        }
+
+        JSObject r = new JSObject();
+        r.put("opened", abriu);
+        call.resolve(r);
+    }
+
+    // ══════════════════════════════════════════════════════════
     //  "EXIBIR SOBRE OUTROS APLICATIVOS" — ABRIR DIRETO NO DEE
     // ══════════════════════════════════════════════════════════
     //  A forma oficial do Android (ACTION_MANAGE_OVERLAY_PERMISSION com o

@@ -516,6 +516,20 @@ service cloud.firestore {
     // pode gravar e só nesse campo. Sem "delete" pelo app hoje; o
     // admin() pode limpar se precisar de uma faxina manual.
     // =========================
+    // ══════════════════════════════════════════════════════════
+    //  TEMAS PUBLICADOS PELO PAINEL
+    // ══════════════════════════════════════════════════════════
+    //  Cores, degradês e imagens de fundo que o administrador publica
+    //  para todo mundo escolher na tela "Personalizar" do app, incluindo
+    //  os temas de datas comemorativas.
+    //
+    //  Qualquer pessoa logada lê (precisa, para os temas aparecerem na
+    //  lista); só o administrador cria, altera ou apaga.
+    match /app_temas/{id} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+
     match /social_notifications/{id} {
       // Quem RECEBEU o aviso lê o próprio aviso, como sempre. Quem ENVIOU
       // também pode consultar os que criou — é o que permite, ao excluir

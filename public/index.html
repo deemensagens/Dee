@@ -1001,6 +1001,9 @@
         .chat-custom-colors { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
         .chat-custom-sw { width: 100%; aspect-ratio: 1; border-radius: 10px; cursor: pointer; transition: transform .12s; }
         .chat-custom-sw:hover { transform: scale(1.08); }
+        /* Temas publicados pelo painel ganham uma borda sutil para se
+           distinguirem das cores fixas, sem virar outra seção separada. */
+        .chat-custom-sw.tema-publicado { border: 1.5px solid rgba(0,229,204,.35); }
 
         /* ── FLOATING CHAT NOTIFICATIONS (nova mensagem fora da conversa) ── */
         #chat-notif-stack { position: fixed; bottom: 16px; right: 16px; z-index: 9998; display: flex; flex-direction: column-reverse; gap: 8px; pointer-events: none; max-width: min(360px, calc(100vw - 24px)); }
@@ -1933,13 +1936,13 @@
             <div style="width:56px;height:56px;border-radius:16px;background:rgba(0,229,204,.15);border:1px solid rgba(0,229,204,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </div>
-            <h2 style="margin-bottom:6px;font-size:17px;">Baixando o DeeMensagens_v1.4.6.apk…</h2>
+            <h2 style="margin-bottom:6px;font-size:17px;">Baixando o DeeMensagens_v1.4.7.apk…</h2>
             <p class="about-dee-desc" style="margin-bottom:18px;font-size:12.5px;">O download já começou (11 MB, leva poucos segundos). Assim que terminar, siga os passos abaixo:</p>
 
             <div style="text-align:left;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                     <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</div>
-                    <div style="font-size:12.5px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.4.6.apk</strong>.</div>
+                    <div style="font-size:12.5px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.4.7.apk</strong>.</div>
                 </div>
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                     <div style="width:22px;height:22px;border-radius:50%;background:var(--accent2,var(--accent));color:#000;font-family:'Syne',sans-serif;font-weight:900;font-size:9.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">OU</div>
@@ -1971,7 +1974,7 @@
         <div style="text-align:left;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;font-size:12.5px;line-height:1.5;color:var(--text);">
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Abra <strong>Ajustes → Apps → Chrome → Notificações</strong> e ative tudo.</div>
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Ainda em Ajustes → Apps → Chrome, desative a <strong>otimização de bateria</strong> (às vezes chamada "economia de energia" ou "iniciar automaticamente").</div>
-            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Mesmo sem notificação, o arquivo já está salvo — abra o app <strong>Arquivos</strong> ou o <strong>Gerenciador de Downloads</strong> do celular e procure por <strong>DeeMensagens_v1.4.6.apk</strong> na pasta Downloads.</div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Mesmo sem notificação, o arquivo já está salvo — abra o app <strong>Arquivos</strong> ou o <strong>Gerenciador de Downloads</strong> do celular e procure por <strong>DeeMensagens_v1.4.7.apk</strong> na pasta Downloads.</div>
         </div>
         <div class="mbtns"><button class="mbtn sec" onclick="closeModal('dl-troubleshoot-modal')">Fechar</button></div>
     </div>
@@ -1983,7 +1986,7 @@
      tocar na pílula de novo. Some sozinha depois de um tempo. -->
 <div id="apk-dl-pill" style="display:none;position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;background:var(--surface,#111);border:1px solid var(--accent);border-radius:999px;padding:9px 16px;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;" onclick="reopenApkInstructions()">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" style="flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">Baixando DeeMensagens_v1.4.6.apk — toque p/ instalar</span>
+    <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">Baixando DeeMensagens_v1.4.7.apk — toque p/ instalar</span>
 </div>
 
 <div id="install-choice-modal" class="overlay">
@@ -3000,7 +3003,14 @@ let liveLocalStream      = null;  // MediaStream da câmera/mic do anfitrião
 let liveCamOn            = true;
 let liveMicOn            = true;
 let liveMinimized        = false; // true = anfitrião minimizou (câmera desligada de verdade, precisa de permissão pra voltar)
-let liveCamFacing        = 'user'; // câmera atual do anfitrião: sempre frontal, só existe uma câmera usada na live
+let liveCamFacing        = 'user'; // câmera atual do anfitrião na live das conversas
+// Trava contra toques repetidos nos botões de trocar câmera (live e chamada
+// de vídeo). No Android a câmera é exclusiva: para abrir a traseira é preciso
+// fechar a frontal antes. Dois toques rápidos fazem a segunda troca começar
+// no meio da primeira — uma fecha a câmera que a outra acabou de abrir, e o
+// aparelho fica sem imagem nenhuma, sem conseguir voltar.
+let trocandoCameraLive   = false;
+let trocandoCameraCall   = false;
 let livePeerConns        = {};    // anfitrião: { viewerUid: RTCPeerConnection } · espectador: { viewer: RTCPeerConnection }
 let livePeerVideoSenders = {};    // anfitrião: { viewerUid: RTCRtpSender } — usado pra replaceTrack ao minimizar/restaurar
 let livePeerCandUnsubs   = {};    // unsubscribes dos listeners de ICE candidates, por peer
@@ -3076,7 +3086,19 @@ const STATUS_TTL_MS      = 24 * 60 * 60 * 1000;
 var statusNotifReady        = false;
 var statusKnownIds          = {};
 var statusLikedByBaseline   = {};
-var statusUnreadCount       = 0;
+// ══════════════════════════════════════════════════════════
+//  STATUS AINDA NÃO VISTOS
+// ══════════════════════════════════════════════════════════
+//  Antes isto era só um número que ia somando. O problema: se a pessoa
+//  publicava um status e apagava logo depois, o número continuava lá.
+//  Ficava a bolinha em cima de "STATUS" apontando para algo que não
+//  existia mais, e ela só sumia porque abrir a aba zera tudo — ou seja,
+//  o número desaparecia sem nunca ter havido nada pra ver.
+//
+//  Agora guardamos QUAIS status estão pendentes, não quantos. A cada
+//  atualização, os que não existem mais saem da lista sozinhos e a
+//  bolinha se corrige na hora (ver detectNewStatusesAndLikes).
+var statusUnreadIds         = {};
 const STATUS_LAST_SEEN_KEY  = 'dee_status_last_seen_ts';
 const STATUS_COLORS = [
     'linear-gradient(135deg,#00e5cc,#0088ff)',
@@ -3799,7 +3821,7 @@ window.addEventListener('appinstalled', function() {
 var DEE_FULL_ANDROID_URL = ''; // ex: 'https://play.google.com/store/apps/details?id=br.com.deemensagens.app'
 var DEE_FULL_IOS_URL     = ''; // ex: 'https://apps.apple.com/app/idXXXXXXXXX'
 
-var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.4.6/DeeMensagens_v1.4.6.apk';
+var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.4.7/DeeMensagens_v1.4.7.apk';
 // ── Esse valor acima é só o FALLBACK (usado se a chamada à API do GitHub
 // abaixo falhar, ex.: sem internet no momento do clique). Na prática, o
 // link de download real passa a ser sempre buscado dinamicamente da
@@ -4146,6 +4168,79 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); }
 //  Tudo guardado só no localStorage deste dispositivo/usuário — a outra
 //  pessoa (ou outros dispositivos) nunca veem essa personalização.
 // ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  TEMAS PUBLICADOS PELO PAINEL
+// ══════════════════════════════════════════════════════════
+//  As cores logo abaixo são as fixas, que sempre existiram e continuam
+//  aparecendo para todo mundo. Além delas, o administrador pode publicar
+//  temas extras pelo painel: cores novas, degradês e imagens de fundo,
+//  inclusive temas de data comemorativa que só aparecem no período certo.
+//
+//  Para quem usa o Dee nada muda de lugar: os temas publicados entram na
+//  mesma grade de sempre, logo depois das cores fixas. A pessoa continua
+//  escolhendo do mesmo jeito.
+var temasPublicados = [];   // [{ id, nome, tipo, valor, feriado }]
+var temasUnsub      = null;
+
+// Datas comemorativas suportadas. Um tema marcado com uma delas só
+// aparece na janela indicada — antes e depois fica escondido sozinho,
+// sem ninguém precisar lembrar de ligar e desligar.
+//  · Ano Novo ....... 26/12 a 02/01
+//  · Sexta-feira Santa: calculada a cada ano (é móvel), janela de 3 dias
+//  · Dia do Trabalho .. 28/04 a 02/05
+//  · Natal ............ 10/12 a 26/12
+function feriadoEstaAtivo(chave, agora) {
+    agora = agora || new Date();
+    var ano = agora.getFullYear();
+    var dia = agora.getMonth() * 100 + agora.getDate(); // mês*100 + dia
+
+    if (chave === 'ano_novo')     return dia >= 1126 || dia <= 2;      // 26/12 .. 02/01
+    if (chave === 'dia_trabalho') return dia >= 328 && dia <= 402;     // 28/04 .. 02/05
+    if (chave === 'natal')        return dia >= 1110 && dia <= 1126;   // 10/12 .. 26/12
+    if (chave === 'sexta_santa') {
+        var sexta = calcularSextaFeiraSanta(ano);
+        var ini = new Date(sexta); ini.setDate(ini.getDate() - 1);
+        var fim = new Date(sexta); fim.setDate(fim.getDate() + 2);
+        return agora >= ini && agora <= fim;
+    }
+    return true; // tema sem data marcada: vale o ano inteiro
+}
+
+// A Sexta-feira Santa muda de data todo ano (é sempre 2 dias antes da
+// Páscoa). Esta é a conta clássica usada para achar a Páscoa; daí basta
+// voltar dois dias.
+function calcularSextaFeiraSanta(ano) {
+    var a = ano % 19, b = Math.floor(ano / 100), c = ano % 100;
+    var d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+    var g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+    var i = Math.floor(c / 4), k = c % 4;
+    var l = (32 + 2 * e + 2 * i - h - k) % 7;
+    var m = Math.floor((a + 11 * h + 22 * l) / 451);
+    var mes = Math.floor((h + l - 7 * m + 114) / 31);
+    var diaPascoa = ((h + l - 7 * m + 114) % 31) + 1;
+    var pascoa = new Date(ano, mes - 1, diaPascoa);
+    pascoa.setDate(pascoa.getDate() - 2); // Sexta-feira Santa
+    return pascoa;
+}
+
+function ouvirTemasPublicados() {
+    if (temasUnsub) temasUnsub();
+    temasUnsub = db.collection('app_temas').onSnapshot(function (snap) {
+        var lista = [];
+        snap.forEach(function (d) {
+            var t = d.data();
+            if (t.ativo === false) return;
+            if (t.feriado && !feriadoEstaAtivo(t.feriado)) return;
+            lista.push({ id: d.id, nome: t.nome || 'Tema', tipo: t.tipo || 'cor', valor: t.valor || '', ordem: t.ordem || 0 });
+        });
+        lista.sort(function (a, b) { return (a.ordem - b.ordem) || String(a.nome).localeCompare(String(b.nome)); });
+        temasPublicados = lista;
+        // Se a janela de personalizar estiver aberta, atualiza na hora.
+        var modal = document.getElementById('chat-customize-modal');
+        if (modal && modal.classList.contains('open')) openChatCustomize();
+    }, function () { /* sem temas publicados: segue só com as cores fixas */ });
+}
+
 var CHAT_BG_COLORS = [
     null,
     '#0b0d12', '#141a12', '#1a1025', '#0d1f1a', '#241016', '#101d24',
@@ -4254,6 +4349,18 @@ function openChatCustomize() {
         return '<button class="chat-custom-sw" style="' + style + '" onclick="pickChatColor(' + i + ')" title="' + (c ? 'Cor' : 'Padrão') + '">' + (c ? '' : '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>') + '</button>';
     }).join('');
 
+    // Temas publicados pelo painel entram logo depois das cores fixas,
+    // na mesma grade — a pessoa escolhe do mesmo jeito de sempre.
+    if (temasPublicados.length) {
+        grid.innerHTML += temasPublicados.map(function (t, i) {
+            var estilo;
+            if (t.tipo === 'imagem') estilo = 'background-image:url(' + t.valor + ');background-size:cover;background-position:center;';
+            else                      estilo = 'background:' + t.valor + ';';
+            return '<button class="chat-custom-sw tema-publicado" style="' + estilo + '" ' +
+                   'onclick="escolherTemaPublicado(' + i + ')" title="' + esc(t.nome) + '"></button>';
+        }).join('');
+    }
+
     var hasChat = !!(chatUid || chatGid);
     var imgSection = document.getElementById('chat-custom-img-section');
     if (imgSection) imgSection.style.display = hasChat ? 'flex' : 'none';
@@ -4264,6 +4371,25 @@ function openChatCustomize() {
 
     openModal('chat-customize-modal');
 }
+// Aplica um tema publicado pelo painel. Cor e degradê valem para o app
+// inteiro (igual às cores fixas); imagem entra como papel de parede da
+// conversa aberta, que é como a imagem sempre funcionou aqui.
+function escolherTemaPublicado(i) {
+    var t = temasPublicados[i];
+    if (!t) return;
+    if (t.tipo === 'imagem') {
+        if (!chatUid && !chatGid) { notify('Abra uma conversa para usar um tema com imagem', 'warn'); return; }
+        setChatImage(t.valor);
+        applyChatCustom();
+        notify('Tema "' + t.nome + '" aplicado nesta conversa', 'ok');
+    } else {
+        setGlobalColor(t.valor);
+        applyChatCustom();
+        notify('Tema "' + t.nome + '" aplicado ao app', 'ok');
+    }
+    closeModal('chat-customize-modal');
+}
+
 function pickChatColor(i) {
     var c = CHAT_BG_COLORS[i];
     if (!c) { clearGlobalColor(); applyChatCustom(); notify('Cor restaurada ao padrão em todo o app', 'ok'); closeModal('chat-customize-modal'); return; }
@@ -4572,16 +4698,81 @@ var exitConfirmTimer    = null;
 function pushNavBarrier() {
     try { history.pushState({ deeNav: true, t: Date.now() }, '', location.href); } catch(e) {}
 }
+// ══════════════════════════════════════════════════════════
+//  BOTÃO VOLTAR
+// ══════════════════════════════════════════════════════════
+//  No app instalado, quem avisa que o botão voltar foi apertado é o
+//  próprio Android, através do Capacitor. Antes usávamos só o histórico
+//  do navegador para isso: a cada "voltar" a gente empurrava uma entrada
+//  nova no histórico para segurar a pessoa dentro do app. O problema é
+//  que essas entradas iam se acumulando — então, na hora de realmente
+//  sair, o "voltar" só desfazia as barreiras que nós mesmos tínhamos
+//  criado, uma por uma, e o Dee nunca fechava por mais que a pessoa
+//  apertasse.
+//
+//  Agora, dentro do app, escutamos o evento do Android e chamamos o
+//  próprio comando de fechar o aplicativo. Nada de histórico, nada de
+//  barreiras acumuladas: dois toques em voltar e o Dee fecha de verdade,
+//  como qualquer outro app.
+//
+//  No site e no PWA não existe "fechar aplicativo", então lá continua
+//  valendo o mecanismo antigo do histórico, exatamente como sempre foi.
+var backButtonNativeUnsub = null;
+
+function appPluginNativo() {
+    var plugins = window.Capacitor && window.Capacitor.Plugins;
+    var app = plugins && plugins.App;
+    return (window.DeeNative && window.DeeNative.isNative && app && app.addListener) ? app : null;
+}
+
 function armBackTrap() {
     if (backTrapEnabled) return;
     backTrapEnabled = true;
+
+    var app = appPluginNativo();
+    if (app) {
+        // Caminho do app instalado: o Android nos avisa e nós decidimos.
+        app.addListener('backButton', onAndroidBackButton).then(function (h) {
+            backButtonNativeUnsub = h;
+        }).catch(function () {});
+        return;
+    }
+
+    // Caminho do site/PWA: mecanismo antigo, baseado no histórico.
     pushNavBarrier();
     window.addEventListener('popstate', onAppPopState);
+}
+
+function onAndroidBackButton() {
+    if (!backTrapEnabled) return;
+
+    // 1) Tem alguma coisa aberta por cima? Fecha só isso.
+    if (closeTopUIIfAny()) { exitConfirmPending = false; return; }
+
+    // 2) Já está na lista, sem nada aberto: pede a confirmação de sempre.
+    if (!exitConfirmPending) {
+        exitConfirmPending = true;
+        notify('Toque em voltar novamente para sair do Dee', 'info', 2500);
+        if (exitConfirmTimer) clearTimeout(exitConfirmTimer);
+        exitConfirmTimer = setTimeout(function () { exitConfirmPending = false; }, 2500);
+        return;
+    }
+
+    // 3) Confirmado: fecha o app de verdade.
+    exitConfirmPending = false;
+    var plugins = window.Capacitor && window.Capacitor.Plugins;
+    var app = plugins && plugins.App;
+    if (app && app.exitApp) { app.exitApp(); return; }
+    if (app && app.minimizeApp) { app.minimizeApp(); return; }
 }
 function disarmBackTrap() {
     backTrapEnabled = false;
     exitConfirmPending = false;
     if (exitConfirmTimer) { clearTimeout(exitConfirmTimer); exitConfirmTimer = null; }
+    if (backButtonNativeUnsub && backButtonNativeUnsub.remove) {
+        try { backButtonNativeUnsub.remove(); } catch (e) {}
+        backButtonNativeUnsub = null;
+    }
     window.removeEventListener('popstate', onAppPopState);
 }
 
@@ -5000,6 +5191,7 @@ function stopAllUnsubscribers() {
     if (typingUnsub)  { typingUnsub(); typingUnsub = null; }
     if (onlineUnsub)  { onlineUnsub(); onlineUnsub = null; }
     if (adsUnsub)     { adsUnsub(); adsUnsub = null; }
+    if (temasUnsub)   { temasUnsub(); temasUnsub = null; }
     if (adCarouselTimer) { clearTimeout(adCarouselTimer); adCarouselTimer = null; }
     if (onlineStatusInterval) { clearInterval(onlineStatusInterval); onlineStatusInterval = null; }
     Object.keys(chatNotifUnsubs).forEach(function(key) { chatNotifUnsubs[key].unsub(); });
@@ -6466,6 +6658,7 @@ function initApp() {
     restaurarLeiturasDaConta();
     checkForAppUpdate();
     listenAds();
+    ouvirTemasPublicados();
     listenStatuses();
     listenIncomingCalls();
     initEmoji();
@@ -6810,6 +7003,10 @@ async function doShareAd() {
                 ? db.collection('grupos').doc(id).collection('mensagens')
                 : db.collection('conversas').doc(convId(me.uid, id)).collection('mensagens');
             await ref.add(payload);
+            // O anúncio compartilhado é uma mensagem como qualquer outra na
+            // conversa, então precisa avisar igual: sem isto, chegava calado
+            // e a pessoa só descobria ao abrir a conversa por acaso.
+            notifyChatPushTo(kind === 'g' ? { groupId: id } : { toUid: id }, '📢 ' + (ad.titulo || 'Anúncio compartilhado'));
             ok++;
         } catch (e) { fail++; }
     }
@@ -8336,6 +8533,10 @@ function detectNewStatusesAndLikes() {
         if (!allStatuses.find(function(s) { return s.id === id; })) delete statusKnownIds[id];
     });
 
+    // Roda sempre, inclusive no primeiro carregamento: é aqui que os
+    // status já apagados saem da bolinha assim que o app abre.
+    podarStatusPendentes();
+
     if (isFirstLoad) {
         statusNotifReady = true;
         return;
@@ -8361,7 +8562,7 @@ function handleNewFriendStatuses(list) {
         var u = allUsers.find(function(x) { return x.uid === uid; });
         var nome = (u && u.nome) || last.nome || 'Usuário';
         var foto = u ? u.foto : last.foto;
-        incStatusUnread(group.length);
+        incStatusUnread(group);
         // Notificação dentro do app, quando a aba está em primeiro plano.
         if (!document.hidden) notify(esc(nome) + ' publicou um novo status', 'info');
         // Com a aba em segundo plano, dispara também a notificação nativa
@@ -8377,18 +8578,31 @@ function handleNewStatusLike(s, likerUid) {
     if (document.hidden) fireStatusLikeSystemNotification(s.id, nome);
 }
 
-function incStatusUnread(n) {
-    statusUnreadCount += n;
+function incStatusUnread(lista) {
+    (lista || []).forEach(function(st) { if (st && st.id) statusUnreadIds[st.id] = true; });
     updateStatusTabBadge();
+}
+// Tira da lista os status que não existem mais (foram apagados pelo dono
+// ou passaram das 24 horas). É isto que faz a bolinha sumir sozinha, sem
+// a pessoa precisar abrir a aba.
+function podarStatusPendentes() {
+    var vivos = {};
+    allStatuses.forEach(function(st) { vivos[st.id] = true; });
+    var mudou = false;
+    Object.keys(statusUnreadIds).forEach(function(id) {
+        if (!vivos[id]) { delete statusUnreadIds[id]; mudou = true; }
+    });
+    if (mudou) updateStatusTabBadge();
 }
 function updateStatusTabBadge() {
     var el = document.getElementById('status-tab-badge');
     if (!el) return;
-    el.textContent = statusUnreadCount > 99 ? '99+' : statusUnreadCount;
-    el.style.display = statusUnreadCount > 0 ? 'inline' : 'none';
+    var n = Object.keys(statusUnreadIds).length;
+    el.textContent = n > 99 ? '99+' : n;
+    el.style.display = n > 0 ? 'inline' : 'none';
 }
 function clearStatusBadge() {
-    statusUnreadCount = 0;
+    statusUnreadIds = {};
     updateStatusTabBadge();
     try { localStorage.setItem(STATUS_LAST_SEEN_KEY, String(Date.now())); } catch(e) {}
 }
@@ -9972,6 +10186,21 @@ function renderCinemaCard(bub, m, docId) {
     var icon      = type === 'page' ? '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' : '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="7" y1="3" x2="7" y2="21"/><line x1="17" y1="3" x2="17" y2="21"/><line x1="2" y1="9" x2="7" y2="9"/><line x1="2" y1="15" x2="7" y2="15"/><line x1="17" y1="9" x2="22" y2="9"/><line x1="17" y1="15" x2="22" y2="15"/></svg>';
     var isActive  = cinemaActiveDocId === docId;
 
+    // ── SESSÃO JÁ ENCERRADA ──
+    // Quem organizou pode encerrar a sessão para todos. Nesse caso o card
+    // continuava com o botão "Entrar na Sala", e quem tocasse só recebia o
+    // aviso de que já tinha acabado — um botão que não leva a lugar nenhum.
+    // Agora o card mostra que encerrou e não tem mais botão. Só continua
+    // com botão a sessão que está de pé, esteja tocando ou pausada.
+    if (cs.status === 'closed') {
+        bub.innerHTML =
+            '<div class="cinema-invite-card">' +
+                '<div class="cic-head"><span class="cic-icon">' + icon + '</span><span>' + headline + '</span></div>' +
+                '<div class="cic-status">' + (type === 'page' ? 'Navegação encerrada' : 'Sessão de Cinema encerrada') + '</div>' +
+            '</div>';
+        return;
+    }
+
     bub.innerHTML =
         '<div class="cinema-invite-card">' +
             '<div class="cic-head"><span class="cic-icon">' + icon + '</span><span>' + headline + '</span></div>' +
@@ -10323,7 +10552,21 @@ function toggleLiveCam() {    if (!liveIsHost || !liveLocalStream || liveMinimiz
 //    replaceTrack, sem derrubar nem renegociar nenhuma conexão.
 async function toggleLiveCamera() {
     if (!liveIsHost || !liveLocalStream || liveMinimized) return;
+    if (trocandoCameraLive) return; // já tem uma troca acontecendo
+    trocandoCameraLive = true;
+    var btnFlipLive = document.getElementById('lfw-flip-cam-btn');
+    if (btnFlipLive) btnFlipLive.disabled = true;
+    try {
+        await trocarCameraDaLive();
+    } finally {
+        // Mesmo se algo falhar no meio, a trava é liberada e o botão volta
+        // a funcionar — senão um erro deixaria a troca travada de vez.
+        trocandoCameraLive = false;
+        if (btnFlipLive) btnFlipLive.disabled = false;
+    }
+}
 
+async function trocarCameraDaLive() {
     var newFacing = liveCamFacing === 'user' ? 'environment' : 'user';
     var oldTrack  = liveLocalStream.getVideoTracks()[0];
     var estavaLigada = liveCamOn;
@@ -10841,8 +11084,33 @@ function ensureBubbleMap(container, lat, lng) {
     setTimeout(function() { map.invalidateSize(); }, 60);
     return entry;
 }
-function openMapExternal(lat, lng) {
-    window.open('https://www.google.com/maps?q=' + lat + ',' + lng, '_blank', 'noopener');
+// ══════════════════════════════════════════════════════════
+//  ABRIR UMA LOCALIZAÇÃO RECEBIDA
+// ══════════════════════════════════════════════════════════
+//  Antes isto era só um window.open com o link do Google Maps. No app
+//  instalado, isso tentava carregar a página dentro da própria janela do
+//  Dee — que não tem permissão para navegar até lá — e o que aparecia era
+//  "Página da Web não disponível", sem mapa nenhum.
+//
+//  Agora, dentro do app, o Android é quem abre: ele reconhece o endereço
+//  "geo:" como um lugar no mapa e mostra a lista de aplicativos capazes de
+//  exibi-lo (Google Maps, Waze, Mapas do fabricante), deixando a escolha
+//  com a pessoa. No site e no PWA nada muda: continua abrindo o Google
+//  Maps numa aba nova, como sempre.
+function openMapExternal(lat, lng, rotulo) {
+    var web = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+    var geo = 'geo:' + lat + ',' + lng + '?q=' + lat + ',' + lng +
+              (rotulo ? '(' + encodeURIComponent(rotulo) + ')' : '');
+
+    if (window.DeeNative && window.DeeNative.isNative && window.DeeNative.openMap) {
+        window.DeeNative.openMap(geo, web).then(function (abriu) {
+            // Nenhum app de mapa instalado: cai no navegador para o toque
+            // nunca ficar sem resposta.
+            if (!abriu) window.open(web, '_blank', 'noopener');
+        });
+        return;
+    }
+    window.open(web, '_blank', 'noopener');
 }
 
 function fmtLocElapsed(ms) {
@@ -10883,7 +11151,7 @@ function renderLocationLiveCard(bub, m, docId) {
 
     var mapEl = bub.querySelector('.loc-minimap');
     if (typeof live.lat === 'number' && typeof live.lng === 'number') ensureBubbleMap(mapEl, live.lat, live.lng);
-    mapEl.onclick = function() { if (typeof live.lat === 'number') openMapExternal(live.lat, live.lng); };
+    mapEl.onclick = function() { if (typeof live.lat === 'number') openMapExternal(live.lat, live.lng, live.address || 'Localização em tempo real'); };
 
     var subEl = bub.querySelector('#loc-sub-' + docId);
     function tick() {
@@ -10912,7 +11180,7 @@ function renderLocationCard(bub, m, docId) {
         '</div>';
     var mapEl = bub.querySelector('.loc-minimap');
     if (typeof loc.lat === 'number' && typeof loc.lng === 'number') ensureBubbleMap(mapEl, loc.lat, loc.lng);
-    mapEl.onclick = function() { if (typeof loc.lat === 'number') openMapExternal(loc.lat, loc.lng); };
+    mapEl.onclick = function() { if (typeof loc.lat === 'number') openMapExternal(loc.lat, loc.lng, loc.address || 'Localização'); };
 }
 
 // ── Bolha de mensagem de ROTA (vários endereços com o caminho entre eles) ──
@@ -10937,7 +11205,17 @@ function renderLocationRouteCard(bub, m, docId) {
 }
 function openRouteExternal(stops) {
     if (!stops || !stops.length) return;
-    window.open('https://www.google.com/maps/dir/' + stops.map(function(s) { return s.lat + ',' + s.lng; }).join('/'), '_blank', 'noopener');
+    var web = 'https://www.google.com/maps/dir/' + stops.map(function(s) { return s.lat + ',' + s.lng; }).join('/');
+    // Rota com várias paradas não tem endereço "geo:" equivalente, então
+    // aqui pedimos ao Android para abrir o link no navegador/app de mapas
+    // de fora do Dee — o que resolve o mesmo problema da tela em branco.
+    if (window.DeeNative && window.DeeNative.isNative && window.DeeNative.openMap) {
+        window.DeeNative.openMap('', web).then(function (abriu) {
+            if (!abriu) window.open(web, '_blank', 'noopener');
+        });
+        return;
+    }
+    window.open(web, '_blank', 'noopener');
 }
 // Mapa da rota dentro da bolha: parecido com ensureBubbleMap, mas com vários
 // pinos numerados + a linha do caminho. A rota não muda depois de enviada,
@@ -12626,7 +12904,23 @@ async function startVoiceCall() {
 
 function watchCallDocAsCaller(id) {
     callDocUnsub = db.collection('calls').doc(id).onSnapshot(async function(snap) {
-        if (!snap.exists) return;
+        // ── O DOCUMENTO SUMIU = A CHAMADA ACABOU ──
+        // Quem recusa marca o documento como "recusada" e, 2,5 segundos
+        // depois, apaga o documento (ver teardownCall). Se por qualquer
+        // motivo o aviso da recusa não chegasse aqui a tempo — rede lenta,
+        // app do outro lado abrindo do zero ao tocar em "Recusar" na tela
+        // do sistema — a gente só via a exclusão e ignorava, e o telefone
+        // continuava chamando sozinho até estourar os 45 segundos.
+        // Agora a exclusão também encerra a chamada deste lado.
+        if (!snap.exists) {
+            if (callState === 'ringing-out' || callState === 'connecting' || callState === 'active') {
+                stopRingtone();
+                if (callState === 'ringing-out') { notify('Chamada encerrada', 'info'); logCallToChat('rejected'); }
+                else                              { notify('Chamada encerrada', 'info'); logCallToChat('completed'); }
+                teardownCall();
+            }
+            return;
+        }
         var d = snap.data();
 
         if (d.status === 'accepted' && d.answer && !callAnsweredOnce) {
@@ -12640,6 +12934,14 @@ function watchCallDocAsCaller(id) {
             stopRingtone();
             notify((callPartnerName || 'Usuário') + ' recusou a chamada', 'info');
             logCallToChat('rejected');
+            teardownCall();
+        } else if (d.status === 'missed') {
+            // O outro lado deixou tocar até o fim (ou o sistema encerrou a
+            // tela de chamada por conta própria). Antes esse caso não era
+            // tratado aqui e o telefone continuava chamando à toa.
+            stopRingtone();
+            notify('Ninguém atendeu', 'info');
+            logCallToChat('no-answer');
             teardownCall();
         } else if (d.status === 'busy') {
             stopRingtone();
@@ -13056,6 +13358,19 @@ async function toggleCallSpeaker() {
 //    moderno suporta em conexões já estabelecidas. ──
 async function toggleCallCamera() {
     if (callType !== 'video' || !callLocalStream) return;
+    if (trocandoCameraCall) return; // já tem uma troca acontecendo
+    trocandoCameraCall = true;
+    var btnFlipCall = document.getElementById('call-flip-cam-btn');
+    if (btnFlipCall) btnFlipCall.disabled = true;
+    try {
+        await trocarCameraDaChamada();
+    } finally {
+        trocandoCameraCall = false;
+        if (btnFlipCall) btnFlipCall.disabled = false;
+    }
+}
+
+async function trocarCameraDaChamada() {
     var newFacing = callCamFacing === 'user' ? 'environment' : 'user';
 
     var oldTrack = callLocalStream.getVideoTracks()[0];
@@ -13220,15 +13535,19 @@ function teardownCall() {
     callSpeakerOn    = false;
     callId           = null;
 
-    // Dá um tempinho antes de apagar o doc/subcoleções, pra garantir que o
+    // Dá um tempo antes de apagar o doc/subcoleções, pra garantir que o
     // outro lado ainda consiga ler o status final (rejected/ended/missed)
-    // antes de o documento sumir.
+    // antes de o documento sumir. Eram 2,5 s, agora são 8: em rede móvel
+    // ruim — ou quando o app do outro lado está abrindo do zero por causa
+    // da tela de chamada do sistema — 2,5 s às vezes não bastavam, e ele
+    // acabava vendo só a exclusão. (Mesmo assim a exclusão agora também
+    // encerra a chamada, ver watchCallDocAsCaller: são duas proteções.)
     if (id) {
         setTimeout(function() {
             clearCallSubcollections(id).then(function() {
                 db.collection('calls').doc(id).delete().catch(function(){});
             });
-        }, 2500);
+        }, 8000);
     }
 }
 

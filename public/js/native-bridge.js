@@ -151,5 +151,24 @@
         catch (e) { return false; }
     };
 
+    // ══════════════════════════════════════════════════════════
+    //  Abrir uma localização no app de mapas do celular
+    //  ──────────────────────────────────────────────────────────
+    //  No app instalado quem faz isso é o Android (ver openMap em
+    //  DeePermissionsPlugin.java): ele mostra a lista de aplicativos de
+    //  mapa e a pessoa escolhe. No site e no PWA continua abrindo o
+    //  Google Maps numa aba nova, como sempre foi.
+    // ══════════════════════════════════════════════════════════
+    DeeNative.openMap = async function (geo, web) {
+        if (!isNative) return false;
+        var p = global.Capacitor && global.Capacitor.Plugins;
+        var plugin = p && p.DeePermissions;
+        if (!plugin || !plugin.openMap) return false;
+        try {
+            var r = await plugin.openMap({ geo: geo, web: web });
+            return !!(r && r.opened);
+        } catch (e) { return false; }
+    };
+
     global.DeeNative = DeeNative;
 })(window);

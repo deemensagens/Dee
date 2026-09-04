@@ -47,6 +47,13 @@
     // navegador não entrega a câmera traseira durante uma transmissão, então
     // lá o botão nem aparece e nada muda em relação a hoje.
     var sfLiveCamFacing       = 'user';
+    // Trava contra toques repetidos no botão de trocar câmera. No Android a
+    // câmera é um recurso exclusivo: para abrir a traseira é preciso fechar
+    // a frontal antes. Se a pessoa toca duas vezes rápido, a segunda troca
+    // começa no meio da primeira — uma fecha a câmera que a outra acabou de
+    // abrir e a transmissão fica sem imagem nenhuma, sem conseguir voltar.
+    // Enquanto uma troca está em andamento, as outras são ignoradas.
+    var sfLiveTrocandoCamera  = false;
     var sfLiveMicOn           = true;
     var sfLivePeerConns       = {};    // anfitrião: { viewerUid: RTCPeerConnection } · espectador: { viewer: RTCPeerConnection }
     var sfLivePeerVideoSenders = {};   // anfitrião: { viewerUid: RTCRtpSender } — replaceTrack ao ligar/desligar câmera
@@ -1585,7 +1592,23 @@
     //  então nenhuma conexão cai e ninguém precisa entrar de novo na live.
     async function sfLiveFlipCamera() {
         if (!sfLiveIsHost || !sfLiveLocalStream) return;
+        if (sfLiveTrocandoCamera) return; // já tem uma troca acontecendo
+        sfLiveTrocandoCamera = true;
 
+        var botao = document.getElementById('sf-live-flip-btn');
+        if (botao) botao.disabled = true;
+        try {
+            await sfTrocarCameraDaLive();
+        } finally {
+            // O "finally" é essencial: mesmo se algo falhar no meio, a trava
+            // é liberada e o botão volta a funcionar. Sem isso, um erro
+            // deixaria a troca de câmera bloqueada até reiniciar a live.
+            sfLiveTrocandoCamera = false;
+            if (botao) botao.disabled = false;
+        }
+    }
+
+    async function sfTrocarCameraDaLive() {
         var novaFace     = sfLiveCamFacing === 'user' ? 'environment' : 'user';
         var trackAntiga  = sfLiveLocalStream.getVideoTracks()[0];
         var estavaLigada = sfLiveCamOn;
@@ -2384,6 +2407,14 @@
                     ? db.collection('grupos').doc(id).collection('mensagens')
                     : db.collection('conversas').doc(convId(me.uid, id)).collection('mensagens');
                 await ref.add(payload);
+                // A postagem compartilhada é uma mensagem como outra qualquer
+                // dentro da conversa, então precisa avisar do mesmo jeito.
+                // Sem isto ela chegava calada e a pessoa só descobria ao abrir
+                // a conversa por acaso.
+                if (typeof notifyChatPushTo === 'function') {
+                    notifyChatPushTo(kind === 'g' ? { groupId: id } : { toUid: id },
+                        '📝 ' + (p.nome || 'Alguém') + ' compartilhou uma publicação');
+                }
                 ok++;
             } catch (e) { fail++; }
         }

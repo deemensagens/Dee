@@ -4,8 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Dee — Painel Administrativo</title>
-<meta name="theme-color" content="#2554c7">
-<meta name="description" content="Painel administrativo de anúncios do Dee">
+<meta name="theme-color" content="#030508">
+<meta name="description" content="Painel administrativo do Dee">
+<!-- ══ SEGURANÇA ══
+     noindex/nofollow tira o painel dos resultados de busca. Não é uma
+     tranca — a tranca de verdade são as regras do Firestore — mas não há
+     motivo para um painel administrativo aparecer no Google.
+     O "no-referrer" impede que o endereço do painel vaze para sites de
+     terceiros através de qualquer link clicado aqui dentro. -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
 <link rel="manifest" href="manifest-painel.json">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -17,22 +25,37 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
+    /* ══════════════════════════════════════════════════════════
+       PALETA — a mesma do aplicativo
+       ──────────────────────────────────────────────────────────
+       Fundo, superfícies, turquesa, azul e vermelho vêm exatamente do
+       index.html, para o painel parecer parte do Dee e não outra coisa.
+
+       Os dois tons de texto secundário (--muted e --muted2) são um
+       pouco mais claros aqui do que no app. No app eles aparecem em
+       rótulos curtos; no painel aparecem em tabela densa, número
+       pequeno e legenda de gráfico — com o tom original ficariam no
+       limite da leitura. É a única diferença proposital.
+       ══════════════════════════════════════════════════════════ */
     :root {
-        --bg: #f4f5f7; --surface: #ffffff; --surface2: #f7f8fa; --surface3: #eef0f3;
-        --surface4: #e5e7eb;
-        --accent: #2554c7; --accent2: #1a3f99; --text: #1a1d23; --muted: #6b7280;
-        --muted2: #9aa1ad;
-        --border: #e3e5e9; --danger: #c0312b; --online: #1b8a4c; --warn: #b06a06;
+        --bg: #030508; --surface: #0b0d12; --surface2: #111420; --surface3: #181b26;
+        --surface4: #232838;
+        --accent: #00e5cc; --accent2: #0088ff; --text: #e8eaf0; --muted: #8b93a7;
+        --muted2: #5f6878;
+        --border: #1a1d28; --danger: #ff3b5c; --online: #00e676; --warn: #ffb300;
+        /* Cor do texto que fica EM CIMA do turquesa. No tema claro era
+           branco; no escuro precisa ser escuro para dar contraste. */
+        --on-accent: #04140f;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { -webkit-text-size-adjust: 100%; }
-    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
     img, video { max-width: 100%; }
     .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; width: 100%; }
     .hdr { text-align: center; margin-bottom: 28px; }
-    .logo { font-family: 'Inter', sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -0.2px; color: var(--text); }
+    .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -0.2px; color: var(--text); }
     .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
     a { color: var(--accent); }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -40,7 +63,7 @@
 
     /* ── LOGIN ── */
     #login-screen { display: flex; align-items: center; justify-content: center; min-height: 80vh; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 32px; width: 100%; max-width: 380px; box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 16px rgba(16,24,40,.06); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 32px; width: 100%; max-width: 380px; box-shadow: 0 1px 2px rgba(0,0,0,.29), 0 4px 16px rgba(0,0,0,.31); }
     .field { margin-bottom: 16px; }
     .field label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .2px; color: var(--muted); margin-bottom: 6px; }
     .pass-wrap { position: relative; }
@@ -48,9 +71,9 @@
     .pass-toggle { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; line-height: 1; color: var(--muted); }
     .pass-toggle:hover { color: var(--text); }
     input, select, textarea { width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13.5px; font-family: inherit; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,84,199,.12); }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,204,.12); }
     textarea { resize: vertical; min-height: 70px; }
-    .btn { width: 100%; padding: 11px; background: var(--accent); color: #fff; border: none; border-radius: 6px; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; letter-spacing: .1px; transition: background .15s; }
+    .btn { width: 100%; padding: 11px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 6px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; letter-spacing: .1px; transition: background .15s; }
     .btn:hover { background: var(--accent2); }
     .btn:active { transform: translateY(1px); }
     .btn.sec { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
@@ -67,15 +90,15 @@
 
     /* ── NAV TABS ── */
     .nav-tabs { display: flex; gap: 2px; background: transparent; border-bottom: 1px solid var(--border); padding: 0; margin-bottom: 24px; overflow-x: auto; }
-    .nav-tab { flex: 0 0 auto; min-width: 0; text-align: center; padding: 11px 16px; border-radius: 0; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 13px; color: var(--muted); transition: all .15s; white-space: nowrap; user-select: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .nav-tab { flex: 0 0 auto; min-width: 0; text-align: center; padding: 11px 16px; border-radius: 0; cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; color: var(--muted); transition: all .15s; white-space: nowrap; user-select: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
     .nav-tab:hover { color: var(--text); }
     .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     .tab-pane { display: none; animation: fadeIn .2s ease; }
     .tab-pane.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
-    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px; margin-bottom: 18px; box-shadow: 0 1px 2px rgba(16,24,40,.03); }
-    .panel h2 { font-family: 'Inter', sans-serif; font-size: 14.5px; font-weight: 700; color: var(--text); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px; margin-bottom: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.28); }
+    .panel h2 { font-family: 'Syne', sans-serif; font-size: 14.5px; font-weight: 700; color: var(--text); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
     .row { display: flex; gap: 12px; }
     .row .field { flex: 1; }
     .hint { font-size: 11.5px; color: var(--muted2); margin-top: 4px; }
@@ -86,16 +109,16 @@
     /* ── DASHBOARD CARDS ── */
     .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 20px; }
     .dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; position: relative; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
-    .dash-card:hover { border-color: var(--muted2); box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 12px rgba(16,24,40,.05); }
+    .dash-card:hover { border-color: var(--muted2); box-shadow: 0 1px 2px rgba(0,0,0,.29), 0 4px 12px rgba(0,0,0,.30); }
     .dash-card .dc-icon { font-size: 17px; margin-bottom: 10px; opacity: .75; }
-    .dash-card .dc-value { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 26px; color: var(--text); line-height: 1; letter-spacing: -0.3px; }
+    .dash-card .dc-value { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 26px; color: var(--text); line-height: 1; letter-spacing: -0.3px; }
     .dash-card .dc-label { font-size: 11.5px; color: var(--muted); margin-top: 6px; font-weight: 500; letter-spacing: .1px; }
     .dash-card.accent .dc-value { color: var(--accent); }
     .dash-card.danger .dc-value { color: var(--danger); }
     .dash-card.warn .dc-value { color: var(--warn); }
 
     .preview-box { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; display: none; }
-    .preview-box img, .preview-box video { width: 56px; height: 56px; border-radius: 6px; object-fit: cover; background: #e5e7eb; }
+    .preview-box img, .preview-box video { width: 56px; height: 56px; border-radius: 6px; object-fit: cover; background: var(--surface3); }
     .preview-box.show { display: flex; }
     .preview-box.large img, .preview-box.large video { width: 110px; height: 110px; }
 
@@ -107,9 +130,9 @@
     /* ── TABLE ── */
     .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
     .toolbar input[type="search"] { flex: 1; min-width: 180px; }
-    .filter-chip { padding: 7px 13px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all .15s; font-family: 'Inter', sans-serif; }
+    .filter-chip { padding: 7px 13px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all .15s; font-family: 'Syne', sans-serif; }
     .filter-chip:hover { color: var(--text); border-color: var(--muted2); }
-    .filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .filter-chip.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
     .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 
     .ads-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
@@ -119,31 +142,31 @@
     table.ads-table tbody tr { background: var(--surface); transition: background .1s; }
     table.ads-table tbody tr:hover { background: var(--surface2); }
     table.ads-table tbody tr:last-child td { border-bottom: none; }
-    .thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: #e5e7eb; flex-shrink: 0; cursor: pointer; border: 1px solid var(--border); }
+    .thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: var(--surface3); flex-shrink: 0; cursor: pointer; border: 1px solid var(--border); }
     .td-title { font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .td-sub { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
     .clicks-link { color: var(--accent); cursor: pointer; font-weight: 700; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
 
-    .ad-status { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; font-family: 'Inter', sans-serif; letter-spacing: .3px; }
-    .ad-status.on { background: rgba(27,138,76,.1); color: var(--online); }
-    .ad-status.off { background: rgba(192,49,43,.1); color: var(--danger); }
+    .ad-status { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; font-family: 'Syne', sans-serif; letter-spacing: .3px; }
+    .ad-status.on { background: rgba(0,230,118,.1); color: var(--online); }
+    .ad-status.off { background: rgba(255,59,92,.1); color: var(--danger); }
     .ad-status .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
     .prio-badge { font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .2px; }
-    .prio-badge.alta { background: rgba(192,49,43,.1); color: var(--danger); }
-    .prio-badge.media { background: rgba(176,106,6,.1); color: var(--warn); }
-    .prio-badge.baixa { background: rgba(37,84,199,.1); color: var(--accent); }
+    .prio-badge.alta { background: rgba(255,59,92,.1); color: var(--danger); }
+    .prio-badge.media { background: rgba(255,179,0,.1); color: var(--warn); }
+    .prio-badge.baixa { background: rgba(0,229,204,.1); color: var(--accent); }
 
     .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-    .mini-btn { padding: 6px 11px; border-radius: 5px; border: 1px solid transparent; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 11px; cursor: pointer; white-space: nowrap; transition: filter .15s, background .15s; }
+    .mini-btn { padding: 6px 11px; border-radius: 5px; border: 1px solid transparent; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 11px; cursor: pointer; white-space: nowrap; transition: filter .15s, background .15s; }
     .mini-btn:hover { filter: brightness(.96); }
-    .mini-btn.edit { background: rgba(37,84,199,.08); color: var(--accent); border-color: rgba(37,84,199,.18); }
-    .mini-btn.toggle-on { background: rgba(27,138,76,.08); color: var(--online); border-color: rgba(27,138,76,.18); }
+    .mini-btn.edit { background: rgba(0,229,204,.08); color: var(--accent); border-color: rgba(0,229,204,.18); }
+    .mini-btn.toggle-on { background: rgba(0,230,118,.08); color: var(--online); border-color: rgba(0,230,118,.18); }
     .mini-btn.toggle-off { background: var(--surface3); color: var(--muted); border-color: var(--border); }
-    .mini-btn.del { background: rgba(192,49,43,.08); color: var(--danger); border-color: rgba(192,49,43,.18); }
+    .mini-btn.del { background: rgba(255,59,92,.08); color: var(--danger); border-color: rgba(255,59,92,.18); }
 
     /* ── PUBLICAÇÕES (Comunidade Dee) ── */
-    .pd-pinned-box { display: flex; align-items: center; gap: 12px; padding: 14px; background: rgba(37,84,199,.06); border: 1px solid rgba(37,84,199,.2); border-radius: 8px; margin-bottom: 16px; }
+    .pd-pinned-box { display: flex; align-items: center; gap: 12px; padding: 14px; background: rgba(0,229,204,.06); border: 1px solid rgba(0,229,204,.2); border-radius: 8px; margin-bottom: 16px; }
     .pd-pinned-thumb { width: 46px; height: 46px; border-radius: 8px; object-fit: cover; background: var(--surface3); flex-shrink: 0; }
     .pd-pinned-ic { width: 46px; height: 46px; border-radius: 8px; background: var(--surface3); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; }
     .pd-pinned-info { flex: 1; min-width: 0; }
@@ -165,33 +188,33 @@
 
     .empty { text-align: center; padding: 30px; color: var(--muted); font-size: 13px; }
     .pagination { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
-    .pagination button { padding: 7px 13px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: 'Inter', sans-serif; font-weight: 600; font-size: 12px; cursor: pointer; }
+    .pagination button { padding: 7px 13px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: 'Syne', sans-serif; font-weight: 600; font-size: 12px; cursor: pointer; }
     .pagination button:hover:not(:disabled) { border-color: var(--muted2); }
     .pagination button:disabled { opacity: .4; cursor: default; }
-    .pagination button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .pagination button.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
     .pagination .pg-info { font-size: 11.5px; color: var(--muted); margin: 0 8px; }
 
-    .toast { position: fixed; top: 16px; right: 16px; background: var(--surface); border: 1px solid var(--border); padding: 12px 18px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 16px rgba(16,24,40,.12); z-index: 999; transform: translateX(140%); transition: transform .3s; max-width: 320px; color: var(--text); }
+    .toast { position: fixed; top: 16px; right: 16px; background: var(--surface); border: 1px solid var(--border); padding: 12px 18px; border-radius: 8px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,.37); z-index: 999; transform: translateX(140%); transition: transform .3s; max-width: 320px; color: var(--text); }
     .toast.show { transform: translateX(0); }
-    .toast.err { border-color: rgba(192,49,43,.3); color: var(--danger); }
-    .toast.ok { border-color: rgba(27,138,76,.3); color: var(--online); }
+    .toast.err { border-color: rgba(255,59,92,.3); color: var(--danger); }
+    .toast.ok { border-color: rgba(0,230,118,.3); color: var(--online); }
 
     /* ── MODAL ── */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(17,20,26,.45); display: none; align-items: center; justify-content: center; z-index: 900; padding: 16px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.78); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 900; padding: 16px; }
     .modal-overlay.show { display: flex; }
-    .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 26px; width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(16,24,40,.2); animation: modalIn .18s ease; }
+    .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 26px; width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,.45); animation: modalIn .18s ease; }
     .modal-box.wide { max-width: 760px; }
     @keyframes modalIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .modal-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
-    .modal-hdr h3 { font-family: 'Inter', sans-serif; font-size: 15.5px; font-weight: 700; color: var(--text); }
+    .modal-hdr h3 { font-family: 'Syne', sans-serif; font-size: 15.5px; font-weight: 700; color: var(--text); }
     .modal-close { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 14px; line-height: 1; }
     .modal-close:hover { color: var(--text); background: var(--surface3); }
 
     /* ── CONFIRMAÇÃO (substitui confirm() nativo do navegador) ── */
     .confirm-overlay { z-index: 1000; }
     .confirm-box { max-width: 380px; width: 100%; text-align: center; }
-    .confirm-ic { width: 44px; height: 44px; border-radius: 50%; background: rgba(192,49,43,.1); color: var(--danger); display: flex; align-items: center; justify-content: center; font-size: 19px; margin: 0 auto 14px; }
-    .confirm-title { font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .confirm-ic { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,59,92,.1); color: var(--danger); display: flex; align-items: center; justify-content: center; font-size: 19px; margin: 0 auto 14px; }
+    .confirm-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
     .confirm-msg { font-size: 13px; color: var(--muted); line-height: 1.55; margin-bottom: 22px; }
     .confirm-actions { display: flex; gap: 10px; }
     .confirm-actions .btn { flex: 1; width: auto; }
@@ -200,7 +223,7 @@
     .pv-hdr { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
     .pv-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: var(--surface3); flex-shrink: 0; }
     .pv-avatar-ph { width: 38px; height: 38px; border-radius: 50%; background: var(--surface3); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; color: var(--muted); }
-    .pv-name { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 13.5px; color: var(--text); }
+    .pv-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13.5px; color: var(--text); }
     .pv-time { font-size: 11px; color: var(--muted2); margin-top: 1px; }
     .pv-media { width: 100%; max-height: 60vh; border-radius: 10px; overflow: hidden; background: var(--surface3); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
     .pv-media img { width: 100%; max-height: 60vh; object-fit: contain; display: block; }
@@ -221,48 +244,48 @@
     .rank-list { list-style: none; }
     .rank-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
     .rank-item:last-child { border-bottom: none; }
-    .rank-pos { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 12.5px; color: var(--muted); width: 20px; flex-shrink: 0; }
+    .rank-pos { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12.5px; color: var(--muted); width: 20px; flex-shrink: 0; }
     .rank-pos.top { color: var(--accent); }
-    .rank-thumb { width: 30px; height: 30px; border-radius: 5px; object-fit: cover; background: #e5e7eb; flex-shrink: 0; border: 1px solid var(--border); }
+    .rank-thumb { width: 30px; height: 30px; border-radius: 5px; object-fit: cover; background: var(--surface3); flex-shrink: 0; border: 1px solid var(--border); }
     .rank-name { flex: 1; font-size: 12.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .rank-count { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 12.5px; color: var(--accent); }
+    .rank-count { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12.5px; color: var(--accent); }
     .sub-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
-    .sub-tab { padding: 7px 13px; border-radius: 6px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; }
-    .sub-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .sub-tab { padding: 7px 13px; border-radius: 6px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: 'Syne', sans-serif; }
+    .sub-tab.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
     /* ── RADAR DE INTERESSES ── */
     .kw-list { list-style: none; }
     .kw-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
     .kw-item:last-child { border-bottom: none; }
-    .kw-pos { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 12px; color: var(--muted); width: 18px; flex-shrink: 0; }
+    .kw-pos { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; color: var(--muted); width: 18px; flex-shrink: 0; }
     .kw-pos.top { color: var(--accent); }
     .kw-main { flex: 1; min-width: 0; }
     .kw-top-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
     .kw-term { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .kw-count { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 12.5px; color: var(--accent); flex-shrink: 0; }
+    .kw-count { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12.5px; color: var(--accent); flex-shrink: 0; }
     .kw-bar-track { height: 6px; border-radius: 4px; background: var(--surface3); overflow: hidden; }
     .kw-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
     .kw-cat-badge { font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: .2px; flex-shrink: 0; margin-left: 8px; }
-    .kw-cat-badge.compra { background: rgba(27,138,76,.1); color: var(--online); }
-    .kw-cat-badge.venda { background: rgba(37,84,199,.1); color: var(--accent); }
-    .kw-cat-badge.servico { background: rgba(176,106,6,.1); color: var(--warn); }
-    .kw-cat-badge.aluguel { background: rgba(124,58,237,.1); color: #7c3aed; }
-    .kw-cat-badge.sinal_preco { background: rgba(192,49,43,.1); color: var(--danger); }
+    .kw-cat-badge.compra { background: rgba(0,230,118,.1); color: var(--online); }
+    .kw-cat-badge.venda { background: rgba(0,229,204,.1); color: var(--accent); }
+    .kw-cat-badge.servico { background: rgba(255,179,0,.1); color: var(--warn); }
+    .kw-cat-badge.aluguel { background: rgba(167,139,250,.1); color: #a78bfa; }
+    .kw-cat-badge.sinal_preco { background: rgba(255,59,92,.1); color: var(--danger); }
     .insights-note { font-size: 11.5px; color: var(--muted2); line-height: 1.5; margin-top: 10px; padding-top: 12px; border-top: 1px dashed var(--border); }
     .kw-sub-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
     .kw-trend-badge, .kw-users-badge, .kw-score-badge { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: var(--surface3); color: var(--muted); }
-    .kw-trend-badge.alta { background: rgba(192,49,43,.1); color: var(--danger); font-weight: 700; }
-    .kw-trend-badge.queda { background: rgba(37,84,199,.1); color: var(--accent); }
+    .kw-trend-badge.alta { background: rgba(255,59,92,.1); color: var(--danger); font-weight: 700; }
+    .kw-trend-badge.queda { background: rgba(0,229,204,.1); color: var(--accent); }
     .kw-trend-badge.estavel { background: var(--surface3); color: var(--muted); }
-    .kw-users-badge { background: rgba(27,138,76,.1); color: var(--online); }
-    .kw-score-badge { background: rgba(176,106,6,.1); color: var(--warn); }
+    .kw-users-badge { background: rgba(0,230,118,.1); color: var(--online); }
+    .kw-score-badge { background: rgba(255,179,0,.1); color: var(--warn); }
     .kw-source-badge { background: var(--surface3); color: var(--muted); }
-    .kw-engage-badge { background: rgba(192,49,43,.1); color: var(--danger); }
+    .kw-engage-badge { background: rgba(255,59,92,.1); color: var(--danger); }
 
     /* ── RADAR — Top Produtos e Serviços Mais Buscados (resumo direto p/ anúncios) ── */
     .top-prod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
     .top-prod-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: var(--surface2); position: relative; }
-    .top-prod-card.rank1 { border-color: rgba(176,106,6,.4); background: linear-gradient(135deg, rgba(176,106,6,.07), var(--surface2)); }
+    .top-prod-card.rank1 { border-color: rgba(255,179,0,.4); background: linear-gradient(135deg, rgba(255,179,0,.07), var(--surface2)); }
     .top-prod-rank { position: absolute; top: 10px; right: 12px; font-size: 11px; font-weight: 700; color: var(--muted); }
     .top-prod-term { font-size: 14.5px; font-weight: 700; padding-right: 24px; margin-bottom: 6px; line-height: 1.3; }
     .top-prod-stats { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -281,7 +304,7 @@
     .ins-post-stat { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: var(--surface3); color: var(--muted); }
 
     /* ── RADAR — recomendação, tendência e categorias ── */
-    .insight-reco { display: flex; gap: 14px; align-items: flex-start; background: linear-gradient(135deg, rgba(37,84,199,.07), rgba(27,138,76,.06)); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 18px; }
+    .insight-reco { display: flex; gap: 14px; align-items: flex-start; background: linear-gradient(135deg, rgba(0,229,204,.07), rgba(0,230,118,.06)); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 18px; }
     .insight-reco .ir-icon { font-size: 26px; line-height: 1; flex-shrink: 0; }
     .insight-reco .ir-title { font-weight: 700; font-size: 13.5px; margin-bottom: 4px; }
     .insight-reco .ir-text { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
@@ -294,7 +317,7 @@
     .trend-mini-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
     .trend-mini-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; font-size: 12px; }
     .trend-mini-item .tm-term { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .trend-mini-item .tm-pct { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11.5px; flex-shrink: 0; }
+    .trend-mini-item .tm-pct { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11.5px; flex-shrink: 0; }
     .trend-mini-item.up .tm-pct { color: var(--danger); }
     .trend-mini-item.down .tm-pct { color: var(--accent); }
     .trend-mini-empty { font-size: 11.5px; color: var(--muted2); padding: 8px 2px; }
@@ -335,14 +358,14 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── ABA USUÁRIOS (tempo real) ── */
-    .live-indicator { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; letter-spacing: .3px; color: var(--online); background: rgba(27,138,76,.08); border: 1px solid rgba(27,138,76,.25); padding: 5px 11px 5px 9px; border-radius: 20px; text-transform: uppercase; }
-    .live-indicator.err { color: var(--danger); background: rgba(192,49,43,.08); border-color: rgba(192,49,43,.25); }
+    .live-indicator { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; letter-spacing: .3px; color: var(--online); background: rgba(0,230,118,.08); border: 1px solid rgba(0,230,118,.25); padding: 5px 11px 5px 9px; border-radius: 20px; text-transform: uppercase; }
+    .live-indicator.err { color: var(--danger); background: rgba(255,59,92,.08); border-color: rgba(255,59,92,.25); }
     .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--online); flex-shrink: 0; position: relative; }
     .live-dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: var(--online); opacity: .45; animation: pulseRing 1.6s ease-out infinite; }
     .live-indicator.err .live-dot, .live-indicator.err .live-dot::after { background: var(--danger); }
     @keyframes pulseRing { 0% { transform: scale(.5); opacity: .55; } 100% { transform: scale(2.4); opacity: 0; } }
 
-    .dash-card.online-c { border-color: rgba(27,138,76,.35); }
+    .dash-card.online-c { border-color: rgba(0,230,118,.35); }
     .dash-card.online-c .dc-value { color: var(--online); }
     .dash-card.offline-c .dc-value { color: var(--muted); }
     .dash-card .dc-bar { position: absolute; top: 0; left: 0; height: 3px; background: var(--accent); width: 100%; }
@@ -364,7 +387,7 @@
     .u-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .u-email { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
     .u-badge { font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 10px; text-transform: uppercase; letter-spacing: .2px; flex-shrink: 0; }
-    .u-badge.on { background: rgba(27,138,76,.1); color: var(--online); }
+    .u-badge.on { background: rgba(0,230,118,.1); color: var(--online); }
     .u-badge.off { background: var(--surface3); color: var(--muted); }
     .u-meta { text-align: right; flex-shrink: 0; }
     .u-lastseen { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
@@ -447,13 +470,62 @@
     /* ── DICA DE ARRASTAR TABELA (inserida via JS em telas estreitas) ── */
     .scroll-hint { font-size: 11px; color: var(--muted2); text-align: center; padding: 6px 0 2px; }
 
+
+    /* ══════════════════════════════════════════════════════════
+       ÍCONES — mesma biblioteca visual do aplicativo
+       Traço arredondado, sem preenchimento, herdando a cor do texto
+       ao redor (então um ícone dentro de um botão vermelho fica
+       vermelho sozinho).
+       ══════════════════════════════════════════════════════════ */
+    .icon { width: 1.05em; height: 1.05em; display: inline-block; vertical-align: -0.18em;
+            flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2.2;
+            stroke-linecap: round; stroke-linejoin: round; }
+    .nav-tab .icon { margin-right: 5px; }
+
+    /* Selo numérico nas abas (usado pelas Denúncias pendentes) */
+    .tab-badge { display: inline-block; background: var(--danger); color: #fff; border-radius: 10px;
+                 font-family: 'Syne', sans-serif; font-weight: 900; font-size: 10px;
+                 padding: 1px 6px; min-width: 17px; text-align: center; margin-left: 6px; }
+
+    /* ══ DENÚNCIAS ══ */
+    .rep-item { border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; background: var(--surface2); }
+    .rep-item.pending { border-color: rgba(255,59,92,.35); }
+    .rep-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .rep-reason { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 13.5px; color: var(--text); display: flex; align-items: center; gap: 7px; }
+    .rep-state { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; letter-spacing: .3px; text-transform: uppercase; white-space: nowrap; }
+    .rep-state.pending  { background: rgba(255,59,92,.12);  color: var(--danger); }
+    .rep-state.reviewed { background: rgba(0,230,118,.12);  color: var(--online); }
+    .rep-state.dismissed{ background: var(--surface3);       color: var(--muted); }
+    .rep-people { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .rep-person { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px; min-width: 0; }
+    .rep-person .rp-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted2); font-weight: 700; margin-bottom: 3px; }
+    .rep-person .rp-name { font-size: 12.5px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rep-details { font-size: 12.5px; color: var(--muted); line-height: 1.55; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; white-space: pre-wrap; word-break: break-word; }
+    .rep-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .rep-date { font-size: 11px; color: var(--muted2); }
+    @media (max-width: 600px) { .rep-people { grid-template-columns: 1fr; } }
+
+    /* ══ TEMAS ══ */
+    .tema-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .tema-card { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface2); }
+    .tema-amostra { height: 78px; background: var(--surface3); background-size: cover; background-position: center; }
+    .tema-info { padding: 10px 12px; }
+    .tema-nome { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 12.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tema-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+    .tema-tag { font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 20px; background: var(--surface3); color: var(--muted); text-transform: uppercase; letter-spacing: .2px; }
+    .tema-tag.on  { background: rgba(0,230,118,.12); color: var(--online); }
+    .tema-tag.off { background: rgba(255,59,92,.12); color: var(--danger); }
+    .tema-tag.fer { background: rgba(255,179,0,.12); color: var(--warn); }
+    .tema-acoes { display: flex; gap: 6px; padding: 0 12px 12px; }
+    .tema-preview-live { height: 90px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface3); background-size: cover; background-position: center; margin-top: 8px; }
+
     /* ── PWA INSTALL BUTTON ── */
-    .install-btn { display: none; align-items: center; gap: 6px; background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 12.5px; cursor: pointer; white-space: nowrap; transition: background .15s; }
+    .install-btn { display: none; align-items: center; gap: 6px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 6px; padding: 8px 14px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 12.5px; cursor: pointer; white-space: nowrap; transition: background .15s; }
     .install-btn:hover { background: var(--accent2); }
     .install-btn.show { display: inline-flex; }
     .install-btn .ico { font-size: 14px; line-height: 1; }
 
-    .ios-install-tip { position: fixed; left: 12px; right: 12px; bottom: 14px; background: var(--text); color: #fff; padding: 12px 14px; border-radius: 10px; font-size: 12.5px; line-height: 1.5; z-index: 998; display: none; box-shadow: 0 8px 24px rgba(16,24,40,.25); align-items: flex-start; gap: 10px; }
+    .ios-install-tip { position: fixed; left: 12px; right: 12px; bottom: 14px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 12px 14px; border-radius: 10px; font-size: 12.5px; line-height: 1.5; z-index: 998; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.50); align-items: flex-start; gap: 10px; }
     .ios-install-tip.show { display: flex; }
     .ios-install-tip .close-tip { background: rgba(255,255,255,.15); border: none; color: #fff; width: 22px; height: 22px; border-radius: 5px; cursor: pointer; flex-shrink: 0; font-size: 12px; }
 </style>
@@ -534,14 +606,16 @@
 
     <!-- ── MENU DE ABAS ── -->
     <div class="nav-tabs">
-        <div class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 Dashboard</div>
-        <div class="nav-tab" data-tab="usuarios" onclick="switchTab('usuarios')">👥 Usuários</div>
-        <div class="nav-tab" data-tab="publicacoes" onclick="switchTab('publicacoes')">📝 Publicações</div>
-        <div class="nav-tab" data-tab="novo" onclick="switchTab('novo')">➕ Novo anúncio</div>
-        <div class="nav-tab" data-tab="anuncios" onclick="switchTab('anuncios')">📢 Anúncios cadastrados</div>
-        <div class="nav-tab" data-tab="estatisticas" onclick="switchTab('estatisticas')">📈 Estatísticas</div>
-        <div class="nav-tab" data-tab="insights" onclick="switchTab('insights')">🎯 Radar de Interesses</div>
-        <div class="nav-tab" data-tab="config" onclick="switchTab('config')">⚙ Configurações</div>
+        <div class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Dashboard</div>
+        <div class="nav-tab" data-tab="usuarios" onclick="switchTab('usuarios')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Usuários</div>
+        <div class="nav-tab" data-tab="publicacoes" onclick="switchTab('publicacoes')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Publicações</div>
+        <div class="nav-tab" data-tab="denuncias" onclick="switchTab('denuncias')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Denúncias<span class="tab-badge" id="rep-tab-badge" style="display:none;">0</span></div>
+        <div class="nav-tab" data-tab="novo" onclick="switchTab('novo')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Novo anúncio</div>
+        <div class="nav-tab" data-tab="anuncios" onclick="switchTab('anuncios')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg> Anúncios cadastrados</div>
+        <div class="nav-tab" data-tab="estatisticas" onclick="switchTab('estatisticas')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg> Estatísticas</div>
+        <div class="nav-tab" data-tab="insights" onclick="switchTab('insights')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Radar de Interesses</div>
+        <div class="nav-tab" data-tab="temas" onclick="switchTab('temas')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".6"/><circle cx="17.5" cy="10.5" r=".6"/><circle cx="8.5" cy="7.5" r=".6"/><circle cx="6.5" cy="12.5" r=".6"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg> Temas</div>
+        <div class="nav-tab" data-tab="config" onclick="switchTab('config')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configurações</div>
     </div>
 
     <!-- ════ TAB: DASHBOARD ════ -->
@@ -940,6 +1014,122 @@
     </div>
 
     <!-- ════ TAB: CONFIGURAÇÕES ════ -->
+    <!-- ════ TAB: DENÚNCIAS ════
+         Até agora as denúncias enviadas pelos usuários eram gravadas no
+         Firestore e ficavam lá, sem nenhuma tela onde pudessem ser lidas —
+         só dava para vê-las entrando no Console do Firebase na mão.
+         Esta aba é esse lugar que faltava. -->
+    <div class="tab-pane" id="tab-denuncias">
+        <div class="panel">
+            <h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Denúncias recebidas</h2>
+            <p class="hint" style="margin-bottom:14px;">
+                Enviadas pelos usuários pelo menu da conversa. A identidade de quem
+                denunciou aparece só aqui — nunca é mostrada para o denunciado.
+            </p>
+            <div class="filter-row">
+                <button class="filter-chip active" data-repf="pending"   onclick="Denuncias.filtrar('pending', this)">Pendentes</button>
+                <button class="filter-chip"        data-repf="reviewed"  onclick="Denuncias.filtrar('reviewed', this)">Analisadas</button>
+                <button class="filter-chip"        data-repf="dismissed" onclick="Denuncias.filtrar('dismissed', this)">Descartadas</button>
+                <button class="filter-chip"        data-repf="todas"     onclick="Denuncias.filtrar('todas', this)">Todas</button>
+            </div>
+            <div id="rep-list"><div class="loading-row">Carregando denúncias...</div></div>
+        </div>
+    </div>
+
+    <!-- ════ TAB: TEMAS ════
+         Os temas publicados aqui aparecem para todo mundo na tela
+         "Personalizar" do aplicativo, logo depois das cores fixas. Do lado
+         do usuário nada muda de lugar: ele continua escolhendo do mesmo
+         jeito, só passa a ter mais opções. -->
+    <div class="tab-pane" id="tab-temas">
+        <div class="panel">
+            <h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".6"/><circle cx="17.5" cy="10.5" r=".6"/><circle cx="8.5" cy="7.5" r=".6"/><circle cx="6.5" cy="12.5" r=".6"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg> Publicar um tema</h2>
+            <p class="hint" style="margin-bottom:16px;">
+                Aparece na tela "Personalizar" do app para todos os usuários. Cor e
+                degradê valem para o app inteiro; imagem entra como fundo da conversa
+                aberta — igual às opções que já existem lá.
+            </p>
+            <div class="row">
+                <div class="field">
+                    <label>Nome do tema</label>
+                    <input type="text" id="tema-nome" placeholder="Ex.: Noite turquesa" maxlength="40">
+                </div>
+                <div class="field">
+                    <label>Tipo</label>
+                    <select id="tema-tipo" onchange="Temas.aoTrocarTipo()">
+                        <option value="cor">Cor sólida</option>
+                        <option value="gradiente">Degradê (duas cores)</option>
+                        <option value="imagem">Imagem de fundo</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="tema-campo-cor" class="field">
+                <label>Cor</label>
+                <input type="color" id="tema-cor1" value="#0b0d12" style="height:44px;padding:4px;">
+            </div>
+
+            <div id="tema-campo-grad" style="display:none;">
+                <div class="row">
+                    <div class="field">
+                        <label>Cor inicial</label>
+                        <input type="color" id="tema-grad1" value="#00e5cc" style="height:44px;padding:4px;">
+                    </div>
+                    <div class="field">
+                        <label>Cor final</label>
+                        <input type="color" id="tema-grad2" value="#0088ff" style="height:44px;padding:4px;">
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Direção</label>
+                    <select id="tema-grad-dir">
+                        <option value="160deg">Diagonal (padrão)</option>
+                        <option value="90deg">Esquerda para direita</option>
+                        <option value="180deg">De cima para baixo</option>
+                        <option value="135deg">Diagonal invertida</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="tema-campo-img" class="field" style="display:none;">
+                <label>Imagem</label>
+                <input type="file" id="tema-img-file" accept="image/*" onchange="Temas.carregarImagem(event)">
+                <div class="hint">A imagem é reduzida automaticamente antes de ser publicada, para não pesar no app de quem for usar.</div>
+            </div>
+
+            <div class="field">
+                <label>Data comemorativa (opcional)</label>
+                <select id="tema-feriado">
+                    <option value="">Nenhuma — aparece o ano inteiro</option>
+                    <option value="ano_novo">Ano Novo / Confraternização Universal</option>
+                    <option value="sexta_santa">Paixão de Cristo (Sexta-Feira Santa)</option>
+                    <option value="dia_trabalho">Dia do Trabalho</option>
+                    <option value="natal">Natal</option>
+                </select>
+                <div class="hint">
+                    Com uma data marcada, o tema só aparece no app durante o período dela e
+                    some sozinho depois — sem você precisar lembrar de ligar e desligar.
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Prévia</label>
+                <div class="tema-preview-live" id="tema-preview"></div>
+            </div>
+
+            <div class="row" style="margin-top:6px;">
+                <button class="btn" onclick="Temas.publicar()">Publicar tema</button>
+                <button class="btn sec" onclick="Temas.limparFormulario()">Limpar</button>
+            </div>
+            <div class="msg" id="tema-msg"></div>
+        </div>
+
+        <div class="panel">
+            <h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".6"/><circle cx="17.5" cy="10.5" r=".6"/><circle cx="8.5" cy="7.5" r=".6"/><circle cx="6.5" cy="12.5" r=".6"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg> Temas publicados</h2>
+            <div class="tema-grid" id="tema-lista"><div class="loading-row">Carregando temas...</div></div>
+        </div>
+    </div>
+
     <div class="tab-pane" id="tab-config">
         <div class="panel">
             <h2>⚙ Conta</h2>
@@ -1329,6 +1519,27 @@ const firebaseConfig = {
     messagingSenderId: "898078042067",
     appId: "1:898078042067:web:6f4c2ef7554d2a6a81f126"
 };
+// ══════════════════════════════════════════════════════════
+//  GRÁFICOS NO TEMA ESCURO
+// ══════════════════════════════════════════════════════════
+//  O Chart.js desenha textos e linhas de grade em preto por padrão,
+//  pensando em fundo branco. Com o painel escuro isso ficaria preto
+//  sobre preto — invisível. Aqui definimos de uma vez, para todos os
+//  gráficos, a cor do texto, das linhas de grade e da fonte, seguindo
+//  a mesma paleta do restante do painel.
+if (window.Chart) {
+    Chart.defaults.color = '#8b93a7';
+    Chart.defaults.borderColor = 'rgba(255,255,255,.07)';
+    Chart.defaults.font.family = "'DM Sans', sans-serif";
+    if (Chart.defaults.plugins && Chart.defaults.plugins.tooltip) {
+        Chart.defaults.plugins.tooltip.backgroundColor = '#111420';
+        Chart.defaults.plugins.tooltip.titleColor = '#e8eaf0';
+        Chart.defaults.plugins.tooltip.bodyColor = '#8b93a7';
+        Chart.defaults.plugins.tooltip.borderColor = '#1a1d28';
+        Chart.defaults.plugins.tooltip.borderWidth = 1;
+    }
+}
+
 firebase.initializeApp(firebaseConfig);
 const db   = firebase.firestore();
 const auth = firebase.auth();
@@ -1480,6 +1691,50 @@ function toggleLoginPass() {
     btn.setAttribute('aria-label', show ? 'Ocultar senha' : 'Mostrar senha');
 }
 
+// ══════════════════════════════════════════════════════════
+//  SEGURANÇA — sessão que não fica aberta sozinha
+// ══════════════════════════════════════════════════════════
+//  1) A sessão do painel passa a valer só enquanto a aba estiver aberta.
+//     Antes ela ficava salva no aparelho e continuava valendo depois de
+//     fechar o navegador — num computador compartilhado, bastava abrir o
+//     endereço para cair dentro do painel já logado. Agora, fechou a aba,
+//     precisa entrar de novo.
+//
+//  2) Bloqueio por inatividade: 15 minutos sem toque, clique ou tecla e a
+//     sessão é encerrada sozinha. É o caso clássico do painel deixado
+//     aberto e esquecido.
+//
+//  Vale dizer o que isto NÃO é: a tranca de verdade continua sendo as
+//  regras do Firestore, que só liberam estes dados para a conta de
+//  administrador. Isto reduz o risco de alguém usar uma sessão já aberta
+//  — um risco real, mas diferente.
+// ══════════════════════════════════════════════════════════
+var TEMPO_INATIVIDADE_MS = 15 * 60 * 1000;
+var inatividadeTimer = null;
+var inatividadeEventos = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+
+function reiniciarContagemInatividade() {
+    if (inatividadeTimer) clearTimeout(inatividadeTimer);
+    inatividadeTimer = setTimeout(function () {
+        showToast('Sessão encerrada por inatividade.', 'err');
+        auth.signOut();
+    }, TEMPO_INATIVIDADE_MS);
+}
+
+function iniciarBloqueioPorInatividade() {
+    inatividadeEventos.forEach(function (ev) {
+        document.addEventListener(ev, reiniciarContagemInatividade, { passive: true });
+    });
+    reiniciarContagemInatividade();
+}
+
+function pararBloqueioPorInatividade() {
+    if (inatividadeTimer) { clearTimeout(inatividadeTimer); inatividadeTimer = null; }
+    inatividadeEventos.forEach(function (ev) {
+        document.removeEventListener(ev, reiniciarContagemInatividade);
+    });
+}
+
 async function doLogin() {
     var email = document.getElementById('li-email').value.trim();
     var pass  = document.getElementById('li-pass').value;
@@ -1487,6 +1742,9 @@ async function doLogin() {
     msg.textContent = '';
     if (!email || !pass) { msg.textContent = 'Preencha e-mail e senha.'; return; }
     try {
+        // A sessão vale só enquanto esta aba estiver aberta (ver comentário
+        // acima). Precisa ser definido ANTES de entrar, senão não vale.
+        try { await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION); } catch (e) {}
         await auth.signInWithEmailAndPassword(email, pass);
     } catch(e) {
         var map = {
@@ -1532,12 +1790,18 @@ auth.onAuthStateChanged(async function(user) {
         listenUsers();
         if (window.UsersDash) window.UsersDash.start();
         if (window.PostsDash) window.PostsDash.start();
+        if (window.Denuncias) window.Denuncias.start();
+        if (window.Temas)     window.Temas.start();
+        iniciarBloqueioPorInatividade();
     } else {
         if (adsUnsub)    { adsUnsub();    adsUnsub = null; }
         if (clicksUnsub) { clicksUnsub(); clicksUnsub = null; }
         if (usersUnsub)  { usersUnsub();  usersUnsub = null; }
         if (window.UsersDash) window.UsersDash.stop();
         if (window.PostsDash) window.PostsDash.stop();
+        if (window.Denuncias) window.Denuncias.stop();
+        if (window.Temas)     window.Temas.stop();
+        pararBloqueioPorInatividade();
         document.getElementById('login-screen').style.display = 'flex';
         document.getElementById('app-screen').style.display   = 'none';
     }
@@ -1685,7 +1949,9 @@ auth.onAuthStateChanged(async function(user) {
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
     function avatarColor(seed) {
-        var colors = ['#2554c7', '#1b8a4c', '#b06a06', '#7c3aed', '#c0312b', '#0891b2', '#be185d', '#4d7c0f'];
+        // Paleta dos gráficos ajustada para fundo escuro: tons mais vivos,
+        // começando pelo turquesa do Dee.
+        var colors = ['#00e5cc', '#0088ff', '#00e676', '#ffb300', '#ff3b5c', '#a78bfa', '#22d3ee', '#f472b6'];
         var hash = 0;
         var str = String(seed || '');
         for (var i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
@@ -1826,7 +2092,7 @@ auth.onAuthStateChanged(async function(user) {
                 var ctxS = elS.getContext('2d');
                 charts.statusSplit = new Chart(ctxS, {
                     type: 'doughnut',
-                    data: { labels: ['Online', 'Offline'], datasets: [{ data: [online, offline], backgroundColor: ['#1b8a4c', '#c8ccd3'], borderWidth: 2, borderColor: '#ffffff' }] },
+                    data: { labels: ['Online', 'Offline'], datasets: [{ data: [online, offline], backgroundColor: ['#00e676', '#2b3143'], borderWidth: 2, borderColor: '#0b0d12' }] },
                     options: {
                         responsive: true, maintainAspectRatio: false,
                         plugins: {
@@ -1854,7 +2120,7 @@ auth.onAuthStateChanged(async function(user) {
                 var ctxN = elN.getContext('2d');
                 charts.newUsers = new Chart(ctxN, {
                     type: 'bar',
-                    data: { labels: days.map(dayLabel), datasets: [{ label: 'Novos usuários', data: newCounts, backgroundColor: 'rgba(37,84,199,.75)', borderRadius: 5 }] },
+                    data: { labels: days.map(dayLabel), datasets: [{ label: 'Novos usuários', data: newCounts, backgroundColor: 'rgba(0,229,204,.75)', borderRadius: 5 }] },
                     options: {
                         responsive: true, maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
@@ -1883,7 +2149,7 @@ auth.onAuthStateChanged(async function(user) {
                     type: 'line',
                     data: {
                         labels: days.map(dayLabel),
-                        datasets: [{ label: 'Usuários vistos no dia', data: actCounts, borderColor: '#1b8a4c', backgroundColor: 'rgba(27,138,76,.12)', fill: true, tension: .35, pointRadius: 3, pointBackgroundColor: '#1b8a4c' }]
+                        datasets: [{ label: 'Usuários vistos no dia', data: actCounts, borderColor: '#00e676', backgroundColor: 'rgba(0,230,118,.14)', fill: true, tension: .35, pointRadius: 3, pointBackgroundColor: '#00e676' }]
                     },
                     options: {
                         responsive: true, maintainAspectRatio: false,
@@ -3229,7 +3495,7 @@ function renderStatsTab() {
             datasets: [{
                 label: 'Cliques',
                 data: top10.map(function(a) { return a.cliquesTotal; }),
-                backgroundColor: 'rgba(37,84,199,.75)',
+                backgroundColor: 'rgba(0,229,204,.75)',
                 borderRadius: 6
             }]
         },
@@ -3251,7 +3517,7 @@ function renderStatsTab() {
         type: 'doughnut',
         data: {
             labels: ['Ativos', 'Inativos'],
-            datasets: [{ data: [s.ativos, s.inativos], backgroundColor: ['rgba(27,138,76,.75)', 'rgba(192,49,43,.75)'] }]
+            datasets: [{ data: [s.ativos, s.inativos], backgroundColor: ['rgba(0,230,118,.75)', 'rgba(255,59,92,.75)'] }]
         },
         options: {
             responsive: true, maintainAspectRatio: false,
@@ -3280,7 +3546,7 @@ function renderStatsTab() {
             labels: days,
             datasets: [{
                 label: 'Cliques por dia', data: counts,
-                borderColor: 'rgba(37,84,199,.9)', backgroundColor: 'rgba(37,84,199,.12)',
+                borderColor: 'rgba(0,229,204,.9)', backgroundColor: 'rgba(0,229,204,.12)',
                 fill: true, tension: .35, pointRadius: 3
             }]
         },
@@ -3538,7 +3804,7 @@ function renderInsightsTab() {
                 datasets: [{
                     label: 'Menções',
                     data: top15.map(function(i) { return i.periodCount; }),
-                    backgroundColor: 'rgba(37,84,199,.75)',
+                    backgroundColor: 'rgba(0,229,204,.75)',
                     borderRadius: 6
                 }]
             },
@@ -3582,7 +3848,7 @@ function renderInsightsTab() {
                     label: 'Variação % (7d vs 7d anteriores)',
                     data: trendChartData.map(function(i) { return i.trend.pct; }),
                     backgroundColor: trendChartData.map(function(i) {
-                        return i.trend.label === 'alta' ? 'rgba(192,49,43,.78)' : i.trend.label === 'queda' ? 'rgba(37,84,199,.7)' : 'rgba(154,161,173,.5)';
+                        return i.trend.label === 'alta' ? 'rgba(255,59,92,.78)' : i.trend.label === 'queda' ? 'rgba(0,229,204,.7)' : 'rgba(154,161,173,.5)';
                     }),
                     borderRadius: 6
                 }]
@@ -3622,7 +3888,7 @@ function renderInsightsTab() {
     var catTotals = {};
     filtered.forEach(function(item) { catTotals[item.category] = (catTotals[item.category] || 0) + item.periodCount; });
     var catKeys = Object.keys(catTotals).filter(function(k) { return catTotals[k] > 0; }).sort(function(a, b) { return catTotals[b] - catTotals[a]; });
-    var CAT_COLORS = { compra: '#1b8a4c', venda: '#2554c7', servico: '#b06a06', aluguel: '#7c3aed', sinal_preco: '#c0312b' };
+    var CAT_COLORS = { compra: '#00e676', venda: '#00e5cc', servico: '#ffb300', aluguel: '#a78bfa', sinal_preco: '#ff3b5c' };
     toggleChartEmpty('chart-insights-category', catKeys.length === 0);
     if (!catKeys.length) {
         charts.insightsCategory = null;
@@ -3636,7 +3902,7 @@ function renderInsightsTab() {
                     data: catKeys.map(function(k) { return catTotals[k]; }),
                     backgroundColor: catKeys.map(function(k) { return CAT_COLORS[k] || '#9aa1ad'; }),
                     borderWidth: 2,
-                    borderColor: '#ffffff'
+                    borderColor: '#0b0d12'
                 }]
             },
             options: {
@@ -3686,7 +3952,7 @@ function renderInsightsTab() {
                     data: byScore.map(function(i) { return i.score; }),
                     backgroundColor: byScore.map(function(i) {
                         var t = insightsTier(i.score).cls;
-                        return t === 'alta' ? 'rgba(192,49,43,.75)' : t === 'media' ? 'rgba(176,106,6,.75)' : 'rgba(37,84,199,.55)';
+                        return t === 'alta' ? 'rgba(255,59,92,.75)' : t === 'media' ? 'rgba(255,179,0,.75)' : 'rgba(0,229,204,.55)';
                     }),
                     borderRadius: 6
                 }]
@@ -3978,6 +4244,362 @@ if ('serviceWorker' in navigator) {
     scheduleUpdate();
 })();
 
+</script>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  ABA "DENÚNCIAS" — moderação
+// ══════════════════════════════════════════════════════════
+//  As denúncias sempre foram gravadas na coleção "reports", mas não
+//  existia nenhuma tela para lê-las: só dava para vê-las entrando no
+//  Console do Firebase na mão. Este módulo é esse lugar que faltava.
+//
+//  Pelas regras do Firestore, só a conta de administrador consegue ler,
+//  marcar como analisada ou descartar. Quem denunciou nunca aparece para
+//  o denunciado — a identidade fica visível apenas aqui.
+// ══════════════════════════════════════════════════════════
+var Denuncias = (function () {
+    var unsub = null;
+    var todas = [];
+    var filtro = 'pending';
+
+    function estadoLegivel(st) {
+        if (st === 'reviewed')  return 'Analisada';
+        if (st === 'dismissed') return 'Descartada';
+        return 'Pendente';
+    }
+
+    function quando(v) {
+        if (!v) return '—';
+        var d = v.toDate ? v.toDate() : new Date(v);
+        return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function start() {
+        if (unsub) unsub();
+        unsub = db.collection('reports').onSnapshot(function (snap) {
+            todas = [];
+            snap.forEach(function (d) { todas.push(Object.assign({ id: d.id }, d.data())); });
+            // Mais recentes primeiro. A ordenação é feita aqui e não na
+            // consulta para não exigir índice extra no Firestore.
+            todas.sort(function (a, b) {
+                var ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+                var tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+                return tb - ta;
+            });
+            render();
+            atualizarSelo();
+        }, function (err) {
+            console.error('denúncias:', err);
+            var el = document.getElementById('rep-list');
+            if (el) el.innerHTML = '<div class="empty">Não foi possível carregar as denúncias.</div>';
+        });
+    }
+
+    function stop() {
+        if (unsub) { unsub(); unsub = null; }
+        todas = [];
+        atualizarSelo();
+    }
+
+    // Selo vermelho na aba com a quantidade de denúncias ainda pendentes,
+    // para você ver assim que abre o painel que tem coisa esperando.
+    function atualizarSelo() {
+        var el = document.getElementById('rep-tab-badge');
+        if (!el) return;
+        var n = todas.filter(function (r) { return (r.status || 'pending') === 'pending'; }).length;
+        el.textContent = n > 99 ? '99+' : n;
+        el.style.display = n > 0 ? 'inline-block' : 'none';
+    }
+
+    function filtrar(f, btn) {
+        filtro = f;
+        document.querySelectorAll('[data-repf]').forEach(function (b) { b.classList.toggle('active', b === btn); });
+        render();
+    }
+
+    function render() {
+        var el = document.getElementById('rep-list');
+        if (!el) return;
+        var lista = filtro === 'todas' ? todas : todas.filter(function (r) { return (r.status || 'pending') === filtro; });
+
+        if (!lista.length) {
+            el.innerHTML = '<div class="empty">' +
+                (filtro === 'pending' ? 'Nenhuma denúncia pendente. Tudo em dia.' : 'Nada nesta lista.') +
+                '</div>';
+            return;
+        }
+
+        el.innerHTML = lista.map(function (r) {
+            var st = r.status || 'pending';
+            var acoes = st === 'pending'
+                ? '<div class="row-actions">' +
+                    '<button class="mini-btn toggle-on" onclick="Denuncias.marcar(\'' + r.id + '\',\'reviewed\')">Marcar como analisada</button>' +
+                    '<button class="mini-btn toggle-off" onclick="Denuncias.marcar(\'' + r.id + '\',\'dismissed\')">Descartar</button>' +
+                  '</div>'
+                : '<div class="row-actions">' +
+                    '<button class="mini-btn edit" onclick="Denuncias.marcar(\'' + r.id + '\',\'pending\')">Reabrir</button>' +
+                    '<button class="mini-btn del" onclick="Denuncias.apagar(\'' + r.id + '\')">Excluir registro</button>' +
+                  '</div>';
+
+            return '<div class="rep-item ' + st + '">' +
+                '<div class="rep-top">' +
+                    '<div class="rep-reason">' + esc(r.reasonLabel || r.reason || 'Denúncia') + '</div>' +
+                    '<span class="rep-state ' + st + '">' + estadoLegivel(st) + '</span>' +
+                '</div>' +
+                '<div class="rep-people">' +
+                    '<div class="rep-person"><div class="rp-label">Denunciado</div><div class="rp-name">' + esc(r.reportedName || '—') + '</div></div>' +
+                    '<div class="rep-person"><div class="rp-label">Quem denunciou</div><div class="rp-name">' + esc(r.reporterName || '—') + '</div></div>' +
+                '</div>' +
+                (r.details ? '<div class="rep-details">' + esc(r.details) + '</div>' : '') +
+                '<div class="rep-foot">' +
+                    '<span class="rep-date">Recebida em ' + quando(r.createdAt) +
+                        (r.reviewedAt ? ' · Analisada em ' + quando(r.reviewedAt) : '') + '</span>' +
+                    acoes +
+                '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    async function marcar(id, novoStatus) {
+        try {
+            var dados = { status: novoStatus };
+            if (novoStatus === 'pending') {
+                dados.reviewedAt = null;
+                dados.reviewedBy = null;
+            } else {
+                dados.reviewedAt = firebase.firestore.FieldValue.serverTimestamp();
+                dados.reviewedBy = (auth.currentUser && auth.currentUser.email) || null;
+            }
+            await db.collection('reports').doc(id).update(dados);
+            showToast('Denúncia atualizada.', 'ok');
+        } catch (e) { showToast('Erro ao atualizar: ' + e.message, 'err'); }
+    }
+
+    async function apagar(id) {
+        var ok = await showConfirm(
+            'O registro desta denúncia será apagado definitivamente. Isso não desfaz nada que já foi feito — só remove o histórico daqui.',
+            { title: 'Excluir registro', okText: 'Excluir' });
+        if (!ok) return;
+        try {
+            await db.collection('reports').doc(id).delete();
+            showToast('Registro excluído.', 'ok');
+        } catch (e) { showToast('Erro ao excluir: ' + e.message, 'err'); }
+    }
+
+    return { start: start, stop: stop, filtrar: filtrar, marcar: marcar, apagar: apagar };
+})();
+</script>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  ABA "TEMAS" — personalização publicada para o aplicativo
+// ══════════════════════════════════════════════════════════
+//  Os temas criados aqui vão para a coleção "app_temas" e aparecem na
+//  tela "Personalizar" do app, logo depois das cores fixas que sempre
+//  existiram. Do lado de quem usa o Dee nada muda de lugar: continua
+//  sendo a mesma grade de quadradinhos, só com mais opções.
+//
+//  Três tipos:
+//   · cor sólida  → vale para o app inteiro (menu lateral e conversas)
+//   · degradê     → idem, com duas cores e uma direção
+//   · imagem      → entra como fundo da conversa aberta, que é como a
+//                   imagem sempre funcionou lá
+//
+//  Um tema pode ser amarrado a uma data comemorativa. Nesse caso ele só
+//  aparece no app durante o período dela e some sozinho depois, sem
+//  ninguém precisar lembrar de ligar e desligar (a conta das datas está
+//  em feriadoEstaAtivo, no index.html).
+// ══════════════════════════════════════════════════════════
+var Temas = (function () {
+    var unsub = null;
+    var lista = [];
+    var imagemBase64 = null;
+
+    var FERIADOS = {
+        ano_novo:     'Ano Novo',
+        sexta_santa:  'Sexta-Feira Santa',
+        dia_trabalho: 'Dia do Trabalho',
+        natal:        'Natal'
+    };
+
+    function start() {
+        if (unsub) unsub();
+        unsub = db.collection('app_temas').onSnapshot(function (snap) {
+            lista = [];
+            snap.forEach(function (d) { lista.push(Object.assign({ id: d.id }, d.data())); });
+            lista.sort(function (a, b) { return (a.ordem || 0) - (b.ordem || 0) || String(a.nome || '').localeCompare(String(b.nome || '')); });
+            render();
+        }, function (err) {
+            console.error('temas:', err);
+            var el = document.getElementById('tema-lista');
+            if (el) el.innerHTML = '<div class="empty">Não foi possível carregar os temas.</div>';
+        });
+        aoTrocarTipo();
+    }
+
+    function stop() { if (unsub) { unsub(); unsub = null; } lista = []; }
+
+    // Mostra só os campos do tipo escolhido e atualiza a prévia.
+    function aoTrocarTipo() {
+        var tipo = (document.getElementById('tema-tipo') || {}).value || 'cor';
+        var mostra = function (id, v) { var el = document.getElementById(id); if (el) el.style.display = v ? '' : 'none'; };
+        mostra('tema-campo-cor',  tipo === 'cor');
+        mostra('tema-campo-grad', tipo === 'gradiente');
+        mostra('tema-campo-img',  tipo === 'imagem');
+        atualizarPrevia();
+    }
+
+    // Monta o valor final do tema exatamente como o app vai usá-lo.
+    function valorAtual() {
+        var tipo = document.getElementById('tema-tipo').value;
+        if (tipo === 'cor')       return document.getElementById('tema-cor1').value;
+        if (tipo === 'gradiente') return 'linear-gradient(' + document.getElementById('tema-grad-dir').value + ',' +
+                                          document.getElementById('tema-grad1').value + ',' +
+                                          document.getElementById('tema-grad2').value + ')';
+        return imagemBase64 || '';
+    }
+
+    function atualizarPrevia() {
+        var el = document.getElementById('tema-preview');
+        if (!el) return;
+        var tipo = document.getElementById('tema-tipo').value;
+        var v = valorAtual();
+        if (tipo === 'imagem') {
+            el.style.background = '';
+            el.style.backgroundImage = v ? 'url(' + v + ')' : '';
+        } else {
+            el.style.backgroundImage = '';
+            el.style.background = v;
+        }
+    }
+
+    // A imagem é reduzida antes de ser publicada: ela vai ser lida por
+    // todos os aparelhos que abrirem a tela "Personalizar", então não
+    // pode ser pesada.
+    function carregarImagem(ev) {
+        var file = ev.target.files[0];
+        if (!file) return;
+        if (!file.type || file.type.indexOf('image/') !== 0) { showToast('Escolha uma imagem.', 'err'); return; }
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            var img = new Image();
+            img.onload = function () {
+                var maxDim = 900;
+                var escala = Math.min(1, maxDim / Math.max(img.width, img.height));
+                var canvas = document.createElement('canvas');
+                canvas.width  = Math.max(2, Math.round(img.width  * escala));
+                canvas.height = Math.max(2, Math.round(img.height * escala));
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                imagemBase64 = canvas.toDataURL('image/jpeg', 0.82);
+                atualizarPrevia();
+                var kb = Math.round(imagemBase64.length / 1024);
+                showToast('Imagem pronta (' + kb + ' KB).', 'ok');
+            };
+            img.onerror = function () { showToast('Não foi possível ler a imagem.', 'err'); };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function publicar() {
+        var msg = document.getElementById('tema-msg');
+        msg.textContent = '';
+        var nome = document.getElementById('tema-nome').value.trim();
+        var tipo = document.getElementById('tema-tipo').value;
+        var valor = valorAtual();
+        var feriado = document.getElementById('tema-feriado').value || null;
+
+        if (!nome)  { msg.textContent = 'Dê um nome ao tema.'; return; }
+        if (!valor) { msg.textContent = tipo === 'imagem' ? 'Escolha uma imagem.' : 'Escolha uma cor.'; return; }
+        // Limite de segurança: acima disso o documento fica pesado demais
+        // para ser lido por todos os aparelhos a cada abertura da tela.
+        if (tipo === 'imagem' && valor.length > 700 * 1024) {
+            msg.textContent = 'Imagem muito grande mesmo depois de reduzida. Use uma foto menor.';
+            return;
+        }
+
+        try {
+            await db.collection('app_temas').add({
+                nome: nome, tipo: tipo, valor: valor,
+                feriado: feriado, ativo: true,
+                ordem: lista.length,
+                criadoEm: Date.now(),
+                criadoPor: (auth.currentUser && auth.currentUser.email) || null
+            });
+            showToast('Tema publicado. Já aparece no app.', 'ok');
+            limparFormulario();
+        } catch (e) { msg.textContent = 'Erro ao publicar: ' + e.message; }
+    }
+
+    function limparFormulario() {
+        document.getElementById('tema-nome').value = '';
+        document.getElementById('tema-feriado').value = '';
+        var f = document.getElementById('tema-img-file'); if (f) f.value = '';
+        imagemBase64 = null;
+        atualizarPrevia();
+        document.getElementById('tema-msg').textContent = '';
+    }
+
+    function render() {
+        var el = document.getElementById('tema-lista');
+        if (!el) return;
+        if (!lista.length) {
+            el.innerHTML = '<div class="empty">Nenhum tema publicado ainda. Os usuários veem só as cores fixas.</div>';
+            return;
+        }
+        el.innerHTML = lista.map(function (t) {
+            var amostra = t.tipo === 'imagem'
+                ? 'background-image:url(' + (t.valor || '') + ');'
+                : 'background:' + (t.valor || '') + ';';
+            var tipoNome = t.tipo === 'imagem' ? 'Imagem' : (t.tipo === 'gradiente' ? 'Degradê' : 'Cor');
+            return '<div class="tema-card">' +
+                '<div class="tema-amostra" style="' + amostra + '"></div>' +
+                '<div class="tema-info">' +
+                    '<div class="tema-nome">' + esc(t.nome || 'Tema') + '</div>' +
+                    '<div class="tema-tags">' +
+                        '<span class="tema-tag">' + tipoNome + '</span>' +
+                        '<span class="tema-tag ' + (t.ativo === false ? 'off' : 'on') + '">' + (t.ativo === false ? 'Oculto' : 'No ar') + '</span>' +
+                        (t.feriado ? '<span class="tema-tag fer">' + (FERIADOS[t.feriado] || t.feriado) + '</span>' : '') +
+                    '</div>' +
+                '</div>' +
+                '<div class="tema-acoes">' +
+                    '<button class="mini-btn ' + (t.ativo === false ? 'toggle-on' : 'toggle-off') + '" onclick="Temas.alternar(\'' + t.id + '\',' + (t.ativo === false) + ')">' +
+                        (t.ativo === false ? 'Mostrar' : 'Ocultar') + '</button>' +
+                    '<button class="mini-btn del" onclick="Temas.excluir(\'' + t.id + '\')">Excluir</button>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    async function alternar(id, ligar) {
+        try {
+            await db.collection('app_temas').doc(id).update({ ativo: !!ligar });
+            showToast(ligar ? 'Tema visível no app.' : 'Tema oculto — some da lista dos usuários.', 'ok');
+        } catch (e) { showToast('Erro: ' + e.message, 'err'); }
+    }
+
+    async function excluir(id) {
+        var ok = await showConfirm(
+            'Este tema será removido da tela "Personalizar" de todos os usuários. Quem já estiver usando a cor continua com ela, porque a escolha fica salva no próprio aparelho.',
+            { title: 'Excluir tema', okText: 'Excluir' });
+        if (!ok) return;
+        try {
+            await db.collection('app_temas').doc(id).delete();
+            showToast('Tema excluído.', 'ok');
+        } catch (e) { showToast('Erro ao excluir: ' + e.message, 'err'); }
+    }
+
+    return { start: start, stop: stop, aoTrocarTipo: aoTrocarTipo, carregarImagem: carregarImagem,
+             publicar: publicar, limparFormulario: limparFormulario, alternar: alternar, excluir: excluir };
+})();
+
+// Prévia ao vivo enquanto a pessoa mexe nas cores.
+['tema-cor1','tema-grad1','tema-grad2','tema-grad-dir'].forEach(function (id) {
+    document.addEventListener('input', function (e) {
+        if (e.target && e.target.id === id) Temas.aoTrocarTipo();
+    });
+});
 </script>
 </body>
 </html>
