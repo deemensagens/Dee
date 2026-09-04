@@ -5,6 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="theme-color" content="#00e5cc">
     <script>
+    /* ── MARCA DE "ESTOU DENTRO DO APP INSTALADO" ──
+       O Capacitor injeta window.Capacitor na página antes de qualquer
+       script nosso rodar. Aqui gravamos isso como uma classe no <html>,
+       o que permite escrever regras de CSS que valem SÓ dentro do app
+       instalado — sem tocar em nada do site nem do PWA.
+
+       É usado pelo layout de tela deitada (modo paisagem), reorganizado
+       apenas no app. No navegador e no PWA nada muda: sem esta classe,
+       aquelas regras simplesmente não se aplicam.
+
+       Fica aqui no topo, antes do conteúdo existir, para o layout já
+       nascer certo — sem piscar de um jeito e depois trocar. */
+    (function() {
+        function marcarSeForApp() {
+            try {
+                var nativo = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+                if (nativo) document.documentElement.classList.add('dee-app');
+                return nativo;
+            } catch (e) { return false; }
+        }
+        // Na prática o Capacitor já está disponível aqui. As duas
+        // conferências extras são rede de segurança: se em alguma versão
+        // do Android ele demorar um instante a mais para se anunciar, a
+        // marca entra logo em seguida e o layout se acerta sozinho — em
+        // vez de o app ficar com a aparência de navegador até reabrir.
+        if (!marcarSeForApp()) {
+            document.addEventListener('DOMContentLoaded', marcarSeForApp);
+            window.addEventListener('load', marcarSeForApp);
+        }
+    })();
+    </script>
+    <script>
     /* ── PORTEIRO DE ENTRADA: landing.html vs. direto pro login/chat ──
        Esta página (index.html) é o app em si (login + chat), igual sempre
        foi. A landing.html é a página de apresentação do Dee, que só deve
@@ -400,8 +432,22 @@
             gap: 10px;
             box-sizing: border-box;
         }
+        /* Site e PWA: exatamente como sempre foi, nada mudou aqui. */
         @media (max-height: 500px) and (orientation: landscape) {
             .chat-hdr { --safe-top: 0px; height: var(--hdr-h); padding-top: 0; }
+        }
+        /* Só no app instalado (classe "dee-app", ver o script no topo do
+           arquivo): deitado, o cabeçalho fica mais baixo mas continua
+           respeitando a faixa do sistema no topo. A regra acima zera essa
+           faixa, e era por isso que o relógio e a bateria do Android
+           ficavam em cima do nome da pessoa. No navegador isso não
+           acontece, porque lá essa faixa já é zero de qualquer jeito. */
+        @media (max-height: 560px) and (orientation: landscape) {
+            html.dee-app .chat-hdr {
+                --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+                height: calc(46px + var(--safe-top));
+                padding-top: var(--safe-top);
+            }
         }
         .chat-hdr-left  { display: flex; align-items: center; gap: 10px; min-width: 0; }
         .chat-hdr-info  { min-width: 0; }
@@ -1449,7 +1495,125 @@
         h2 .icon, .notif-title .icon, button .icon, a .icon, div .icon, span .icon {
             margin-right: 2px;
         }
-    </style>
+
+        /* ══════════════════════════════════════════════════════════
+           CELULAR DEITADO (modo paisagem) — SOMENTE NO APP INSTALADO
+           ──────────────────────────────────────────────────────────
+           Repare no "html.dee-app" na frente de cada regra: essa classe
+           só existe dentro do aplicativo instalado (ver o script no topo
+           deste arquivo). No site e no PWA nenhuma destas regras se
+           aplica — lá o modo paisagem continua exatamente como está hoje,
+           sem nenhuma mudança.
+
+           O que muda no app: em pé sobra altura e falta largura, então a
+           lista de conversas e a Comunidade ficam uma embaixo da outra e
+           a conversa aberta cobre tudo. Deitado é o contrário — sobra
+           largura e falta altura. Aqui montamos as duas colunas
+           (Comunidade e lista à esquerda, conversa à direita, as duas
+           funcionando ao mesmo tempo) e devolvemos altura: barras mais
+           baixas para caber a área de digitar, os botões e as mensagens
+           sem nada ficar cortado.
+
+           Vale só para tela deitada E baixa (até 560px de altura), que é
+           o caso do celular. Tablet deitado tem altura de sobra e segue
+           com o layout normal.
+           ══════════════════════════════════════════════════════════ */
+        @media (orientation: landscape) and (max-height: 560px) {
+
+            /* ── Duas colunas de verdade ──
+               Em celular estreito, a regra de "max-width: 680px" transforma
+               a conversa numa camada que cobre a lista inteira. Em pé isso
+               é o certo; deitado, não — há largura para as duas ao mesmo
+               tempo. */
+            html.dee-app #app-screen {
+                flex-direction: row;
+                padding-left: var(--safe-left);
+                padding-right: var(--safe-right);
+            }
+            html.dee-app #sidebar {
+                position: relative; inset: auto; transform: none;
+                width: clamp(228px, 33vw, 330px);
+                min-width: clamp(228px, 33vw, 330px);
+            }
+            html.dee-app #chat-window { position: relative; inset: auto; display: flex; z-index: 1; }
+            /* Com as duas colunas visíveis, o botão de voltar da conversa
+               perde a função: a lista já está do lado. */
+            html.dee-app .bk { display: none !important; }
+
+            /* ── A Comunidade divide a coluna com a lista de conversas ──
+               A altura dela é no mínimo 300px, pensada para a tela em pé.
+               Deitado, isso é mais do que a coluna inteira: a lista de
+               conversas ficava sem espaço nenhum e sumia da tela. */
+            html.dee-app #social-feed-section {
+                flex: 0 0 46% !important;
+                height: 46% !important;
+                max-height: 46% !important;
+                min-height: 0 !important;
+            }
+
+            /* ── Barras mais baixas, para sobrar altura ao conteúdo ── */
+            html.dee-app .side-header { padding: 6px 10px; padding-top: calc(var(--safe-top) + 6px); }
+            html.dee-app .side-logo-img { width: 26px; height: 26px; }
+            html.dee-app .side-actions .iBtn { width: 30px; height: 30px; font-size: 14px; }
+            html.dee-app .side-tab { padding: 6px 3px; font-size: 9px; min-width: 0; }
+            html.dee-app .tab-toolbar { padding: 5px 10px 4px; }
+            html.dee-app .me-bar { padding: 6px 10px; padding-bottom: calc(var(--safe-bottom) + 6px); }
+            html.dee-app .me-bar .av { width: 30px; height: 30px; font-size: 12px; }
+            html.dee-app .ad-carousel { height: 50px; }
+            html.dee-app .urow { min-height: 48px; padding: 6px 9px; }
+            html.dee-app .list .av { width: 36px; height: 36px; font-size: 14px; }
+
+            /* ── Conversa: área de digitar e mensagens sempre visíveis ── */
+            html.dee-app #msgs { padding: 8px 12px; gap: 4px; }
+            html.dee-app .bubble { max-width: min(76%, 420px); }
+            html.dee-app #typing-ind { height: 20px; padding: 0 12px; }
+            html.dee-app .input-bar { padding-top: 5px; padding-bottom: calc(var(--safe-bottom) + 5px); }
+            html.dee-app .day-sep { padding: 2px 0; }
+            html.dee-app #scroll-bottom-btn { bottom: 62px; width: 36px; height: 36px; font-size: 17px; }
+
+            /* ── Emojis: a grade inteira não cabe deitada ── */
+            html.dee-app #emoji-picker { width: 270px; bottom: calc(var(--safe-bottom) + 56px); }
+            html.dee-app .ep-grid { max-height: 108px; }
+
+            /* ── Janelinhas flutuantes (Cinema, Live e jogos) ──
+               Ancoradas em cantos opostos para poderem conviver, agora
+               respeitando também as laterais do sistema e sem passar da
+               altura da tela. */
+            html.dee-app #cinema-floating-window,
+            html.dee-app #live-floating-window {
+                width: 260px;
+                right: calc(var(--safe-right) + 10px);
+                max-height: calc(100% - var(--safe-top) - 20px);
+            }
+            html.dee-app #game-iframe-modal {
+                width: 260px;
+                left: calc(var(--safe-left) + 10px);
+                max-height: calc(100% - var(--safe-top) - 20px);
+            }
+            html.dee-app #game-iframe-frame { max-height: 42vh; }
+
+            /* ── Tela de chamada ──
+               Sem isto o avatar e os botões não cabem na altura deitada e
+               o botão de encerrar ficava fora da tela. */
+            html.dee-app #call-screen { padding: calc(var(--safe-top) + 10px) 20px calc(var(--safe-bottom) + 10px); }
+            html.dee-app .call-top { margin-top: 0; gap: 6px; }
+            html.dee-app .call-avatar { width: 74px; height: 74px; font-size: 28px; }
+            html.dee-app .call-name { font-size: 17px; }
+            html.dee-app .call-status,
+            html.dee-app .call-timer { font-size: 12px; min-height: 16px; }
+            html.dee-app .call-actions { gap: 22px; padding-bottom: 0; }
+            html.dee-app .call-secondary-row { gap: 14px; margin-bottom: 12px; }
+            html.dee-app .call-btn-round { width: 52px; height: 52px; font-size: 20px; }
+            html.dee-app .call-btn-sec { width: 42px; height: 42px; font-size: 16px; }
+            html.dee-app #call-video-local-wrap { width: 78px; height: 58px; }
+
+            /* ── Janelas de aviso e formulários ──
+               Com pouca altura, precisam rolar por dentro em vez de
+               estourar para fora da tela. */
+            html.dee-app .overlay { padding: 10px; }
+            html.dee-app .mcard { padding: 18px 20px; max-height: calc(100% - 20px); overflow-y: auto; }
+        }
+</style>
 </head>
 <body>
 
