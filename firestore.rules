@@ -216,17 +216,45 @@ service cloud.firestore {
         (get(/databases/$(database)/documents/calls/$(callId)).data.from == request.auth.uid ||
          get(/databases/$(database)/documents/calls/$(callId)).data.to == request.auth.uid);
     }
+    // ══════════════════════════════════════════════════════════
+    //  CHAMADAS
+    // ══════════════════════════════════════════════════════════
+    //  O "get('from', '')" abaixo tem um motivo prático: se por qualquer
+    //  razão sobrar no banco um documento de chamada SEM os campos "from"
+    //  e "to" (por exemplo, uma gravação parcial), a forma antiga travava
+    //  tudo — a conferência dava erro, e daí em diante ninguém conseguia
+    //  nem criar uma chamada nova nem apagar aquele resto. O "get" com
+    //  valor padrão faz a conferência dar "não" em vez de dar erro.
+    //
+    //  E a segunda condição do update é a saída para esse caso: quem está
+    //  começando uma chamada legítima (é o próprio remetente, para outra
+    //  pessoa, com status "ringing") pode escrever por cima de um
+    //  documento antigo que ficou para trás.
     match /calls/{callId} {
       allow read: if signedIn() &&
-        (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+        (resource.data.get('from', '') == request.auth.uid ||
+         resource.data.get('to', '')   == request.auth.uid);
+
       allow create: if signedIn() &&
         request.resource.data.from == request.auth.uid &&
         request.resource.data.to   != request.auth.uid &&
         request.resource.data.status == 'ringing';
-      allow update: if signedIn() &&
-        (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+
+      allow update: if signedIn() && (
+        // participante da chamada que está lá
+        resource.data.get('from', '') == request.auth.uid ||
+        resource.data.get('to', '')   == request.auth.uid ||
+        // ou começando uma chamada nova por cima de um resto antigo
+        (request.resource.data.get('from', '')   == request.auth.uid &&
+         request.resource.data.get('to', '')     != request.auth.uid &&
+         request.resource.data.get('status', '') == 'ringing')
+      );
+
       allow delete: if signedIn() &&
-        (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+        (resource.data.get('from', '') == request.auth.uid ||
+         resource.data.get('to', '')   == request.auth.uid ||
+         // permite faxina de um resto sem dono, que senão ficaria travado
+         !('from' in resource.data));
     }
     match /calls/{callId}/callerCandidates/{id} {
       allow read, write: if signedIn() && callParticipant(callId);

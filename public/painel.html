@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Dee — Painel Administrativo</title>
 <meta name="theme-color" content="#030508">
 <meta name="description" content="Painel administrativo do Dee">
@@ -518,6 +518,102 @@
     .tema-tag.fer { background: rgba(255,179,0,.12); color: var(--warn); }
     .tema-acoes { display: flex; gap: 6px; padding: 0 12px 12px; }
     .tema-preview-live { height: 90px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface3); background-size: cover; background-position: center; margin-top: 8px; }
+
+
+    /* ══════════════════════════════════════════════════════════
+       PAINEL NO CELULAR — cara de aplicativo
+       ──────────────────────────────────────────────────────────
+       O problema principal eram as tabelas. Elas ficavam numa caixa com
+       rolagem lateral: no celular via-se "AUTOR" e metade de "CONTEÚDO",
+       e o resto — ações, datas, valores — ficava escondido fora da tela.
+       Havia até um aviso pedindo para arrastar para o lado.
+
+       Aqui cada linha da tabela vira um CARTÃO, com cada informação no
+       seu rótulo, uma embaixo da outra. Acaba a rolagem lateral porque
+       não existe mais tabela larga: existe uma lista vertical, que é
+       como um aplicativo de celular mostra dados.
+
+       Os rótulos vêm do atributo data-label de cada célula, preenchido
+       automaticamente ao montar as tabelas (ver rotularCelulas).
+       ══════════════════════════════════════════════════════════ */
+    @media (max-width: 760px) {
+
+        /* Nada mais rola para o lado em lugar nenhum */
+        .ads-table-wrap { overflow-x: visible !important; border: none; background: transparent; }
+        .ads-table-wrap table, .ads-table-wrap thead, .ads-table-wrap tbody,
+        .ads-table-wrap th, .ads-table-wrap td, .ads-table-wrap tr { display: block; width: auto; }
+
+        /* O cabeçalho da tabela some: cada valor passa a levar o próprio rótulo */
+        .ads-table-wrap thead { position: absolute; left: -9999px; }
+
+        .ads-table-wrap tbody tr {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+        }
+        .ads-table-wrap tbody td {
+            border: none !important;
+            padding: 7px 0 !important;
+            display: flex; align-items: flex-start; justify-content: space-between;
+            gap: 12px; min-height: 0; text-align: right;
+        }
+        .ads-table-wrap tbody td + td { border-top: 1px solid var(--border) !important; }
+        .ads-table-wrap tbody td::before {
+            content: attr(data-label);
+            flex: 0 0 auto; text-align: left;
+            font-size: 10px; font-weight: 700; letter-spacing: .4px;
+            text-transform: uppercase; color: var(--muted2);
+            padding-top: 2px;
+        }
+        /* Célula sem rótulo (foto, botões) ocupa a linha inteira */
+        .ads-table-wrap tbody td[data-label=""]::before,
+        .ads-table-wrap tbody td:not([data-label])::before { content: none; }
+        .ads-table-wrap tbody td[data-label=""],
+        .ads-table-wrap tbody td:not([data-label]) { justify-content: flex-start; text-align: left; }
+
+        /* Texto longo quebra em vez de cortar */
+        .ads-table-wrap tbody td > * { min-width: 0; }
+        .ads-table-wrap tbody td { word-break: break-word; }
+
+        /* Botões de ação em linha, com espaço de toque decente */
+        .row-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; width: 100%; }
+        .mini-btn { padding: 8px 12px; font-size: 11.5px; }
+
+        /* Títulos: uma linha só, com o número virando um selo ao lado */
+        .panel h2 {
+            display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+            font-size: 15px; line-height: 1.3;
+        }
+        .panel h2 .h2-note, .panel h2 .count-badge {
+            font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+            background: var(--surface3); color: var(--muted); white-space: nowrap;
+        }
+
+        /* Abas: duas linhas em vez de rolar e esconder as últimas */
+        .nav-tabs { flex-wrap: wrap; overflow-x: visible; gap: 4px; }
+        .nav-tab { flex: 1 1 auto; min-width: 30%; justify-content: center; text-align: center; font-size: 11px; padding: 9px 6px; }
+
+        /* Formulários em coluna única */
+        .row { flex-direction: column; gap: 0; }
+        .field { width: 100%; }
+        .filter-row { gap: 6px; }
+        .filter-chip { font-size: 11.5px; padding: 7px 11px; }
+
+        /* Cartões de indicador lado a lado, dois por linha */
+        .dash-cards { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+
+        /* Prévias e miniaturas não estouram a largura */
+        .preview-box, .preview-box img, .preview-box video, .thumb, .rank-thumb { max-width: 100%; }
+    }
+
+    @media (max-width: 420px) {
+        .nav-tab { min-width: 46%; }
+        .dash-cards { grid-template-columns: 1fr !important; }
+        .ads-table-wrap tbody td { flex-direction: column; align-items: flex-start; text-align: left; gap: 3px; }
+        .row-actions { justify-content: flex-start; }
+    }
 
     /* ── PWA INSTALL BUTTON ── */
     .install-btn { display: none; align-items: center; gap: 6px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 6px; padding: 8px 14px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 12.5px; cursor: pointer; white-space: nowrap; transition: background .15s; }
@@ -4600,6 +4696,58 @@ var Temas = (function () {
         if (e.target && e.target.id === id) Temas.aoTrocarTipo();
     });
 });
+</script>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  TABELAS QUE VIRAM CARTÕES NO CELULAR
+// ══════════════════════════════════════════════════════════
+//  No computador as tabelas continuam tabelas, exatamente como sempre
+//  foram. No celular, o CSS transforma cada linha num cartão — e para
+//  isso cada valor precisa carregar o nome da própria coluna, senão
+//  ficariam números soltos sem contexto.
+//
+//  Em vez de alterar cada função que monta tabela (são várias, em
+//  módulos diferentes), fazemos isso aqui de uma vez: sempre que uma
+//  tabela muda, copiamos o texto do cabeçalho para dentro de cada
+//  célula correspondente. Assim vale para as tabelas de hoje e para
+//  qualquer outra que venha depois, sem ninguém precisar lembrar disso.
+// ══════════════════════════════════════════════════════════
+(function () {
+    function rotularCelulas(tabela) {
+        try {
+            var cabecalhos = tabela.querySelectorAll('thead th');
+            if (!cabecalhos.length) return;
+            var nomes = Array.prototype.map.call(cabecalhos, function (th) {
+                return (th.textContent || '').trim();
+            });
+            tabela.querySelectorAll('tbody tr').forEach(function (linha) {
+                Array.prototype.forEach.call(linha.children, function (celula, i) {
+                    if (celula.hasAttribute('data-label')) return;
+                    // Coluna sem título (foto, botões) fica sem rótulo e
+                    // ocupa a linha inteira no cartão.
+                    celula.setAttribute('data-label', nomes[i] || '');
+                });
+            });
+        } catch (e) { /* rotular é enfeite: nunca pode quebrar a tabela */ }
+    }
+
+    function rotularTudo() {
+        document.querySelectorAll('.ads-table-wrap table').forEach(rotularCelulas);
+    }
+
+    // Observa as áreas de tabela e rotula assim que o conteúdo muda.
+    function ligarObservador() {
+        rotularTudo();
+        var alvos = document.querySelectorAll('.ads-table-wrap');
+        if (!alvos.length || !window.MutationObserver) return;
+        var obs = new MutationObserver(function () { rotularTudo(); });
+        alvos.forEach(function (a) { obs.observe(a, { childList: true, subtree: true }); });
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligarObservador);
+    else ligarObservador();
+})();
 </script>
 </body>
 </html>

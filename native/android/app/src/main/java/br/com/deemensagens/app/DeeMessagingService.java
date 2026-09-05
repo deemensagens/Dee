@@ -76,6 +76,12 @@ public class DeeMessagingService extends FirebaseMessagingService {
             // por cima nesse caso. Se o app estiver fechado, minimizado ou a
             // tela bloqueada, aí sim precisa da tela nativa, porque nada do
             // JS está rodando/visível pra mostrar nada.
+            // Guarda o bilhete de recusa e o dono deste aparelho: são eles
+            // que permitem ao botão "Recusar" avisar o outro lado sem
+            // precisar abrir o app (ver DeeDeclineReceiver).
+            ultimoDeclineToken = data.get("declineToken");
+            ultimoToUid = obterUidDesteAparelho();
+
             if (!isAppInForeground()) {
                 showIncomingCallFromPush(data);
             }
@@ -86,6 +92,21 @@ public class DeeMessagingService extends FirebaseMessagingService {
         // Mensagem normal (chat/status/amizade) chegando com o app rodando
         // (primeiro ou segundo plano) — repassa pro fluxo padrão do plugin,
         // que entrega pro JS via pushNotificationReceived.
+        // ══════════════════════════════════════════════════════════
+        //  MENSAGEM COM O APP ABERTO: NADA NA BARRA DO SISTEMA
+        // ══════════════════════════════════════════════════════════
+        //  Com o app FECHADO, quem mostra o aviso é o próprio Android, e
+        //  este método nem chega a ser chamado — está tudo certo assim.
+        //
+        //  Com o app ABERTO, o aviso chega aqui e era repassado adiante,
+        //  virando uma notificação na barra de cima. Só que o app já
+        //  mostra o próprio aviso dentro da tela nesse momento: a pessoa
+        //  recebia dois pela mesma mensagem.
+        //
+        //  Então, com o app na frente, paramos por aqui. O aviso de
+        //  dentro do app dá conta — e a pessoa está olhando para ele.
+        if (isAppInForeground()) return;
+
         PushNotificationsPlugin.sendRemoteMessage(remoteMessage);
     }
 
@@ -93,6 +114,25 @@ public class DeeMessagingService extends FirebaseMessagingService {
     public void onNewToken(@NonNull String token) {
         super.onNewToken(token);
         PushNotificationsPlugin.onNewToken(token);
+    }
+
+    // Bilhete e destinatário da chamada que está tocando agora. Ficam
+    // aqui na memória do serviço só entre o aviso chegar e a pessoa
+    // decidir atender ou recusar.
+    private static String ultimoDeclineToken = null;
+    private static String ultimoToUid = null;
+
+    // O identificador do dono deste aparelho é gravado pelo próprio app
+    // quando a pessoa entra na conta (ver registerNativePushToken, no
+    // index.html). Sem ele o servidor não tem como conferir o bilhete.
+    private String obterUidDesteAparelho() {
+        try {
+            android.content.SharedPreferences prefs =
+                getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
+            String uid = prefs.getString("dee_uid", null);
+            if (uid != null && !uid.isEmpty()) return uid;
+        } catch (Exception ignored) { }
+        return null;
     }
 
     private boolean isAppInForeground() {
@@ -242,12 +282,18 @@ public class DeeMessagingService extends FirebaseMessagingService {
         try {
             String callId = record.getCallId();
 
-            // Corpo da notificação e tela cheia: a mesma Activity do plugin
-            // que já funciona hoje quando o usuário toca na notificação.
+            // ── TELA CHEIA DA CHAMADA ──
+            // Antes usávamos a tela que vinha pronta do plugin, onde só
+            // dava para TOCAR nos botões. Agora é a nossa própria tela,
+            // que aceita as duas formas: tocar no botão OU arrastar —
+            // para cima atende, para baixo recusa, como no telefone do
+            // próprio aparelho (ver DeeIncomingCallActivity).
             PendingIntent contentIntent = PendingIntent.getActivity(
                 this,
                 (callId + ":dee-content").hashCode(),
-                IncomingCallActivity.createIntent(this, callId),
+                DeeIncomingCallActivity.createIntent(
+                    this, callId, record.getCallerName(), record.hasVideo(),
+                    ultimoToUid, ultimoDeclineToken, record.getNotificationId()),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
 
@@ -262,10 +308,21 @@ public class DeeMessagingService extends FirebaseMessagingService {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
 
-            // Recusar: mantém o receiver do plugin, que já funciona.
-            Intent declineBroadcast = new Intent(this, IncomingCallActionReceiver.class);
-            declineBroadcast.setAction(IncomingCallActionReceiver.ACTION_DECLINE_CALL);
-            declineBroadcast.putExtra(IncomingCallActionReceiver.EXTRA_CALL_ID, callId);
+            // ── RECUSAR ──
+            // Antes apontava direto para o receptor do plugin, que fecha a
+            // notificação AQUI e avisa o JavaScript do app. Com o app
+            // fechado não existe JavaScript nenhum escutando, então
+            // ninguém avisava o outro lado: quem ligou continuava
+            // chamando até estourar o tempo.
+            //
+            // Agora aponta para o nosso receptor, que fala direto com o
+            // servidor — sem precisar abrir o app — e só depois repassa a
+            // ação para o receptor do plugin (ver DeeDeclineReceiver).
+            Intent declineBroadcast = new Intent(this, DeeDeclineReceiver.class);
+            declineBroadcast.putExtra(DeeDeclineReceiver.EXTRA_CALL_ID, callId);
+            declineBroadcast.putExtra(DeeDeclineReceiver.EXTRA_TO_UID, ultimoToUid);
+            declineBroadcast.putExtra(DeeDeclineReceiver.EXTRA_TOKEN, ultimoDeclineToken);
+            declineBroadcast.putExtra(DeeDeclineReceiver.EXTRA_NOTIF_ID, record.getNotificationId());
             PendingIntent declineIntent = PendingIntent.getBroadcast(
                 this,
                 (callId + ":dee-decline").hashCode(),

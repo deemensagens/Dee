@@ -170,5 +170,33 @@
         } catch (e) { return false; }
     };
 
+    // ══════════════════════════════════════════════════════════
+    //  Salvar um arquivo recebido e abrir com o app da escolha
+    //  ──────────────────────────────────────────────────────────
+    //  Ver a explicação em salvarArquivo, no DeePermissionsPlugin.java.
+    //  No site e no PWA isto nem é chamado: lá o download normal do
+    //  navegador sempre funcionou.
+    // ══════════════════════════════════════════════════════════
+    DeeNative.saveFile = async function (base64, fileName, mimeType) {
+        if (!isNative) return { saved: false };
+        var p = global.Capacitor && global.Capacitor.Plugins;
+        var plugin = p && p.DeePermissions;
+        if (!plugin || !plugin.salvarArquivo) return { saved: false };
+        try { return await plugin.salvarArquivo({ base64: base64, fileName: fileName, mimeType: mimeType }); }
+        catch (e) { return { saved: false }; }
+    };
+
+    // Guarda quem é o dono deste aparelho, para o botão "Recusar" da
+    // notificação conseguir avisar o outro lado com o app fechado
+    // (ver DeeDeclineReceiver.java).
+    DeeNative.setUid = async function (uid) {
+        if (!isNative) return false;
+        var p = global.Capacitor && global.Capacitor.Plugins;
+        var plugin = p && p.DeePermissions;
+        if (!plugin || !plugin.setUid) return false;
+        try { await plugin.setUid({ uid: uid }); return true; }
+        catch (e) { return false; }
+    };
+
     global.DeeNative = DeeNative;
 })(window);

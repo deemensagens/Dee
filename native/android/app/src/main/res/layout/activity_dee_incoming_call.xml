@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    TELA CHEIA DE CHAMADA RECEBIDA
+    ══════════════════════════════════════════════════════════
+    Antes esta tela vinha pronta do plugin de terceiros, e nela só dava
+    para TOCAR nos botões. O pedido era ter também o gesto de arrastar
+    para cima, como no telefone do próprio aparelho — por isso a tela
+    passou a ser nossa.
+
+    O visual segue o mesmo do aplicativo: fundo escuro, turquesa nos
+    elementos de aceitar e vermelho no de recusar.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#030508">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp">
+
+        <!-- Nome de quem está ligando -->
+        <TextView
+            android:id="@+id/dee_call_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="96dp"
+            android:textColor="#E8EAF0"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:maxLines="2"
+            android:gravity="center"
+            android:text="Chamada" />
+
+        <TextView
+            android:id="@+id/dee_call_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="#8B93A7"
+            android:textSize="16sp"
+            android:text="Chamada de voz" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Dica do gesto -->
+        <TextView
+            android:id="@+id/dee_call_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="18dp"
+            android:textColor="#5F6878"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:text="Arraste para cima para atender · para baixo para recusar" />
+
+        <!-- Botões: cada um aceita toque E arraste para cima -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="72dp">
+
+            <FrameLayout
+                android:id="@+id/dee_btn_decline"
+                android:layout_width="76dp"
+                android:layout_height="76dp"
+                android:layout_marginEnd="48dp"
+                android:background="@drawable/dee_call_btn_decline"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:textColor="#FFFFFF"
+                    android:textSize="26sp"
+                    android:text="✕" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:id="@+id/dee_btn_accept"
+                android:layout_width="76dp"
+                android:layout_height="76dp"
+                android:background="@drawable/dee_call_btn_accept"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:textColor="#04140F"
+                    android:textSize="26sp"
+                    android:text="✆" />
+            </FrameLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

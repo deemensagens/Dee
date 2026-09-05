@@ -233,6 +233,12 @@
 .sf-card-audio{flex-shrink:0;margin-top:6px;}\
 .sf-card-audio .audio-player{width:100%;max-width:100%;}\
 .sf-detail-audio{padding:14px 16px;}\
+.sf-audio-embutido{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:9px 12px;}\
+.sfae-som{width:34px;height:34px;flex-shrink:0;border:none;border-radius:50%;background:rgba(0,229,204,.12);color:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;}\
+.sfae-som:active{transform:scale(.9);}\
+.sfae-faixa{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:0;}\
+.sfae-preenchida{height:100%;width:0%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));}\
+.sfae-aviso{font-size:10.5px;color:var(--muted);white-space:nowrap;flex-shrink:0;}\
 .sf-detail-audio .audio-player{width:100%;max-width:100%;}\
 /* ── Modal: detalhe do post + comentários ── */\
 #sf-detail-modal .mcard{max-width:440px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:88vh;}\
@@ -545,7 +551,7 @@
         document.getElementById('sf-live-new-rec-stop').onclick = sfLiveStopRecordAudio;
 
         document.getElementById('sf-detail-close-btn').onclick = function () {
-            closeModal('sf-detail-modal');
+            sfStopDetailMedia(); closeModal('sf-detail-modal');
             sfStopCommentsListener();
             sfStopDetailMedia(); // para qualquer áudio/vídeo que tenha ficado tocando (legenda em áudio, etc.)
             sfLiveLeaveIfViewing(); // sai da live se eu estava só assistindo (anfitrião continua no ar em segundo plano)
@@ -722,8 +728,11 @@
     function sfCardAudioHtml(p) {
         if (p.type !== 'audio' && p.type !== 'image_audio') return '';
         if (p.audioData) {
-            var ap = buildAudioPlayer(p.audioData);
-            return '<div class="sf-card-audio" onclick="event.stopPropagation()">' + ap.html + '</div>';
+            // Também no cartão do feed o áudio é embutido: só a faixa e o
+            // botão de som, sem play nem pausa. Ele não toca aqui — só
+            // dentro da publicação aberta (ver sfAudioEmbutidoMontar).
+            return '<div class="sf-card-audio" onclick="event.stopPropagation()">' +
+                   sfAudioEmbutidoHtml(p.audioData, 'sfae-card-' + p.id) + '</div>';
         }
         if (p.audioId) return '<div class="sf-card-audio" data-audio-id="' + p.audioId + '" data-post-audio="' + p.id + '" onclick="event.stopPropagation()"><div class="sf-media-loading"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> Carregando áudio...</div></div>';
         return '';
@@ -951,10 +960,7 @@
                 downloadChunks(p.audioId).then(function (base64) {
                     var audioEl = document.querySelector('.sf-card-audio[data-post-audio="' + p.id + '"]');
                     if (audioEl) {
-                        var ap = buildAudioPlayer(base64);
-                        audioEl.innerHTML = ap.html;
-                        apMount(ap.id);
-                        audioEl.querySelector('.audio-player').dataset.mounted = '1';
+                        audioEl.innerHTML = sfAudioEmbutidoHtml(base64, 'sfae-card-' + p.id);
                     }
                 }).catch(function () {
                     sfLoadedAudios[p.id] = false;
@@ -1483,7 +1489,7 @@
                 // "encerrada" dentro de um modal aberto): se o detalhe desta
                 // live ainda está aberto, fecha ele igual ao botão de fechar.
                 if (sfDetailPostId === postId && document.getElementById('sf-detail-modal').classList.contains('open')) {
-                    closeModal('sf-detail-modal');
+                    sfStopDetailMedia(); closeModal('sf-detail-modal');
                     sfStopCommentsListener();
                 } else {
                     sfRefreshDetailIfOpen();
@@ -1868,7 +1874,7 @@
 
             notify('Postagem excluída', 'ok');
             if (fromDetail) {
-                closeModal('sf-detail-modal'); sfStopCommentsListener(); sfStopDetailMedia();
+                sfStopDetailMedia(); closeModal('sf-detail-modal'); sfStopCommentsListener();
                 if (sfLiveActivePostId === postId) sfLiveTeardown(); // era a live que eu tinha aberta (anfitrião ou espectador) — encerra tudo localmente
             }
         } catch (e) { notify('Erro ao excluir: ' + friendlyError(e), 'err'); }
@@ -2084,7 +2090,7 @@
                 var shouldClose = sfHiddenPosts.indexOf(sfDetailPostId) !== -1 ||
                     (openP && sfBlockedUsers.indexOf(openP.uid) !== -1);
                 if (shouldClose) {
-                    closeModal('sf-detail-modal'); sfStopCommentsListener(); sfStopDetailMedia();
+                    sfStopDetailMedia(); closeModal('sf-detail-modal'); sfStopCommentsListener();
                     sfLiveLeaveIfViewing();
                 }
             }
@@ -2107,16 +2113,143 @@
     //    live). Chamada sempre que o detalhe fecha ou troca de postagem,
     //    pra quem estava assistindo/ouvindo não continuar com som tocando
     //    depois de sair. ──
+    // ══════════════════════════════════════════════════════════
+    //  O ÁUDIO PARA AO SAIR DA PUBLICAÇÃO
+    // ══════════════════════════════════════════════════════════
+    //  Antes isto só parava o que estivesse dentro da área de mídia. O
+    //  áudio da publicação fica em outro lugar da janela, então ele
+    //  continuava tocando mesmo depois de a pessoa fechar o post e ir
+    //  para outra parte do app — a voz seguia ali, sem nada na tela
+    //  explicando de onde vinha.
+    //
+    //  Agora paramos TODO áudio e vídeo da janela de detalhe, e também
+    //  soltamos o loop do áudio embutido.
+    // ══════════════════════════════════════════════════════════
+    //  ÁUDIO EMBUTIDO NA PUBLICAÇÃO
+    // ══════════════════════════════════════════════════════════
+    //  Dentro da publicação o áudio não é uma mensagem que a pessoa
+    //  resolve ouvir ou não: ele faz parte do post, como a trilha faz
+    //  parte de um vídeo. Por isso aqui não há botão de play nem de
+    //  pausa — ele começa sozinho ao abrir e recomeça ao terminar,
+    //  enquanto a pessoa estiver vendo a publicação.
+    //
+    //  O único controle é o de som: um botão para silenciar e voltar a
+    //  ouvir, mais uma faixa fina mostrando o andamento.
+    //
+    //  Detalhe importante: navegador nenhum deixa um som começar sozinho
+    //  sem a pessoa ter tocado em algo antes. Por isso ele começa MUDO
+    //  quando isso acontece, e a própria faixa avisa que basta tocar no
+    //  botão para ouvir — em vez de simplesmente não tocar nada e
+    //  parecer quebrado.
+    function sfAudioEmbutidoHtml(base64, id) {
+        return '' +
+        '<div class="sf-audio-embutido" id="' + id + '">' +
+            '<button class="sfae-som" type="button" title="Silenciar ou ouvir">' +
+                '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>' +
+            '</button>' +
+            '<div class="sfae-faixa"><div class="sfae-preenchida"></div></div>' +
+            '<span class="sfae-aviso"></span>' +
+            '<audio preload="auto" loop playsinline src="' + base64 + '"></audio>' +
+        '</div>';
+    }
+
+    // Toca APENAS enquanto a publicação estiver aberta. Fora dela — no
+    // cartão do feed — o áudio fica montado mas em silêncio, esperando.
+    function sfAudioEmbutidoMontar(id, tocarAgora) {
+        var caixa = document.getElementById(id);
+        if (!caixa) return;
+        var audio = caixa.querySelector('audio');
+        var botao = caixa.querySelector('.sfae-som');
+        var cheia = caixa.querySelector('.sfae-preenchida');
+        var aviso = caixa.querySelector('.sfae-aviso');
+        if (!audio) return;
+
+        function desenharBotao() {
+            botao.innerHTML = audio.muted
+                ? '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'
+                : '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+            aviso.textContent = audio.muted ? 'Toque para ouvir' : '';
+        }
+
+        botao.onclick = function (e) {
+            e.stopPropagation();
+            audio.muted = !audio.muted;
+            if (!audio.muted) {
+                // Um áudio por vez em todo o app.
+                if (typeof pararTodosOsAudios === 'function') pararTodosOsAudios(audio);
+                audio.play().catch(function () {});
+            }
+            desenharBotao();
+        };
+
+        audio.addEventListener('timeupdate', function () {
+            if (!audio.duration) return;
+            cheia.style.width = ((audio.currentTime / audio.duration) * 100) + '%';
+        });
+
+        audio.loop = true;
+
+        // No cartão do feed ele nem começa: fica ali parado, esperando a
+        // pessoa abrir a publicação. Isso evita várias vozes tocando ao
+        // mesmo tempo enquanto ela rola o feed.
+        if (!tocarAgora) { desenharBotao(); return; }
+
+        // Dentro da publicação, começa sozinho. Se o navegador barrar o
+        // som (regra dele, não nossa), entra mudo — e o aviso ao lado do
+        // botão explica que basta tocar para ouvir.
+        if (typeof pararTodosOsAudios === 'function') pararTodosOsAudios(audio);
+        audio.play().then(function () {
+            desenharBotao();
+        }).catch(function () {
+            audio.muted = true;
+            audio.play().catch(function () {});
+            desenharBotao();
+        });
+        desenharBotao();
+    }
+
     function sfStopDetailMedia() {
+        var modal = document.getElementById('sf-detail-modal');
+        if (modal) {
+            modal.querySelectorAll('audio, video').forEach(function (el) {
+                try { el.pause(); el.loop = false; } catch (e) {}
+            });
+            var vid = modal.querySelector('video');
+            if (vid) { try { vid.srcObject = null; } catch (e) {} }
+        }
         var wrap = document.getElementById('sf-detail-media-wrap');
         if (wrap) {
             wrap.querySelectorAll('audio').forEach(function (a) { try { a.pause(); } catch (e) {} });
-            var vid = wrap.querySelector('video');
-            if (vid) { try { vid.pause(); vid.srcObject = null; } catch (e) {} }
+            var v2 = wrap.querySelector('video');
+            if (v2) { try { v2.pause(); v2.srcObject = null; } catch (e) {} }
         }
     }
 
+    // Chamada de fora (ver pararTodosOsAudios, no index.html) para que
+    // um áudio de conversa e um de publicação nunca toquem juntos.
+    window.sfPararAudios = function (exceto) {
+        document.querySelectorAll('.sf-feed audio, #sf-detail-modal audio, .sf-card-audio audio').forEach(function (el) {
+            if (el === exceto) return;
+            try { el.pause(); } catch (e) {}
+        });
+        document.querySelectorAll('.sf-audio-embutido').forEach(function (cx) {
+            var a = cx.querySelector('audio');
+            if (a && a !== exceto) { try { a.pause(); } catch (e) {} }
+        });
+    };
+
+    // Sair da Comunidade (abrir uma conversa, trocar de aba) também
+    // silencia o que estiver tocando aqui.
+    window.sfPararTudoAoSair = function () {
+        sfStopDetailMedia();
+        window.sfPararAudios(null);
+    };
+
     async function sfOpenPostDetail(postId, focusComment) {
+        // Trocar de publicação (arrastando para o lado, por exemplo) cala o
+        // áudio da anterior antes de abrir a próxima — senão as duas vozes
+        // se sobreporiam.
+        sfStopDetailMedia();
         var p = sfPosts.find(function (x) { return x.id === postId; });
         if (!p) {
             try {
@@ -2200,8 +2333,10 @@
             var apDetail = null;
             if (hasAud) {
                 if (p.audioData) {
-                    apDetail = buildAudioPlayer(p.audioData);
-                    mediaHtml += '<div class="sf-detail-audio">' + apDetail.html + '</div>';
+                    // Dentro da publicação o áudio é embutido: começa
+                    // sozinho, fica em laço e só tem o controle de som.
+                    apDetail = { id: 'sfae-' + p.id };
+                    mediaHtml += '<div class="sf-detail-audio">' + sfAudioEmbutidoHtml(p.audioData, apDetail.id) + '</div>';
                 } else if (p.audioId) {
                     mediaHtml += '<div class="sf-detail-audio" id="sf-detail-media-audio"><div class="sf-media-loading"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> Carregando áudio...</div></div>';
                 }
@@ -2225,14 +2360,14 @@
             }
             if (hasAud) {
                 if (p.audioData && apDetail) {
-                    apMount(apDetail.id);
+                    sfAudioEmbutidoMontar(apDetail.id, true);
                 } else if (p.audioId) {
                     downloadChunks(p.audioId).then(function (base64) {
                         var el = document.getElementById('sf-detail-media-audio');
                         if (el) {
-                            var ap = buildAudioPlayer(base64);
-                            el.innerHTML = ap.html;
-                            apMount(ap.id);
+                            var idEmb = 'sfae-' + p.id;
+                            el.innerHTML = sfAudioEmbutidoHtml(base64, idEmb);
+                            sfAudioEmbutidoMontar(idEmb, true);
                         }
                     }).catch(function () {
                         var el = document.getElementById('sf-detail-media-audio');

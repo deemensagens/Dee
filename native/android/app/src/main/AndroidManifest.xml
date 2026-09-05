@@ -94,6 +94,29 @@
 
         </activity>
 
+        <!-- ══ TELA CHEIA DE CHAMADA (nossa, com gesto de arrastar) ══
+             Substitui a tela que vinha do plugin, onde só dava para tocar
+             nos botões. Aqui também funciona arrastar para cima (atender)
+             e para baixo (recusar). Precisa aparecer por cima do bloqueio
+             e acender a tela, como qualquer chamada. -->
+        <activity
+            android:name=".DeeIncomingCallActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="true"
+            android:turnScreenOn="true"
+            android:showWhenLocked="true"
+            android:theme="@style/AppTheme.NoActionBar"
+            tools:targetApi="27" />
+
+        <!-- ══ RECUSAR CHAMADA COM O APP FECHADO ══
+             Recebe o toque no botão "Recusar" da notificação e avisa o
+             servidor sem precisar abrir o aplicativo, para o telefone de
+             quem ligou parar na hora (ver DeeDeclineReceiver.java). -->
+        <receiver
+            android:name=".DeeDeclineReceiver"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

@@ -153,6 +153,117 @@ public class DeePermissionsPlugin extends Plugin {
     }
 
     // ══════════════════════════════════════════════════════════
+    //  GUARDAR QUEM É O DONO DESTE APARELHO
+    // ══════════════════════════════════════════════════════════
+    //  O botão "Recusar" da notificação precisa avisar o servidor sem
+    //  abrir o app (ver DeeDeclineReceiver). Para o servidor conferir se
+    //  o pedido é legítimo, ele precisa saber de quem é o aparelho — e
+    //  esse dado só existe dentro do app, que naquele momento está
+    //  fechado. Por isso ele é gravado aqui assim que a pessoa entra na
+    //  conta, ficando disponível para o lado nativo a qualquer hora.
+    @PluginMethod
+    public void setUid(PluginCall call) {
+        try {
+            String uid = call.getString("uid");
+            android.content.SharedPreferences prefs =
+                getContext().getSharedPreferences("CapacitorStorage", android.content.Context.MODE_PRIVATE);
+            prefs.edit().putString("dee_uid", uid == null ? "" : uid).apply();
+        } catch (Exception ignored) { }
+        call.resolve();
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  SALVAR UM ARQUIVO RECEBIDO E ABRIR COM O APP DA ESCOLHA
+    // ══════════════════════════════════════════════════════════
+    //  No navegador, baixar um arquivo é só um link. Aqui não: o arquivo
+    //  veio embutido na própria mensagem, ele já está na mão do aparelho.
+    //  O Android não sabe "baixar" algo que não está na internet, então o
+    //  toque em Baixar simplesmente não fazia nada — era por isso que não
+    //  dava para salvar documento nenhum pelo aplicativo.
+    //
+    //  Aqui gravamos o arquivo na pasta de Downloads (a mesma de qualquer
+    //  outro download, então a pessoa encontra onde espera encontrar) e
+    //  abrimos a lista de "abrir com...", para ela escolher com o que
+    //  visualizar. Funciona para qualquer formato: PDF, planilha, texto,
+    //  imagem, compactado.
+    @PluginMethod
+    public void salvarArquivo(PluginCall call) {
+        String base64 = call.getString("base64");
+        String nome   = call.getString("fileName");
+        String tipo   = call.getString("mimeType");
+
+        JSObject r = new JSObject();
+        if (base64 == null || base64.isEmpty()) { r.put("saved", false); call.resolve(r); return; }
+        if (nome == null || nome.isEmpty()) nome = "arquivo";
+
+        try {
+            // O conteúdo chega como "data:tipo;base64,XXXX" — separamos o
+            // cabeçalho do conteúdo em si.
+            String conteudo = base64;
+            int virgula = base64.indexOf(',');
+            if (base64.startsWith("data:") && virgula > 0) {
+                if ((tipo == null || tipo.isEmpty())) {
+                    int pv = base64.indexOf(';');
+                    if (pv > 5) tipo = base64.substring(5, pv);
+                }
+                conteudo = base64.substring(virgula + 1);
+            }
+            byte[] dados = android.util.Base64.decode(conteudo, android.util.Base64.DEFAULT);
+            if (tipo == null || tipo.isEmpty()) tipo = "application/octet-stream";
+
+            java.io.File pasta = android.os.Environment.getExternalStoragePublicDirectory(
+                android.os.Environment.DIRECTORY_DOWNLOADS);
+            if (pasta != null && !pasta.exists()) pasta.mkdirs();
+
+            java.io.File arquivo = new java.io.File(pasta, nome);
+            // Se já existe um arquivo com esse nome, acrescenta um número
+            // em vez de sobrescrever o que a pessoa já tinha.
+            int n = 1;
+            String base = nome, ext = "";
+            int ponto = nome.lastIndexOf('.');
+            if (ponto > 0) { base = nome.substring(0, ponto); ext = nome.substring(ponto); }
+            while (arquivo.exists() && n < 100) {
+                arquivo = new java.io.File(pasta, base + " (" + n + ")" + ext);
+                n++;
+            }
+
+            java.io.FileOutputStream saida = new java.io.FileOutputStream(arquivo);
+            saida.write(dados);
+            saida.flush();
+            saida.close();
+
+            // Avisa o sistema que existe um arquivo novo, para ele
+            // aparecer na Galeria e no gerenciador de arquivos.
+            try {
+                android.media.MediaScannerConnection.scanFile(
+                    getContext(), new String[]{ arquivo.getAbsolutePath() }, new String[]{ tipo }, null);
+            } catch (Exception ignored) { }
+
+            // Abre a lista de aplicativos capazes de exibir esse arquivo.
+            try {
+                Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                    getContext(), getContext().getPackageName() + ".fileprovider", arquivo);
+                Intent ver = new Intent(Intent.ACTION_VIEW);
+                ver.setDataAndType(uri, tipo);
+                ver.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                Intent escolha = Intent.createChooser(ver, "Abrir com");
+                escolha.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(escolha);
+            } catch (Exception ignored) {
+                // Sem nenhum app capaz de abrir aquele formato: o arquivo
+                // continua salvo em Downloads, que é o mais importante.
+            }
+
+            r.put("saved", true);
+            r.put("path", arquivo.getAbsolutePath());
+        } catch (Exception e) {
+            r.put("saved", false);
+            r.put("error", String.valueOf(e.getMessage()));
+        }
+        call.resolve(r);
+    }
+
+    // ══════════════════════════════════════════════════════════
     //  ABRIR UMA LOCALIZAÇÃO NO APP DE MAPAS DO CELULAR
     // ══════════════════════════════════════════════════════════
     //  Antes, tocar numa localização recebida chamava window.open com um

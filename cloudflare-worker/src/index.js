@@ -39,6 +39,27 @@ export default {
       return new Response(null, { headers: corsHeaders() });
     }
 
+    // ══════════════════════════════════════════════════════════
+    //  RECUSAR CHAMADA COM O APP FECHADO
+    // ══════════════════════════════════════════════════════════
+    //  Quando o telefone toca com o Dee fechado, quem desenha a
+    //  notificação é o Android — nosso código não está rodando. Tocar em
+    //  "Recusar" fechava a notificação no aparelho, mas ninguém avisava o
+    //  outro lado: quem ligou continuava chamando até estourar o tempo.
+    //
+    //  Este endereço é a ponte que faltava. O aparelho manda o pedido
+    //  direto para cá, sem precisar abrir o app, e nós marcamos a chamada
+    //  como recusada — o que faz o telefone de quem ligou parar na hora.
+    //
+    //  A prova de que o pedido é legítimo é um bilhete que VIAJA JUNTO com
+    //  o aviso de chamada (ver declineToken mais abaixo). Só o aparelho
+    //  que recebeu aquela chamada tem esse bilhete, e ele só serve para
+    //  aquela chamada específica. O segredo que gera o bilhete fica aqui
+    //  no servidor — nada sensível dentro do aplicativo.
+    if (url.pathname === '/call-decline' && request.method === 'POST') {
+      return await recusarChamada(request, env);
+    }
+
     if (url.pathname !== '/notify' || request.method !== 'POST') {
       return json({ error: 'not_found' }, 404);
     }
@@ -179,6 +200,9 @@ export default {
               callerName: fromName || 'Alguém',
               callerUid: String(fromUid),
               hasVideo: hasVideo ? 'true' : 'false',
+              // Bilhete de uso único para o botão "Recusar" funcionar com
+              // o app fechado (ver /call-decline, no topo deste arquivo).
+              declineToken: await gerarBilheteDeRecusa(serviceAccount, String(callId), String(t.uid || toUid)),
             },
             android: { priority: 'high' },
           }
@@ -204,6 +228,113 @@ export default {
     return json({ sent: results.filter(Boolean).length, total: targets.length });
   },
 };
+
+// ══════════════════════════════════════════════════════════
+//  RECUSAR CHAMADA COM O APP FECHADO
+// ══════════════════════════════════════════════════════════
+//  Ver a explicação completa lá em cima, na rota /call-decline.
+//
+//  Resumo de como a segurança funciona aqui:
+//   · Junto com o aviso de chamada vai um "bilhete", calculado a partir
+//     do número da chamada, de quem vai receber e de um segredo que só
+//     existe aqui no servidor.
+//   · O aparelho devolve esse bilhete ao recusar. Nós recalculamos e
+//     comparamos. Se bate, é porque o pedido veio de quem realmente
+//     recebeu aquela chamada.
+//   · O aplicativo nunca guarda o segredo — só um bilhete de uma
+//     chamada específica, que não serve para mais nada.
+//   · O segredo é derivado da própria chave de serviço do Firebase, que
+//     já está guardada como segredo do Worker. Ou seja: nada de novo
+//     para você configurar.
+// ══════════════════════════════════════════════════════════
+
+let cachedDeclineKey = null;
+
+async function chaveDoBilhete(serviceAccount) {
+  if (cachedDeclineKey) return cachedDeclineKey;
+  const material = 'dee-decline:' + (serviceAccount.private_key_id || '') + ':' + (serviceAccount.client_email || '');
+  const bytes = new TextEncoder().encode(material);
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  cachedDeclineKey = await crypto.subtle.importKey(
+    'raw', hash, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  return cachedDeclineKey;
+}
+
+async function gerarBilheteDeRecusa(serviceAccount, callId, toUid) {
+  try {
+    const key = await chaveDoBilhete(serviceAccount);
+    const dados = new TextEncoder().encode(callId + ':' + toUid);
+    const assinatura = await crypto.subtle.sign('HMAC', key, dados);
+    return [...new Uint8Array(assinatura)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) {
+    return '';
+  }
+}
+
+async function recusarChamada(request, env) {
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: 'invalid_json' }, 400); }
+
+  const { callId, toUid, token } = body || {};
+  if (!callId || !toUid || !token) return json({ error: 'missing_fields' }, 400);
+
+  let serviceAccount;
+  try { serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT); }
+  catch (e) { return json({ error: 'bad_service_account' }, 500); }
+
+  const esperado = await gerarBilheteDeRecusa(serviceAccount, String(callId), String(toUid));
+  if (!esperado || esperado !== String(token)) {
+    return json({ error: 'invalid_token' }, 403);
+  }
+
+  const projectId = serviceAccount.project_id;
+  let accessToken;
+  try {
+    accessToken = await getAccessToken(serviceAccount, [FIRESTORE_SCOPE]);
+  } catch (e) {
+    return json({ error: 'auth_failed', detail: String(e) }, 502);
+  }
+
+  // Marca a chamada como recusada. É o que faz o telefone de quem ligou
+  // parar na hora: o aplicativo dele está escutando esse documento.
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/calls/${encodeURIComponent(callId)}`
+      + '?updateMask.fieldPaths=status&updateMask.fieldPaths=updatedAt'
+      // ── currentDocument.exists=true é ESSENCIAL ──
+      // Sem isto, um PATCH num documento que já foi apagado NÃO falha: o
+      // Firestore CRIA o documento com apenas os campos enviados. Sobrava
+      // então uma chamada sem "from" e sem "to" — e como as regras
+      // conferem esses dois campos, nenhuma chamada nova entre aquelas
+      // duas pessoas conseguia mais ser criada, nem o resto apagado.
+      // Com esta condição, recusar uma chamada que já acabou simplesmente
+      // não faz nada, em vez de deixar para trás algo que trava tudo.
+      + '&currentDocument.exists=true';
+    const resp = await fetch(url, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          status: { stringValue: 'rejected' },
+          updatedAt: { integerValue: String(Date.now()) },
+        },
+      }),
+    });
+    if (!resp.ok) {
+      // 400/404 aqui quer dizer "a chamada já não existe" — quem ligou já
+      // desistiu antes. Não é erro: não há nada para recusar.
+      if (resp.status === 400 || resp.status === 404) {
+        return json({ declined: true, alreadyGone: true }, 200);
+      }
+      const detalhe = await resp.text();
+      return json({ error: 'firestore_failed', detail: detalhe.slice(0, 300) }, 502);
+    }
+  } catch (e) {
+    return json({ error: 'firestore_failed', detail: String(e) }, 502);
+  }
+
+  return json({ declined: true }, 200);
+}
 
 function corsHeaders() {
   return {

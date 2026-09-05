@@ -167,6 +167,37 @@
             --safe-right:  var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
         }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; outline: none; }
+
+        /* ══════════════════════════════════════════════════════════
+           NADA DE "COPIAR / COMPARTILHAR" AO TOCAR NO TEXTO
+           ──────────────────────────────────────────────────────────
+           Segurar (ou às vezes só tocar) numa palavra fazia o Android
+           selecioná-la e abrir aquela barra branca de "Copiar
+           Compartilhar" por cima do app — em qualquer lugar: conversa,
+           Comunidade, nomes das abas. Num aplicativo de mensagens isso
+           não faz sentido: para copiar uma mensagem já existe o botão
+           próprio dela, que copia o texto inteiro em vez de uma palavra
+           solta.
+
+           Aqui a seleção é desligada na página inteira e devolvida
+           logo abaixo APENAS onde ela é necessária de verdade: campos
+           de digitação. Sem essa exceção a pessoa não conseguiria
+           posicionar o cursor nem corrigir o que digitou.
+           ══════════════════════════════════════════════════════════ */
+        html, body {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;   /* tira também o menu de "salvar imagem" ao segurar */
+        }
+        input, textarea, select, [contenteditable="true"] {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+            -webkit-touch-callout: default;
+        }
         html { height: 100%; height: -webkit-fill-available; background: var(--bg); overflow-x: hidden; }
         /* --app-vh é calculado via JS (ver <script> no <head>) com a altura visível
            real do dispositivo, cobrindo casos em que 100vh/100% "estoura" a tela
@@ -494,6 +525,12 @@
         .mwrap.them .bubble { background: var(--them); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
         .mmeta { display: flex; align-items: center; gap: 5px; margin-top: 3px; padding: 0 3px; }
         .mtime { font-size: 10px; color: var(--muted); }
+        /* ── ENTREGUE E VISUALIZADO ── */
+        .msg-situacao { display: inline-flex; align-items: center; margin-left: 2px; }
+        .sit-icone { width: 15px; height: 15px; stroke-width: 2.6; }
+        .sit.enviada  { color: var(--muted2, #5f6878); opacity: .8; }
+        .sit.entregue { color: var(--muted); }
+        .sit.lida     { color: var(--accent); }
         .msender { font-size: 10px; color: var(--accent); font-family: 'Syne', sans-serif; font-weight: 700; }
 
         /* ── SEARCH HIGHLIGHT ── */
@@ -599,8 +636,30 @@
         /* ── IMAGE VIEWER ── */
         #img-viewer { position: fixed; inset: 0; background: rgba(0,0,0,.94); z-index: 1000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); flex-direction: column; gap: 12px; padding: 20px; }
         #img-viewer.open { display: flex; }
-        #img-viewer-img { max-width: 95vw; max-height: 80vh; border-radius: 10px; transform-origin: center center; transition: transform .25s cubic-bezier(.16,1,.3,1); cursor: zoom-in; user-select: none; -webkit-user-drag: none; }
-        #img-viewer-img.zoomed { cursor: zoom-out; }
+        /* Palco do zoom: a imagem se move e amplia por dentro dele, sem
+           escapar para fora da tela. touch-action:none entrega os gestos
+           de dois dedos para o nosso código em vez de o navegador tentar
+           interpretá-los como rolagem. */
+        #iv-stage { max-width: 100vw; max-height: 80vh; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: none; }
+        #img-viewer-img { max-width: 95vw; max-height: 80vh; border-radius: 10px; transform-origin: center center; transition: transform .18s ease-out; user-select: none; -webkit-user-drag: none; will-change: transform; }
+        #img-viewer-img.arrastando { transition: none; }
+
+        /* ── BOTÃO DE BAIXAR SOBRE A IMAGEM, DENTRO DA CONVERSA ──
+           Fica escondido e aparece ao passar o mouse ou tocar na
+           mensagem, do mesmo jeito que os botões de curtir e responder
+           já funcionam. */
+        .img-wrap { position: relative; display: inline-block; line-height: 0; }
+        .img-dl-btn {
+            position: absolute; top: 8px; right: 8px;
+            width: 32px; height: 32px; border-radius: 50%;
+            background: rgba(0,0,0,.55); border: none; color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; opacity: 0; pointer-events: none;
+            transition: opacity .18s; backdrop-filter: blur(4px);
+        }
+        .mwrap:hover .img-dl-btn,
+        .mwrap.show-actions .img-dl-btn { opacity: 1; pointer-events: auto; }
+        .img-dl-btn:active { transform: scale(.9); }
         .img-viewer-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
         .iv-btn { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15); color: #fff; border-radius: 10px; padding: 8px 14px; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 12px; cursor: pointer; transition: background .2s; }
         .iv-btn:hover { background: rgba(255,255,255,.2); }
@@ -615,6 +674,10 @@
         .ap-info { flex: 1; min-width: 0; }
         .ap-label { font-size: 11px; font-weight: 700; color: var(--accent); font-family: 'Syne', sans-serif; letter-spacing: .5px; }
         .ap-time  { font-size: 11px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+        /* Marca discreta de áudio já reproduzido: dá para ver, correndo o
+           olho pela conversa, quais áudios ainda faltam ouvir. */
+        .ap-ouvido { font-size: 9.5px; font-weight: 700; color: var(--muted); letter-spacing: .3px; margin-left: 5px; }
+        .audio-player.ja-ouvido .ap-label { opacity: .72; }
         .ap-track { position: relative; height: 28px; display: flex; align-items: center; cursor: pointer; }
         .ap-rail  { width: 100%; height: 3px; border-radius: 2px; background: rgba(255,255,255,.08); position: relative; overflow: hidden; }
         .ap-fill  { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; width: 0%; }
@@ -776,6 +839,17 @@
         #scroll-bottom-btn:hover { background: var(--surface2); transform: scale(1.08); }
         #scroll-bottom-btn .sb-dot { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background: var(--danger); border-radius: 50%; border: 2px solid var(--surface); display: none; }
         #scroll-bottom-btn.has-unread .sb-dot { display: block; }
+        /* ── BOTÃO DE "IR PARA O FIM" NO APP INSTALADO ──
+           No navegador a barra de digitar termina na borda da tela, e os
+           80px acima já bastavam. No app instalado não: a barra de gestos
+           do Android soma altura embaixo, e o botão acabava caindo em
+           cima do botão de enviar.
+
+           Somando a altura dessa barra (--safe-bottom) mais a altura da
+           própria barra de digitar, ele volta a ficar acima de tudo. No
+           site e no PWA nada muda: sem a marca "dee-app", esta regra não
+           se aplica. */
+        html.dee-app #scroll-bottom-btn { bottom: calc(var(--safe-bottom) + 104px); }
 
         /* ── RESPONSIVE ── */
         @media (min-width: 681px) and (max-width: 1024px) {
@@ -1050,6 +1124,12 @@
         /* Temas publicados pelo painel ganham uma borda sutil para se
            distinguirem das cores fixas, sem virar outra seção separada. */
         .chat-custom-sw.tema-publicado { border: 1.5px solid rgba(0,229,204,.35); }
+        /* ── AVISO DE TEMA NOVO ──
+           Bolinha vermelha no botão da paleta, igual à de mensagem não
+           lida: a pessoa vê de longe que o administrador publicou algo
+           novo, sem precisar abrir a tela para descobrir. */
+        .tema-novo-selo { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--danger); border: 2px solid var(--surface); }
+        .chat-custom-sw.tema-publicado.tema-novo { border-color: var(--danger); box-shadow: 0 0 0 2px rgba(255,59,92,.25); }
 
         /* ── FLOATING CHAT NOTIFICATIONS (nova mensagem fora da conversa) ── */
         #chat-notif-stack { position: fixed; bottom: 16px; right: 16px; z-index: 9998; display: flex; flex-direction: column-reverse; gap: 8px; pointer-events: none; max-width: min(360px, calc(100vw - 24px)); }
@@ -1445,10 +1525,29 @@
         .locp-confirm-btn { background: linear-gradient(135deg, var(--accent), #00b8a8); border: none; color: #000; font-family: 'Syne', sans-serif; font-weight: 900; font-size: 13.5px; padding: 14px; border-radius: 12px; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
         .locp-confirm-btn:disabled { opacity: .45; cursor: not-allowed; }
         .locp-address-preview { background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-size: 11.5px; padding: 8px 12px; border-radius: 10px; text-align: center; }
-        /* Atribuição do Leaflet/OpenStreetMap/CARTO: exigida pelos termos de uso
-           dos dois serviços (não pode ser removida), mas deixamos bem discreta. */
-        .leaflet-control-attribution { font-size: 8px !important; line-height: 1.2 !important; padding: 0 4px !important; background: rgba(3,5,8,.5) !important; color: rgba(232,234,240,.55) !important; box-shadow: none !important; }
-        .leaflet-control-attribution a { color: rgba(232,234,240,.65) !important; }
+        /* ══════════════════════════════════════════════════════════
+           CRÉDITO DO MAPA
+           ──────────────────────────────────────────────────────────
+           O mapa vem do OpenStreetMap, que é gratuito justamente porque
+           a licença exige o crédito visível. Por isso ele não pode
+           simplesmente sumir — mas o incômodo real era outro: era um
+           LINK, e um toque sem querer levava a pessoa para fora do Dee.
+
+           Agora ele continua lá, cumprindo a licença, só que:
+             · o link foi removido no próprio texto (ver ensureBubbleMap),
+               então não há mais para onde ir ao tocar;
+             · pointer-events: none faz o toque atravessar, como se ele
+               não existisse;
+             · ficou menor e bem mais apagado, quase imperceptível.
+           ══════════════════════════════════════════════════════════ */
+        .leaflet-control-attribution {
+            font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important;
+            background: transparent !important; color: rgba(232,234,240,.22) !important;
+            box-shadow: none !important;
+            pointer-events: none !important;   /* toque atravessa: nada de sair do app sem querer */
+            user-select: none !important;
+        }
+        .leaflet-control-attribution a { color: rgba(232,234,240,.22) !important; text-decoration: none !important; pointer-events: none !important; }
         .location-card .loc-minimap .leaflet-control-attribution { transform: scale(.82); transform-origin: bottom right; }
 
         .location-card { display: flex; flex-direction: column; gap: 0; min-width: 220px; max-width: 260px; margin: -9px -13px; }
@@ -1540,28 +1639,34 @@
                perde a função: a lista já está do lado. */
             html.dee-app .bk { display: none !important; }
 
-            /* ── A Comunidade divide a coluna com a lista de conversas ──
-               A altura dela é no mínimo 300px, pensada para a tela em pé.
-               Deitado, isso é mais do que a coluna inteira: a lista de
-               conversas ficava sem espaço nenhum e sumia da tela. */
-            html.dee-app #social-feed-section {
-                flex: 0 0 46% !important;
-                height: 46% !important;
-                max-height: 46% !important;
-                min-height: 0 !important;
-            }
+            /* ── A COLUNA ESQUERDA É SÓ A COMUNIDADE, DE CIMA A BAIXO ──
+               Deitado a altura é curta: dividir a coluna entre a lista de
+               conversas e a Comunidade deixava as publicações espremidas,
+               sem dar para ler nenhuma por inteiro.
 
-            /* ── Barras mais baixas, para sobrar altura ao conteúdo ── */
-            html.dee-app .side-header { padding: 6px 10px; padding-top: calc(var(--safe-top) + 6px); }
-            html.dee-app .side-logo-img { width: 26px; height: 26px; }
-            html.dee-app .side-actions .iBtn { width: 30px; height: 30px; font-size: 14px; }
-            html.dee-app .side-tab { padding: 6px 3px; font-size: 9px; min-width: 0; }
-            html.dee-app .tab-toolbar { padding: 5px 10px 4px; }
-            html.dee-app .me-bar { padding: 6px 10px; padding-bottom: calc(var(--safe-bottom) + 6px); }
-            html.dee-app .me-bar .av { width: 30px; height: 30px; font-size: 12px; }
-            html.dee-app .ad-carousel { height: 50px; }
-            html.dee-app .urow { min-height: 48px; padding: 6px 9px; }
-            html.dee-app .list .av { width: 36px; height: 36px; font-size: 14px; }
+               Então, nesta orientação, a coluna esquerda passa a ser só a
+               Comunidade — ocupando tudo, inclusive o espaço da barra de
+               cima (logo, compartilhar, sair) e o da barra de baixo
+               (perfil, configurações). Assim as publicações aparecem
+               inteiras, com espaço de verdade.
+
+               Nada disso é perdido: é só nesta orientação. Ao virar o
+               aparelho de volta, tudo reaparece exatamente como antes. */
+            html.dee-app .side-header,
+            html.dee-app .side-tabs,
+            html.dee-app #tab-panels-wrap,
+            html.dee-app .ad-carousel,
+            html.dee-app .me-bar { display: none !important; }
+
+            html.dee-app #social-feed-section {
+                flex: 1 1 auto !important;
+                height: auto !important;
+                max-height: none !important;
+                min-height: 0 !important;
+                border-top: none !important;
+                padding-top: var(--safe-top);
+                padding-bottom: var(--safe-bottom);
+            }
 
             /* ── Conversa: área de digitar e mensagens sempre visíveis ── */
             html.dee-app #msgs { padding: 8px 12px; gap: 4px; }
@@ -1569,7 +1674,7 @@
             html.dee-app #typing-ind { height: 20px; padding: 0 12px; }
             html.dee-app .input-bar { padding-top: 5px; padding-bottom: calc(var(--safe-bottom) + 5px); }
             html.dee-app .day-sep { padding: 2px 0; }
-            html.dee-app #scroll-bottom-btn { bottom: 62px; width: 36px; height: 36px; font-size: 17px; }
+            html.dee-app #scroll-bottom-btn { bottom: calc(var(--safe-bottom) + 66px); width: 36px; height: 36px; font-size: 17px; }
 
             /* ── Emojis: a grade inteira não cabe deitada ── */
             html.dee-app #emoji-picker { width: 270px; bottom: calc(var(--safe-bottom) + 56px); }
@@ -1668,7 +1773,7 @@
 
         <div id="reg-name" style="display:none;" class="field">
             <label>Nome completo</label>
-            <input type="text" id="inp-name" placeholder="Seu nome..." autocomplete="name">
+            <input type="text" id="inp-name" placeholder="Seu nome..." autocomplete="name" autocapitalize="words" autocorrect="on" spellcheck="false">
         </div>
         <div class="field">
             <label>E-mail</label>
@@ -1770,7 +1875,8 @@
                 draggable="false">
 
             <div class="side-actions">
-                <button class="iBtn" onclick="openChatCustomize()" title="Personalizar cores e fundo"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".6"/><circle cx="17.5" cy="10.5" r=".6"/><circle cx="8.5" cy="7.5" r=".6"/><circle cx="6.5" cy="12.5" r=".6"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg></button>
+                <button class="iBtn" id="btn-personalizar" onclick="openChatCustomize()" title="Personalizar cores e fundo" style="position:relative;">
+                    <span class="tema-novo-selo" id="tema-novo-selo" style="display:none;"></span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".6"/><circle cx="17.5" cy="10.5" r=".6"/><circle cx="8.5" cy="7.5" r=".6"/><circle cx="6.5" cy="12.5" r=".6"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg></button>
                 <button class="iBtn" id="install-sidebar-btn" onclick="doInstall()" title="Instalar" style="display:none;"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
                 <button class="iBtn" onclick="openModal('share-modal')" title="Compartilhar"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
                 <button class="iBtn red" onclick="doLogout()" title="Sair"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
@@ -1918,7 +2024,27 @@
                 </div>
                 <button class="aBtn" onclick="openCamera('photo')" title="Tirar foto"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
                 <div class="inp-wrap">
+                    <!-- ══ SUGESTÃO DE PALAVRAS E CORREÇÃO AUTOMÁTICA ══
+                         Quem sugere palavra e corrige erro de digitação é o
+                         TECLADO do próprio celular — ele conhece o idioma da
+                         pessoa, aprende com o que ela escreve e já é o que ela
+                         usa em todos os outros aplicativos.
+
+                         O campo de mensagem não pedia nada disso, e por padrão
+                         vários teclados desligam a correção quando o campo não
+                         avisa que a quer. Os atributos abaixo são justamente
+                         esse pedido:
+                           · autocorrect  — corrige o que foi digitado errado
+                           · spellcheck   — sublinha e sugere a palavra certa
+                           · autocapitalize="sentences" — maiúscula no começo
+                                            da frase e depois de ponto
+                           · enterkeyhint="send" — a tecla Enter do teclado
+                                            vira "Enviar", em vez de quebrar linha
+                         Escrever nosso próprio dicionário seria pior: não
+                         saberia o idioma nem os nomes que a pessoa usa. -->
                     <textarea id="msg-input" placeholder="Mensagem..." rows="1"
+                        autocorrect="on" autocapitalize="sentences" spellcheck="true"
+                        enterkeyhint="send" lang="pt-BR"
                         oninput="autoGrow(this); onTypingInput()"
                         onkeydown="handleInputKey(event)"></textarea>
                     <button class="aBtn" onclick="toggleEmoji(event)" title="Emojis" style="font-size:17px;"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
@@ -1968,12 +2094,14 @@
 <!-- ════ IMAGE VIEWER ════ -->
 <div id="img-viewer">
     <button class="iv-close" onclick="closeImgViewer()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-    <img id="img-viewer-img" src="" alt="" onclick="toggleImgZoom()">
+    <!-- O zoom agora é por pinça de dois dedos, direto na imagem (ver
+         initImgViewerGestures). Os botões de + e − saíram: ampliar com os
+         dedos é o gesto que todo mundo já usa em galeria de fotos. -->
+    <div id="iv-stage"><img id="img-viewer-img" src="" alt=""></div>
     <div class="img-viewer-controls">
-        <button class="iv-btn" onclick="zoomOut()">−</button>
+        <button class="iv-btn" onclick="baixarImagemAberta()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Baixar</button>
         <span class="iv-zoom-level" id="iv-zoom-lbl">100%</span>
-        <button class="iv-btn" onclick="zoomIn()">+</button>
-        <button class="iv-btn" onclick="resetZoom()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> Reset</button>
+        <button class="iv-btn" onclick="resetZoom()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> Ajustar</button>
     </div>
 </div>
 
@@ -2053,7 +2181,7 @@
         </div>
         <div class="profile-bio-edit">
             <label class="profile-bio-label" for="my-profile-bio-input">Descrição (visível para outros usuários)</label>
-            <textarea id="my-profile-bio-input" maxlength="139" rows="3" placeholder="Escreva algo sobre você..." oninput="updateBioCounter()"></textarea>
+            <textarea id="my-profile-bio-input" maxlength="139" rows="3" placeholder="Escreva algo sobre você..." autocorrect="on" autocapitalize="sentences" spellcheck="true" lang="pt-BR" oninput="updateBioCounter()"></textarea>
             <div class="profile-bio-counter" id="my-profile-bio-counter">0/139</div>
             <button class="mbtn pri" style="width:100%;margin-top:4px;" onclick="saveMyBio()">Salvar descrição</button>
         </div>
@@ -2100,13 +2228,13 @@
             <div style="width:56px;height:56px;border-radius:16px;background:rgba(0,229,204,.15);border:1px solid rgba(0,229,204,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </div>
-            <h2 style="margin-bottom:6px;font-size:17px;">Baixando o DeeMensagens_v1.4.7.apk…</h2>
+            <h2 style="margin-bottom:6px;font-size:17px;">Baixando o DeeMensagens_v1.4.8.apk…</h2>
             <p class="about-dee-desc" style="margin-bottom:18px;font-size:12.5px;">O download já começou (11 MB, leva poucos segundos). Assim que terminar, siga os passos abaixo:</p>
 
             <div style="text-align:left;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                     <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</div>
-                    <div style="font-size:12.5px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.4.7.apk</strong>.</div>
+                    <div style="font-size:12.5px;line-height:1.5;color:var(--text);">Puxe a barra de notificações de cima pra baixo e toque em <strong>DeeMensagens_v1.4.8.apk</strong>.</div>
                 </div>
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
                     <div style="width:22px;height:22px;border-radius:50%;background:var(--accent2,var(--accent));color:#000;font-family:'Syne',sans-serif;font-weight:900;font-size:9.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">OU</div>
@@ -2138,7 +2266,7 @@
         <div style="text-align:left;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;font-size:12.5px;line-height:1.5;color:var(--text);">
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Abra <strong>Ajustes → Apps → Chrome → Notificações</strong> e ative tudo.</div>
             <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Ainda em Ajustes → Apps → Chrome, desative a <strong>otimização de bateria</strong> (às vezes chamada "economia de energia" ou "iniciar automaticamente").</div>
-            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Mesmo sem notificação, o arquivo já está salvo — abra o app <strong>Arquivos</strong> ou o <strong>Gerenciador de Downloads</strong> do celular e procure por <strong>DeeMensagens_v1.4.7.apk</strong> na pasta Downloads.</div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">Mesmo sem notificação, o arquivo já está salvo — abra o app <strong>Arquivos</strong> ou o <strong>Gerenciador de Downloads</strong> do celular e procure por <strong>DeeMensagens_v1.4.8.apk</strong> na pasta Downloads.</div>
         </div>
         <div class="mbtns"><button class="mbtn sec" onclick="closeModal('dl-troubleshoot-modal')">Fechar</button></div>
     </div>
@@ -2150,7 +2278,7 @@
      tocar na pílula de novo. Some sozinha depois de um tempo. -->
 <div id="apk-dl-pill" style="display:none;position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;background:var(--surface,#111);border:1px solid var(--accent);border-radius:999px;padding:9px 16px;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;" onclick="reopenApkInstructions()">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" style="flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">Baixando DeeMensagens_v1.4.7.apk — toque p/ instalar</span>
+    <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">Baixando DeeMensagens_v1.4.8.apk — toque p/ instalar</span>
 </div>
 
 <div id="install-choice-modal" class="overlay">
@@ -2335,6 +2463,12 @@
             <button class="status-opt-btn" id="chat-custom-remove-img-btn" onclick="removeChatImage()" style="display:none;"><span class="status-opt-ic"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></span>Remover imagem desta conversa</button>
         </div>
         <div class="chat-custom-note" id="chat-custom-no-chat-hint" style="display:none;margin-bottom:0;">Abra uma conversa para poder definir uma imagem de fundo só para ela.</div>
+        <div id="chat-custom-remove-box" style="display:none;margin-top:10px;">
+            <button class="mbtn danger-btn" style="width:100%;" onclick="removerPersonalizacao()">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                Remover tema e voltar ao padrão
+            </button>
+        </div>
         <div class="mbtns"><button class="mbtn sec" onclick="closeModal('chat-customize-modal')">Fechar</button></div>
     </div>
 </div>
@@ -2359,7 +2493,7 @@
     <div class="mcard">
         <h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> Status de Texto</h2>
         <div id="status-text-preview">
-            <textarea id="status-text-input" maxlength="200" rows="4" placeholder="Digite algo..." oninput="autoGrow(this)"></textarea>
+            <textarea id="status-text-input" maxlength="200" rows="4" placeholder="Digite algo..." autocorrect="on" autocapitalize="sentences" spellcheck="true" lang="pt-BR" oninput="autoGrow(this)"></textarea>
         </div>
         <div class="status-color-row" id="status-color-row"></div>
         <div class="mbtns">
@@ -3103,6 +3237,9 @@ let chatClearedAt    = 0; // timestamp (ms) até onde ESTE usuário apagou a con
 // startListening). É preenchido na primeira abertura e atualizado quando
 // o usuário usa "excluir toda a conversa".
 let clearedAtCache   = {};
+// Controle do carregamento por blocos: até onde já buscamos o histórico
+// e se ainda existe algo mais antigo para buscar (ver startListening).
+let janelaDeMensagens = { menorTime: null, acabou: false, carregando: false, tamanho: 40 };
 
 // ══════════════════════════════════════════════════════════
 //  DOCUMENTO PRIVADO DO USUÁRIO
@@ -3290,6 +3427,9 @@ let callPendingOffer   = null; // offer recebido, aguardando eu atender
 let callAnsweredOnce   = false;
 let callDialTimeout    = null; // timeout de 45s sem resposta
 let callPCDropTimeout  = null; // rede de segurança: conexão WebRTC caiu sem aviso via Firestore
+let callEstavaCaida    = false; // true enquanto a conexão está instável (mostra "Reconectando...")
+let callReconnectTimeout = null; // prazo máximo de tentativa antes de desistir
+let callReconectando   = false; // evita duas tentativas de reconexão ao mesmo tempo
 let callTimerInterval  = null;
 let callConnectedAt    = null;
 let callRingtoneInterval = null;
@@ -3712,7 +3852,28 @@ function setUnread(key, n) {
     updateUnreadGlobalUI();
 }
 function incUnread(key) { setUnread(key, (unreadCounts[key] || 0) + 1); }
-function clearUnread(key) { saveLastRead(key, Date.now()); setUnread(key, 0); }
+function clearUnread(key) {
+    saveLastRead(key, Date.now());
+    setUnread(key, 0);
+    // Entrou na conversa = leu. Some com os avisos daquela conversa: o
+    // que está flutuando dentro do app e o que está na barra do sistema.
+    // Antes eles ficavam lá mesmo depois de a pessoa ter lido tudo.
+    dismissChatNotif(key);
+    limparAvisosDoSistema(key);
+}
+
+// Fecha as notificações do sistema (as que aparecem na barra de cima)
+// referentes a uma conversa. Cada uma foi criada com uma etiqueta
+// própria — 'dee-<conversa>' — então dá para apagar só as dela.
+async function limparAvisosDoSistema(key) {
+    if (!('serviceWorker' in navigator)) return;
+    try {
+        var reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) return;
+        var avisos = await reg.getNotifications({ tag: 'dee-' + key });
+        avisos.forEach(function (n) { n.close(); });
+    } catch (e) { /* sem suporte: os avisos somem sozinhos ao serem tocados */ }
+}
 function updateUnreadGlobalUI() {
     var total = totalUnread();
     document.title = total > 0 ? '(' + (total > 99 ? '99+' : total) + ') ' + baseTitle : baseTitle;
@@ -3926,25 +4087,44 @@ function syncGlobalMsgListeners() {
         }).catch(function(e) { console.warn('Falha ao calcular mensagens não lidas de ' + key + ':', e); });
 
         var unsub = w.ref.orderBy('time', 'desc').limit(1).onSnapshot(function(snap) {
+            // "Entregue" vale mesmo com a conversa fechada: a mensagem
+            // chegou até este aparelho, e é isso que o outro lado precisa
+            // saber. "Visualizada" continua só ao abrir a conversa.
+            marcarComoEntregue(w.ref, snap.docs);
             if (!state.ready) { state.ready = true; return; }
             if (snap.empty) return;
             var m = snap.docs[0].data();
             if (!me || m.senderId === me.uid) return;
             if (Date.now() - m.time > 15000) return;
+            // ── A PESSOA JÁ ESTÁ VENDO ESTA CONVERSA? ──
+            // Se está com a conversa aberta e o app na frente, ela já está
+            // lendo a mensagem: não faz sentido avisar sobre algo que está
+            // na tela dela. Antes o aviso aparecia mesmo assim, e ainda
+            // ficava empilhando um atrás do outro.
             var isCurrentChat = w.isGroup ? (chatIsGroup && chatGid === w.id) : (!chatIsGroup && chatUid === w.id);
             var seen = isCurrentChat && !document.hidden;
-            if (!seen) incUnread(key); // conta a mensagem como não lida até a pessoa entrar nesta conversa
-            if (isCurrentChat && !document.hidden) return;
+            if (!seen) incUnread(key); // conta como não lida até ela entrar aqui
+            if (seen) {
+                // Já visualizou: garante que nenhum aviso antigo desta
+                // conversa continue na tela.
+                dismissChatNotif(key);
+                limparAvisosDoSistema(key);
+                return;
+            }
             var u = w.isGroup ? null : allUsers.find(function(x) { return x.uid === w.id; });
             var name = w.isGroup ? (w.nome || 'Grupo') : ((u && u.nome) || 'Usuário');
             var foto = w.isGroup ? null : (u ? u.foto : null);
             var preview = getMsgPreview(m);
             playMsgSound();
-            // Notificação dentro do app (barra flutuante #chat-notif-stack).
-            showChatFloatingNotif({ key: key, isGroup: w.isGroup, id: w.id, name: name, foto: foto, senderName: m.senderName || name, preview: preview });
-            // Com a aba em segundo plano, a barra flutuante acima não é vista —
-            // nesse caso dispara também a notificação flutuante nativa do sistema.
-            if (document.hidden) fireFloatingSystemNotification(key, w, name, foto, preview, m.senderName || name, unreadCounts[key]);
+            // ── UM AVISO SÓ, NO LUGAR CERTO ──
+            //  App aberto  → aviso dentro do app, e só ele.
+            //  App fechado → aviso do sistema, e só ele.
+            // Antes os dois podiam sair pela mesma mensagem.
+            if (document.hidden) {
+                fireFloatingSystemNotification(key, w, name, foto, preview, m.senderName || name, unreadCounts[key]);
+            } else {
+                showChatFloatingNotif({ key: key, isGroup: w.isGroup, id: w.id, name: name, foto: foto, senderName: m.senderName || name, preview: preview });
+            }
         });
         chatNotifUnsubs[key] = { unsub: unsub, state: state };
     });
@@ -3985,7 +4165,7 @@ window.addEventListener('appinstalled', function() {
 var DEE_FULL_ANDROID_URL = ''; // ex: 'https://play.google.com/store/apps/details?id=br.com.deemensagens.app'
 var DEE_FULL_IOS_URL     = ''; // ex: 'https://apps.apple.com/app/idXXXXXXXXX'
 
-var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.4.7/DeeMensagens_v1.4.7.apk';
+var DEE_APK_DOWNLOAD_URL = 'https://github.com/deemensagens/Dee/releases/download/v1.4.8/DeeMensagens_v1.4.8.apk';
 // ── Esse valor acima é só o FALLBACK (usado se a chamada à API do GitHub
 // abaixo falhar, ex.: sem internet no momento do clique). Na prática, o
 // link de download real passa a ser sempre buscado dinamicamente da
@@ -4343,8 +4523,9 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); }
 //  Para quem usa o Dee nada muda de lugar: os temas publicados entram na
 //  mesma grade de sempre, logo depois das cores fixas. A pessoa continua
 //  escolhendo do mesmo jeito.
-var temasPublicados = [];   // [{ id, nome, tipo, valor, feriado }]
-var temasUnsub      = null;
+var temasPublicados   = [];   // [{ id, nome, tipo, valor, feriado }]
+var temasUnsub        = null;
+var temasJaCarregados = false; // evita avisar sobre temas antigos ao abrir o app
 
 // Datas comemorativas suportadas. Um tema marcado com uma delas só
 // aparece na janela indicada — antes e depois fica escondido sozinho,
@@ -4387,6 +4568,57 @@ function calcularSextaFeiraSanta(ano) {
     return pascoa;
 }
 
+// ══════════════════════════════════════════════════════════
+//  AVISO DE TEMA NOVO
+// ══════════════════════════════════════════════════════════
+//  Quando o administrador publica um tema ou uma imagem, quem usa o Dee
+//  não tinha como saber: só descobriria se abrisse a tela de
+//  Personalizar por acaso. Agora aparece uma bolinha vermelha no botão
+//  da paleta — igual à de mensagem não lida — e o tema novo fica
+//  destacado dentro da lista.
+//
+//  O que já foi visto fica guardado neste aparelho, então o aviso não
+//  volta a aparecer depois que a pessoa abriu a tela uma vez.
+function chaveTemasVistos() { return me ? ('dee_temas_vistos_' + me.uid) : null; }
+
+function temasVistos() {
+    var k = chaveTemasVistos();
+    if (!k) return {};
+    try { return JSON.parse(localStorage.getItem(k) || '{}'); } catch (e) { return {}; }
+}
+
+function marcarTemasComoVistos() {
+    var k = chaveTemasVistos();
+    if (!k) return;
+    var vistos = {};
+    temasPublicados.forEach(function (t) { vistos[t.id] = true; });
+    try { localStorage.setItem(k, JSON.stringify(vistos)); } catch (e) {}
+    atualizarAvisoDeTema();
+}
+
+function temasNaoVistos() {
+    var vistos = temasVistos();
+    return temasPublicados.filter(function (t) { return !vistos[t.id]; });
+}
+
+function atualizarAvisoDeTema() {
+    var selo = document.getElementById('tema-novo-selo');
+    if (!selo) return;
+    selo.style.display = temasNaoVistos().length > 0 ? 'block' : 'none';
+}
+
+// Avisa na hora em que o tema é publicado, com o app aberto — do mesmo
+// jeito que uma mensagem chega.
+function avisarTemasNovos(novos) {
+    if (!novos.length) return;
+    playMsgSound();
+    var texto = novos.length === 1
+        ? 'Novo tema disponível: ' + novos[0].nome
+        : novos.length + ' novos temas disponíveis';
+    notify(texto + ' — toque na paleta para escolher', 'ok', 6000);
+    atualizarAvisoDeTema();
+}
+
 function ouvirTemasPublicados() {
     if (temasUnsub) temasUnsub();
     temasUnsub = db.collection('app_temas').onSnapshot(function (snap) {
@@ -4398,7 +4630,23 @@ function ouvirTemasPublicados() {
             lista.push({ id: d.id, nome: t.nome || 'Tema', tipo: t.tipo || 'cor', valor: t.valor || '', ordem: t.ordem || 0 });
         });
         lista.sort(function (a, b) { return (a.ordem - b.ordem) || String(a.nome).localeCompare(String(b.nome)); });
+
+        // Descobre o que é novidade comparando com o que já existia antes
+        // desta atualização. No primeiro carregamento (app abrindo) não
+        // avisamos — senão todo mundo receberia aviso de temas antigos
+        // toda vez que abrisse o Dee. Aí só o selo aparece.
+        var primeiraVez = !temasJaCarregados;
+        var idsAntigos = {};
+        temasPublicados.forEach(function (t) { idsAntigos[t.id] = true; });
+        var vistos = temasVistos();
+        var novos = lista.filter(function (t) { return !idsAntigos[t.id] && !vistos[t.id]; });
+
         temasPublicados = lista;
+        temasJaCarregados = true;
+
+        if (primeiraVez) atualizarAvisoDeTema();
+        else             avisarTemasNovos(novos);
+
         // Se a janela de personalizar estiver aberta, atualiza na hora.
         var modal = document.getElementById('chat-customize-modal');
         if (modal && modal.classList.contains('open')) openChatCustomize();
@@ -4431,6 +4679,36 @@ function setGlobalColor(value) {
 }
 function clearGlobalColor() {
     var key = chatGlobalColorKey();
+    if (!key) return;
+    try { localStorage.removeItem(key); } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════════
+//  IMAGEM DE FUNDO PARA O APP INTEIRO (temas do painel)
+// ══════════════════════════════════════════════════════════
+//  A imagem que a própria pessoa escolhe da galeria continua valendo só
+//  para a conversa aberta, como sempre foi — é uma escolha por conversa.
+//
+//  Já a imagem de um TEMA publicado pelo painel é outra coisa: é um
+//  visual do app, do mesmo jeito que as cores. Por isso ela vale para
+//  todas as conversas de uma vez, sem a pessoa precisar abrir cada uma.
+function chatGlobalImageKey() {
+    if (!me) return null;
+    return 'dee_chatbg_global_image_' + me.uid;
+}
+function getGlobalImage() {
+    var key = chatGlobalImageKey();
+    if (!key) return null;
+    try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; } catch(e) { return null; }
+}
+function setGlobalImage(value) {
+    var key = chatGlobalImageKey();
+    if (!key) return;
+    try { localStorage.setItem(key, JSON.stringify({ type: 'image', value: value })); }
+    catch(e) { notify('Não foi possível salvar a imagem (armazenamento cheio)', 'err'); }
+}
+function clearGlobalImage() {
+    var key = chatGlobalImageKey();
     if (!key) return;
     try { localStorage.removeItem(key); } catch(e) {}
 }
@@ -4473,11 +4751,22 @@ function applyChatCustom() {
     // ── Cor global: aplica em TODO o app — dentro e fora das conversas
     //    (área de mensagens + sidebar/lista de conversas) ──
     var global = getGlobalColor();
-    if (global) {
+    var globalImg = getGlobalImage();
+    if (globalImg) {
+        // Tema com imagem: veste o app inteiro, igual às cores fazem.
+        [sidebar, meBar].forEach(function(node) {
+            if (!node) return;
+            node.style.backgroundImage = 'url(' + globalImg.value + ')';
+            node.style.backgroundSize = 'cover';
+            node.style.backgroundPosition = 'center';
+            node.style.backgroundColor = '';
+        });
+    } else if (global) {
         var isGrad = global.value.indexOf('gradient') !== -1;
         [sidebar, meBar].forEach(function(node) {
             if (!node) return;
             node.style.backgroundImage = isGrad ? global.value : '';
+            node.style.backgroundSize = ''; node.style.backgroundPosition = '';
             node.style.backgroundColor = isGrad ? '' : global.value;
         });
     } else {
@@ -4487,8 +4776,11 @@ function applyChatCustom() {
         });
     }
 
-    // ── Imagem de fundo: só dentro da conversa aberta no momento ──
-    var img = getChatImage();
+    // ── Ordem de prioridade do fundo da conversa ──
+    //  1) imagem escolhida para ESTA conversa (escolha pessoal, mais específica)
+    //  2) imagem de um tema publicado (vale para todas as conversas)
+    //  3) cor (fixa ou de tema)
+    var img = getChatImage() || getGlobalImage();
     if (img) {
         msgs.style.backgroundImage = 'url(' + img.value + ')';
         msgs.style.backgroundSize = 'cover';
@@ -4520,10 +4812,19 @@ function openChatCustomize() {
             var estilo;
             if (t.tipo === 'imagem') estilo = 'background-image:url(' + t.valor + ');background-size:cover;background-position:center;';
             else                      estilo = 'background:' + t.valor + ';';
-            return '<button class="chat-custom-sw tema-publicado" style="' + estilo + '" ' +
-                   'onclick="escolherTemaPublicado(' + i + ')" title="' + esc(t.nome) + '"></button>';
+            var ehNovo = !temasVistos()[t.id];
+            return '<button class="chat-custom-sw tema-publicado' + (ehNovo ? ' tema-novo' : '') + '" style="' + estilo + '" ' +
+                   'onclick="escolherTemaPublicado(' + i + ')" title="' + esc(t.nome) + (ehNovo ? ' (novo)' : '') + '"></button>';
         }).join('');
     }
+
+    // ── Botão de remover ──
+    // Aparece só quando há algo aplicado — cor de tema, imagem de tema ou
+    // imagem escolhida para a conversa. Devolve tudo ao visual original
+    // de uma vez, sem a pessoa precisar caçar qual das opções desfazer.
+    var temAlgoAplicado = !!(getGlobalColor() || getGlobalImage() || getChatImage());
+    var remBox = document.getElementById('chat-custom-remove-box');
+    if (remBox) remBox.style.display = temAlgoAplicado ? 'block' : 'none';
 
     var hasChat = !!(chatUid || chatGid);
     var imgSection = document.getElementById('chat-custom-img-section');
@@ -4534,6 +4835,8 @@ function openChatCustomize() {
     if (removeImgBtn) removeImgBtn.style.display = (hasChat && getChatImage()) ? 'flex' : 'none';
 
     openModal('chat-customize-modal');
+    // Abriu a tela: o aviso cumpriu o papel dele e some.
+    setTimeout(marcarTemasComoVistos, 600);
 }
 // Aplica um tema publicado pelo painel. Cor e degradê valem para o app
 // inteiro (igual às cores fixas); imagem entra como papel de parede da
@@ -4542,22 +4845,37 @@ function escolherTemaPublicado(i) {
     var t = temasPublicados[i];
     if (!t) return;
     if (t.tipo === 'imagem') {
-        if (!chatUid && !chatGid) { notify('Abra uma conversa para usar um tema com imagem', 'warn'); return; }
-        setChatImage(t.valor);
+        // Vale para o app inteiro: não é preciso abrir conversa nenhuma.
+        setGlobalImage(t.valor);
+        clearGlobalColor();  // a imagem substitui a cor, senão as duas brigariam
         applyChatCustom();
-        notify('Tema "' + t.nome + '" aplicado nesta conversa', 'ok');
+        notify('Tema "' + t.nome + '" aplicado ao app', 'ok');
     } else {
         setGlobalColor(t.valor);
+        clearGlobalImage();  // a cor substitui a imagem de tema
         applyChatCustom();
         notify('Tema "' + t.nome + '" aplicado ao app', 'ok');
     }
+    marcarTemasComoVistos();
+    closeModal('chat-customize-modal');
+}
+
+// Tira tudo o que foi aplicado — cor de tema, imagem de tema e imagem
+// desta conversa — e devolve o Dee ao visual original.
+function removerPersonalizacao() {
+    clearGlobalColor();
+    clearGlobalImage();
+    clearChatImage();
+    applyChatCustom();
+    notify('Tema removido — o Dee voltou ao visual padrão', 'ok');
     closeModal('chat-customize-modal');
 }
 
 function pickChatColor(i) {
     var c = CHAT_BG_COLORS[i];
-    if (!c) { clearGlobalColor(); applyChatCustom(); notify('Cor restaurada ao padrão em todo o app', 'ok'); closeModal('chat-customize-modal'); return; }
+    if (!c) { clearGlobalColor(); clearGlobalImage(); applyChatCustom(); notify('Cor restaurada ao padrão em todo o app', 'ok'); closeModal('chat-customize-modal'); return; }
     setGlobalColor(c);
+    clearGlobalImage();  // cor e imagem de tema não convivem: uma substitui a outra
     applyChatCustom();
     notify('Cor aplicada ao app inteiro (sidebar e conversas)', 'ok');
     closeModal('chat-customize-modal');
@@ -6846,6 +7164,10 @@ function initApp() {
     // aviso de chamada mesmo com o app fechado (ver DeeMessagingService.java
     // e registerNativePushToken acima).
     registerNativePushToken();
+    // Deixa o identificador da conta disponível para o lado nativo: é ele
+    // que permite ao botão "Recusar" da notificação avisar o outro lado
+    // mesmo com o app fechado (ver DeeDeclineReceiver.java).
+    if (window.DeeNative && window.DeeNative.setUid) window.DeeNative.setUid(me.uid);
     // Se o app foi reaberto do zero por um clique numa notificação de
     // mensagem (ver bloco pendingSWMsgAction acima), abre a conversa agora.
     tryResolvePendingSWMsgAction();
@@ -7370,10 +7692,61 @@ function handleSharedAdClick(ev, el) {
 // ══════════════════════════════════════════════════════════
 //  SCROLL TO BOTTOM BUTTON
 // ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  MENSAGENS ANTIGAS, EM BLOCOS
+// ══════════════════════════════════════════════════════════
+//  A conversa abre com as mensagens recentes (ver startListening). Ao
+//  chegar no topo rolando para cima, o bloco anterior é buscado e
+//  encaixado acima — mantendo a tela exatamente onde estava, para a
+//  leitura não dar um salto.
+async function carregarMensagensAntigas() {
+    if (janelaDeMensagens.carregando || janelaDeMensagens.acabou) return;
+    if (janelaDeMensagens.menorTime === null) return;
+    if (!chatUid && !chatGid) return;
+
+    janelaDeMensagens.carregando = true;
+    var flow = document.getElementById('msgs');
+    var alturaAntes = flow ? flow.scrollHeight : 0;
+
+    try {
+        var consulta = getMsgsRef()
+            .where('time', '<', janelaDeMensagens.menorTime)
+            .orderBy('time', 'desc')
+            .limit(janelaDeMensagens.tamanho);
+        if (chatClearedAt > 0) {
+            consulta = getMsgsRef()
+                .where('time', '>', chatClearedAt)
+                .where('time', '<', janelaDeMensagens.menorTime)
+                .orderBy('time', 'desc')
+                .limit(janelaDeMensagens.tamanho);
+        }
+        var snap = await consulta.get();
+        if (snap.empty || snap.docs.length < janelaDeMensagens.tamanho) janelaDeMensagens.acabou = true;
+
+        snap.docs.forEach(function (d) {
+            var t = d.data().time;
+            if (t < janelaDeMensagens.menorTime) janelaDeMensagens.menorTime = t;
+            // renderMsg encaixa cada mensagem na posição cronológica
+            // certa sozinho (ver insertMsgWrap), então basta desenhar.
+            renderMsg(d, true);
+        });
+
+        // Mantém a tela parada onde a pessoa estava lendo: sem isto, o
+        // conteúdo novo empurraria tudo para baixo e ela se perderia.
+        if (flow) flow.scrollTop = flow.scrollHeight - alturaAntes;
+    } catch (e) {
+        console.warn('Falha ao buscar mensagens antigas:', e);
+    } finally {
+        janelaDeMensagens.carregando = false;
+    }
+}
+
 function initScrollBtn() {
     var msgs = document.getElementById('msgs');
     if (!msgs) return;
     msgs.addEventListener('scroll', function() {
+        // Chegou perto do topo: busca o bloco anterior.
+        if (msgs.scrollTop < 120) carregarMensagensAntigas();
         var btn = document.getElementById('scroll-bottom-btn');
         if (!btn) return;
         var dist = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight;
@@ -8544,6 +8917,59 @@ async function toggleLike(docId) {
         await ref.update({ likes: likes, likedBy: likedBy });
     } catch(e) {}
 }
+// ══════════════════════════════════════════════════════════
+//  ENTREGUE E VISUALIZADO
+// ══════════════════════════════════════════════════════════
+//  Três situações possíveis, com um símbolo para cada:
+//
+//    ✓    (um traço, apagado)  → enviada, mas ainda não chegou.
+//                                Acontece quando a outra pessoa está sem
+//                                internet: a mensagem já está guardada e
+//                                será entregue assim que ela voltar.
+//    ✓✓   (dois traços)        → chegou no aparelho dela.
+//    ✓✓   (dois traços em cor) → ela abriu a conversa e leu.
+//
+//  "Entregue" é marcado pelo aparelho de quem recebe assim que a
+//  mensagem chega até ele — mesmo com a conversa fechada. "Visualizado"
+//  só é marcado quando a pessoa realmente abre a conversa, como pedido.
+function iconeDaSituacao(m) {
+    var duplo = '<svg class="icon sit-icone" viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 13 5 17 13 7"/><polyline points="9 13 13 17 22 6"/></svg>';
+    var unico = '<svg class="icon sit-icone" viewBox="0 0 24 24" aria-hidden="true"><polyline points="4 13 9 18 20 6"/></svg>';
+    if (m.readAt)      return '<span class="sit lida" title="Visualizada">' + duplo + '</span>';
+    if (m.deliveredAt) return '<span class="sit entregue" title="Entregue">' + duplo + '</span>';
+    return '<span class="sit enviada" title="Enviada — aguardando a pessoa ficar online">' + unico + '</span>';
+}
+
+// Marca como ENTREGUE toda mensagem que chegou até este aparelho e ainda
+// não tinha essa marca. Roda mesmo com a conversa fechada — é isso que
+// diferencia "entregue" de "visualizado".
+function marcarComoEntregue(ref, docs) {
+    if (!me) return;
+    var pendentes = docs.filter(function (d) {
+        var m = d.data();
+        return m.senderId !== me.uid && !m.deliveredAt;
+    });
+    if (!pendentes.length) return;
+    var lote = db.batch();
+    pendentes.slice(0, 400).forEach(function (d) { lote.update(d.ref, { deliveredAt: Date.now() }); });
+    lote.commit().catch(function () { /* sem permissão ou offline: tenta de novo depois */ });
+}
+
+// Marca como VISUALIZADA. Só é chamada quando a pessoa abre a conversa.
+function marcarComoLida(ref, docs) {
+    if (!me) return;
+    var pendentes = docs.filter(function (d) {
+        var m = d.data();
+        return m.senderId !== me.uid && !m.readAt;
+    });
+    if (!pendentes.length) return;
+    var lote = db.batch();
+    pendentes.slice(0, 400).forEach(function (d) {
+        lote.update(d.ref, { readAt: Date.now(), deliveredAt: d.data().deliveredAt || Date.now() });
+    });
+    lote.commit().catch(function () {});
+}
+
 function renderLikes(likes, likedBy, wrap) {
     var old = wrap.querySelector('.likes-row');
     if (old) old.remove();
@@ -8560,28 +8986,137 @@ function renderLikes(likes, likedBy, wrap) {
 // ══════════════════════════════════════════════════════════
 //  IMAGE VIEWER
 // ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  VISUALIZADOR DE IMAGEM — zoom com os dedos
+// ══════════════════════════════════════════════════════════
+//  Antes o zoom era só pelos botões de + e −, um passo de cada vez.
+//  Agora funciona como em qualquer galeria de fotos: abre com dois
+//  dedos, arrasta com um dedo quando está ampliada, e um toque duplo
+//  alterna entre a imagem inteira e aproximada.
+//
+//  O gesto é tratado aqui no nosso código, e não pelo navegador, por
+//  dois motivos: o app inteiro bloqueia o zoom de página (senão a tela
+//  toda esticaria junto), e assim conseguimos limitar o arraste para a
+//  imagem nunca sumir para fora da tela.
+var imgPanX = 0, imgPanY = 0;   // deslocamento atual da imagem
+
 function viewImg(src) {
-    imgZoomLevel = 1;
+    imgZoomLevel = 1; imgPanX = 0; imgPanY = 0;
     var img = document.getElementById('img-viewer-img');
-    img.src = src; img.style.transform = 'scale(1)'; img.classList.remove('zoomed');
-    document.getElementById('iv-zoom-lbl').textContent = '100%';
+    img.src = src;
+    aplicarTransformacaoImagem();
     document.getElementById('img-viewer').classList.add('open');
 }
 function closeImgViewer() { document.getElementById('img-viewer').classList.remove('open'); }
-function toggleImgZoom() { imgZoomLevel = imgZoomLevel === 1 ? 2.5 : 1; applyImgZoom(); }
-function zoomIn()    { imgZoomLevel = Math.min(imgZoomLevel + 0.5, 5); applyImgZoom(); }
-function zoomOut()   { imgZoomLevel = Math.max(imgZoomLevel - 0.5, 0.5); applyImgZoom(); }
-function resetZoom() { imgZoomLevel = 1; applyImgZoom(); }
-function applyImgZoom() {
+function resetZoom() { imgZoomLevel = 1; imgPanX = 0; imgPanY = 0; aplicarTransformacaoImagem(); }
+
+// Impede a imagem de ser arrastada para fora da área visível: quanto
+// mais ampliada, mais ela pode andar; no tamanho normal, não anda.
+function limitarArraste() {
     var img = document.getElementById('img-viewer-img');
-    img.style.transform = 'scale(' + imgZoomLevel + ')';
-    img.classList.toggle('zoomed', imgZoomLevel > 1);
-    document.getElementById('iv-zoom-lbl').textContent = Math.round(imgZoomLevel * 100) + '%';
+    if (!img) return;
+    var folgaX = Math.max(0, (img.clientWidth  * imgZoomLevel - img.clientWidth)  / 2);
+    var folgaY = Math.max(0, (img.clientHeight * imgZoomLevel - img.clientHeight) / 2);
+    imgPanX = Math.max(-folgaX, Math.min(folgaX, imgPanX));
+    imgPanY = Math.max(-folgaY, Math.min(folgaY, imgPanY));
 }
+
+function aplicarTransformacaoImagem() {
+    var img = document.getElementById('img-viewer-img');
+    if (!img) return;
+    limitarArraste();
+    img.style.transform = 'translate(' + imgPanX + 'px,' + imgPanY + 'px) scale(' + imgZoomLevel + ')';
+    var lbl = document.getElementById('iv-zoom-lbl');
+    if (lbl) lbl.textContent = Math.round(imgZoomLevel * 100) + '%';
+}
+
+function initImgViewerGestures() {
+    var palco = document.getElementById('iv-stage');
+    var img   = document.getElementById('img-viewer-img');
+    if (!palco || !img) return;
+
+    var pontos = {};              // dedos encostados na tela
+    var distInicial = 0, zoomInicial = 1;
+    var arrastando = false, ultimoX = 0, ultimoY = 0;
+    var ultimoToque = 0;
+
+    function dist() {
+        var k = Object.keys(pontos);
+        if (k.length < 2) return 0;
+        var a = pontos[k[0]], b = pontos[k[1]];
+        return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    palco.addEventListener('pointerdown', function (e) {
+        palco.setPointerCapture(e.pointerId);
+        pontos[e.pointerId] = { x: e.clientX, y: e.clientY };
+        var n = Object.keys(pontos).length;
+
+        if (n === 2) {
+            // Dois dedos: começa o zoom por pinça.
+            distInicial = dist();
+            zoomInicial = imgZoomLevel;
+            arrastando = false;
+        } else if (n === 1) {
+            arrastando = imgZoomLevel > 1;   // só arrasta quando está ampliada
+            ultimoX = e.clientX; ultimoY = e.clientY;
+
+            // Toque duplo: alterna entre inteira e aproximada.
+            var agora = Date.now();
+            if (agora - ultimoToque < 300) {
+                imgZoomLevel = imgZoomLevel > 1.2 ? 1 : 2.5;
+                if (imgZoomLevel === 1) { imgPanX = 0; imgPanY = 0; }
+                aplicarTransformacaoImagem();
+            }
+            ultimoToque = agora;
+        }
+        img.classList.add('arrastando');
+    });
+
+    palco.addEventListener('pointermove', function (e) {
+        if (!pontos[e.pointerId]) return;
+        pontos[e.pointerId] = { x: e.clientX, y: e.clientY };
+        var n = Object.keys(pontos).length;
+
+        if (n >= 2 && distInicial > 0) {
+            e.preventDefault();
+            var fator = dist() / distInicial;
+            imgZoomLevel = Math.max(1, Math.min(zoomInicial * fator, 6));
+            if (imgZoomLevel === 1) { imgPanX = 0; imgPanY = 0; }
+            aplicarTransformacaoImagem();
+        } else if (n === 1 && arrastando) {
+            e.preventDefault();
+            imgPanX += e.clientX - ultimoX;
+            imgPanY += e.clientY - ultimoY;
+            ultimoX = e.clientX; ultimoY = e.clientY;
+            aplicarTransformacaoImagem();
+        }
+    }, { passive: false });
+
+    function soltar(e) {
+        delete pontos[e.pointerId];
+        if (Object.keys(pontos).length < 2) distInicial = 0;
+        if (Object.keys(pontos).length === 0) {
+            arrastando = false;
+            img.classList.remove('arrastando');
+            aplicarTransformacaoImagem();
+        }
+    }
+    palco.addEventListener('pointerup', soltar);
+    palco.addEventListener('pointercancel', soltar);
+
+    // Roda do mouse, para quem estiver no computador.
+    palco.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        imgZoomLevel = Math.max(1, Math.min(imgZoomLevel + (e.deltaY < 0 ? .3 : -.3), 6));
+        if (imgZoomLevel === 1) { imgPanX = 0; imgPanY = 0; }
+        aplicarTransformacaoImagem();
+    }, { passive: false });
+}
+initImgViewerGestures();
+
+// Tocar no fundo escuro fecha — mas só se o toque não veio da imagem.
 document.getElementById('img-viewer').addEventListener('click', function(e) { if (e.target === this) closeImgViewer(); });
-document.getElementById('img-viewer').addEventListener('wheel', function(e) {
-    e.preventDefault(); if (e.deltaY < 0) zoomIn(); else zoomOut();
-}, { passive: false });
 
 // ══════════════════════════════════════════════════════════
 //  CHUNKED MEDIA
@@ -11239,7 +11774,13 @@ function ensureBubbleMap(container, lat, lng) {
     var entry = locBubbleMaps.get(container);
     if (entry) { entry.map.setView([lat, lng]); entry.marker.setLatLng([lat, lng]); return entry; }
     var map = L.map(container, { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false, tap: false, attributionControl: true }).setView([lat, lng], 15);
+    // Tira o "Leaflet" que a biblioteca acrescenta sozinho ao lado do
+    // crédito: era esse o link que levava para fora do app. O crédito do
+    // OpenStreetMap (esse sim exigido pela licença) continua.
+    if (map.attributionControl) map.attributionControl.setPrefix(false);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // Crédito sem link: cumpre a exigência da licença do OpenStreetMap
+        // e, ao mesmo tempo, não leva ninguém para fora do Dee por engano.
         attribution: '© OpenStreetMap', maxZoom: 19, detectRetina: true
     }).addTo(map);
     var marker = L.marker([lat, lng]).addTo(map);
@@ -11390,7 +11931,10 @@ function ensureBubbleRouteMap(container, stops, geometry) {
     if (entry) return entry;
     if (!stops || stops.length < 1) return;
     var map = L.map(container, { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false, tap: false, attributionControl: true });
+    if (map.attributionControl) map.attributionControl.setPrefix(false);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // Crédito sem link: cumpre a exigência da licença do OpenStreetMap
+        // e, ao mesmo tempo, não leva ninguém para fora do Dee por engano.
         attribution: '© OpenStreetMap', maxZoom: 19, detectRetina: true
     }).addTo(map);
     stops.forEach(function(s, i) {
@@ -11446,8 +11990,11 @@ function openLocationPickerModal() {
                 keyboard: true,
                 tap: true
             }).setView([startLat, startLng], startZoom);
+            if (locpMap.attributionControl) locpMap.attributionControl.setPrefix(false);
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap', maxZoom: 19, detectRetina: true
+                // Crédito sem link: cumpre a exigência da licença do OpenStreetMap
+        // e, ao mesmo tempo, não leva ninguém para fora do Dee por engano.
+        attribution: '© OpenStreetMap', maxZoom: 19, detectRetina: true
             }).addTo(locpMap);
             locpMarker = L.marker([startLat, startLng], { draggable: true }).addTo(locpMap);
             locpMarker.on('dragend', function() { var p = locpMarker.getLatLng(); onLocpPointChosen(p.lat, p.lng); });
@@ -11808,11 +12355,41 @@ async function startListening() {
         if (myToken !== chatLoadToken) return; // trocou de conversa enquanto buscava
     }
 
+    // ══════════════════════════════════════════════════════════
+    //  ABRIR A CONVERSA RÁPIDO, JÁ NAS MENSAGENS RECENTES
+    // ══════════════════════════════════════════════════════════
+    //  Antes a conversa pedia o histórico INTEIRO de uma vez, do começo
+    //  ao fim. Numa conversa antiga isso são milhares de mensagens: o
+    //  aparelho tinha que receber tudo, desenhar tudo e só então rolar
+    //  até o fim — e era essa a demora ao entrar.
+    //
+    //  Agora pedimos só as últimas mensagens (as que a pessoa quer ver
+    //  ao entrar), ordenadas da mais nova para a mais velha, e as
+    //  invertemos aqui na hora de desenhar. É por isso que a conversa
+    //  abre praticamente na hora, já embaixo, sem aquele salto.
+    //
+    //  As mensagens antigas continuam existindo: quando a pessoa rola
+    //  para cima e chega no topo, o restante é buscado em blocos (ver
+    //  carregarMensagensAntigas).
+    var TAMANHO_BLOCO = 40;
     var msgsQuery = chatClearedAt > 0
-        ? getMsgsRef().where('time', '>', chatClearedAt).orderBy('time', 'asc')
-        : getMsgsRef().orderBy('time', 'asc');
+        ? getMsgsRef().where('time', '>', chatClearedAt).orderBy('time', 'desc').limit(TAMANHO_BLOCO)
+        : getMsgsRef().orderBy('time', 'desc').limit(TAMANHO_BLOCO);
+    // Guarda até onde já carregamos, para o "rolar para cima" continuar
+    // de onde parou em vez de recomeçar.
+    janelaDeMensagens = { menorTime: null, acabou: false, carregando: false, tamanho: TAMANHO_BLOCO };
 
     msgUnsub = msgsQuery.onSnapshot(function(snap) {
+        // Guarda a mensagem mais antiga já carregada: é dela que parte a
+        // busca do bloco seguinte quando a pessoa rola para cima.
+        snap.docs.forEach(function (d) {
+            var t = d.data().time;
+            if (janelaDeMensagens.menorTime === null || t < janelaDeMensagens.menorTime) {
+                janelaDeMensagens.menorTime = t;
+            }
+        });
+        if (snap.docs.length < janelaDeMensagens.tamanho) janelaDeMensagens.acabou = true;
+
         snap.docChanges().forEach(function(change) {
             if (change.type === 'added')    renderMsg(change.doc, firstBatch);
             if (change.type === 'modified') {
@@ -11820,6 +12397,10 @@ async function startListening() {
                 if (el) {
                     var d = change.doc.data();
                     renderLikes(d.likes, d.likedBy, el);
+                    // A outra pessoa recebeu ou leu: a marca muda na hora,
+                    // sem precisar recarregar a conversa.
+                    var sitEl = document.getElementById('sit-' + change.doc.id);
+                    if (sitEl) sitEl.innerHTML = iconeDaSituacao(d);
                     if (d.type === 'game') {
                         var bubEl = el.querySelector('.bubble');
                         if (bubEl) renderGameCard(bubEl, d, change.doc.id);
@@ -11845,6 +12426,11 @@ async function startListening() {
                 if (el) el.remove();
             }
         });
+        // Conversa aberta na tela = a pessoa está lendo. Marca como
+        // visualizada e, de quebra, como entregue.
+        if (!document.hidden) marcarComoLida(getMsgsRef(), snap.docs);
+        else                  marcarComoEntregue(getMsgsRef(), snap.docs);
+
         var f = document.getElementById('msgs'); f.scrollTop = f.scrollHeight;
         // O Firestore costuma entregar o histórico em duas etapas: primeiro
         // uma leitura rápida do cache local (fromCache: true, podendo estar
@@ -11905,7 +12491,7 @@ function snapMsgsToBottom(token) {
 // ══════════════════════════════════════════════════════════
 //  CUSTOM AUDIO PLAYER
 // ══════════════════════════════════════════════════════════
-function buildAudioPlayer(src) {
+function buildAudioPlayer(src, msgId) {
     var id = 'ap-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
     // ── ALTURAS DO DESENHO DE ONDA ──
     // Antes eram sorteadas com Math.random() e saíam com casas decimais
@@ -11924,10 +12510,12 @@ function buildAudioPlayer(src) {
         bars += '<div class="ap-bar" style="height:' + h + 'px;" data-idx="' + i + '"></div>';
     }
     var html =
-        '<div class="audio-player" id="' + id + '">' +
+        '<div class="audio-player" id="' + id + '" data-msg-id="' + (msgId || '') + '">' +
             '<div class="ap-top">' +
                 '<button class="ap-play" onclick="apToggle(\'' + id + '\')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>' +
-                '<div class="ap-info"><div class="ap-label"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> ÁUDIO</div><div class="ap-time" id="' + id + '-time">0:00 / 0:00</div></div>' +
+                '<div class="ap-info"><div class="ap-label"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> ÁUDIO' +
+                    '<span class="ap-ouvido" style="display:none;" title="Você já ouviu este áudio">· ouvido</span></div>' +
+                    '<div class="ap-time" id="' + id + '-time">0:00 / 0:00</div></div>' +
             '</div>' +
             '<div class="ap-track" onclick="apSeek(event,\'' + id + '\')">' +
                 '<div class="ap-rail"><div class="ap-fill" id="' + id + '-fill"></div></div>' +
@@ -11938,15 +12526,71 @@ function buildAudioPlayer(src) {
         '</div>';
     return { id: id, html: html };
 }
+// ══════════════════════════════════════════════════════════
+//  UM ÁUDIO POR VEZ EM TODO O APP
+// ══════════════════════════════════════════════════════════
+//  Antes cada player só sabia dos outros players de mensagem. Os áudios
+//  das publicações da Comunidade ficavam de fora dessa conta — então
+//  tocar um áudio de post e depois um de conversa fazia os dois soarem
+//  ao mesmo tempo, embolados.
+//
+//  Esta função para QUALQUER áudio ou vídeo tocando na página, não
+//  importa de onde ele veio, com uma exceção opcional (o que está
+//  prestes a começar).
+function pararTodosOsAudios(exceto) {
+    document.querySelectorAll('audio, video').forEach(function (el) {
+        if (el === exceto) return;
+        if (!el.paused) { try { el.pause(); } catch (e) {} }
+    });
+    // Devolve todos os botões de play ao estado parado.
+    document.querySelectorAll('.ap-play').forEach(function (b) {
+        b.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+    });
+    // Avisa a Comunidade para ela parar os áudios das publicações também.
+    if (typeof window.sfPararAudios === 'function') { try { window.sfPararAudios(exceto); } catch (e) {} }
+}
+
 function apToggle(id) {
     var aud = document.getElementById(id + '-aud');
     var btn = document.querySelector('#' + id + ' .ap-play');
     if (!aud) return;
     if (aud.paused) {
-        apInstances.forEach(function(i) { if (i !== id) { var a = document.getElementById(i + '-aud'); if (a && !a.paused) { a.pause(); var b = document.querySelector('#' + i + ' .ap-play'); if (b) b.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>'; } } });
+        pararTodosOsAudios(aud);
         aud.play().catch(function(){});
         btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+        // ── ITEM 13: marca que este áudio já foi ouvido ──
+        marcarAudioComoOuvido(id);
     } else { aud.pause(); btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>'; }
+}
+
+// ══════════════════════════════════════════════════════════
+//  ITEM 13: ÁUDIO JÁ OUVIDO
+// ══════════════════════════════════════════════════════════
+//  Fica guardado neste aparelho quais áudios já foram reproduzidos, e o
+//  player mostra isso — assim dá para saber, olhando a conversa, quais
+//  áudios ainda faltam ouvir.
+function chaveAudiosOuvidos() { return me ? ('dee_audios_ouvidos_' + me.uid) : null; }
+function audiosOuvidos() {
+    var k = chaveAudiosOuvidos();
+    if (!k) return {};
+    try { return JSON.parse(localStorage.getItem(k) || '{}'); } catch (e) { return {}; }
+}
+function marcarAudioComoOuvido(playerId) {
+    var el = document.getElementById(playerId);
+    if (!el) return;
+    var msgId = el.getAttribute('data-msg-id');
+    if (!msgId) return;
+    var k = chaveAudiosOuvidos();
+    if (!k) return;
+    try {
+        var mapa = audiosOuvidos();
+        if (mapa[msgId]) return;
+        mapa[msgId] = true;
+        localStorage.setItem(k, JSON.stringify(mapa));
+    } catch (e) {}
+    el.classList.add('ja-ouvido');
+    var selo = el.querySelector('.ap-ouvido');
+    if (selo) selo.style.display = 'inline';
 }
 function apSeek(e, id) {
     var aud = document.getElementById(id + '-aud');
@@ -11973,6 +12617,14 @@ function apMount(id) {
     var aud = document.getElementById(id + '-aud');
     if (!aud) return;
     apInstances.push(id);
+    // Se este áudio já foi ouvido antes, o selo aparece de cara.
+    var caixa = document.getElementById(id);
+    var msgId = caixa && caixa.getAttribute('data-msg-id');
+    if (msgId && audiosOuvidos()[msgId]) {
+        caixa.classList.add('ja-ouvido');
+        var selo = caixa.querySelector('.ap-ouvido');
+        if (selo) selo.style.display = 'inline';
+    }
     aud.addEventListener('timeupdate',     function() { apUpdateUI(id); });
     aud.addEventListener('loadedmetadata', function() { apUpdateUI(id); });
     aud.addEventListener('ended',          function() { var btn = document.querySelector('#' + id + ' .ap-play'); if (btn) btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>'; apUpdateUI(id); });
@@ -11984,16 +12636,72 @@ function apMount(id) {
 // ══════════════════════════════════════════════════════════
 //  RENDER MEDIA CONTENT
 // ══════════════════════════════════════════════════════════
-function renderMediaContent(bub, base64, type, fileName, fileSize, flow) {
+// ══════════════════════════════════════════════════════════
+//  SALVAR UM ARQUIVO RECEBIDO NO APARELHO
+// ══════════════════════════════════════════════════════════
+//  No navegador basta um link de download, e sempre funcionou assim.
+//
+//  Dentro do app instalado, não: o arquivo aqui não está na internet,
+//  ele vem embutido na própria mensagem. O Android não sabe baixar algo
+//  que já está na mão dele, então o toque simplesmente não fazia nada —
+//  era por isso que não dava para salvar documento nenhum pelo app.
+//
+//  Agora, no app, quem grava é o próprio Android (ver salvarArquivo em
+//  DeePermissionsPlugin.java): ele salva na pasta de Downloads e abre a
+//  lista de "abrir com...", para a pessoa escolher com o que visualizar
+//  — PDF, planilha, texto, qualquer formato.
+function baixarArquivo(base64, fileName, mimeType) {
+    fileName = fileName || 'arquivo';
+    if (window.DeeNative && window.DeeNative.isNative && window.DeeNative.saveFile) {
+        notify('Salvando ' + fileName + '...', 'info', 2000);
+        window.DeeNative.saveFile(base64, fileName, mimeType || '').then(function (r) {
+            if (r && r.saved) notify('Salvo em Downloads', 'ok');
+            else notify('Não foi possível salvar o arquivo', 'err');
+        });
+        return;
+    }
+    // Navegador e PWA: caminho de sempre.
+    var a = document.createElement('a');
+    a.href = base64; a.download = fileName;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// Baixa a imagem que está aberta no visualizador em tela cheia.
+function baixarImagemAberta() {
+    var img = document.getElementById('img-viewer-img');
+    if (!img || !img.src) return;
+    baixarArquivo(img.src, 'imagem-dee-' + Date.now() + '.jpg', 'image/jpeg');
+}
+
+function renderMediaContent(bub, base64, type, fileName, fileSize, flow, mimeType) {
     bub.innerHTML = '';
     if (type === 'image') {
+        // A imagem ganha um botão de salvar no canto, escondido até a
+        // pessoa passar o mouse ou tocar na mensagem — mesmo
+        // comportamento dos botões de curtir e responder.
+        var wrap = document.createElement('div');
+        wrap.className = 'img-wrap';
         var img = document.createElement('img');
         img.className = 'media-img'; img.src = base64;
         img.onclick   = function() { viewImg(base64); };
         img.onload    = function() { if (chatInitialLoadActive && flow) flow.scrollTop = flow.scrollHeight; };
-        bub.appendChild(img);
+        wrap.appendChild(img);
+
+        var dlImg = document.createElement('button');
+        dlImg.className = 'img-dl-btn';
+        dlImg.title = 'Salvar imagem';
+        dlImg.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+        dlImg.onclick = function(e) {
+            e.stopPropagation();
+            baixarArquivo(base64, fileName || ('imagem-dee-' + Date.now() + '.jpg'), 'image/jpeg');
+        };
+        wrap.appendChild(dlImg);
+        bub.appendChild(wrap);
     } else if (type === 'audio') {
-        var ap = buildAudioPlayer(base64);
+        // O id da mensagem é o que permite lembrar, depois, que este áudio
+        // já foi ouvido — mesmo fechando e abrindo o app.
+        var idMsg = bub.closest ? (bub.closest('.mwrap') || {}).dataset : null;
+        var ap = buildAudioPlayer(base64, idMsg ? idMsg.mid : '');
         bub.innerHTML = ap.html; apMount(ap.id);
     } else if (type === 'video') {
         var vwrap = document.createElement('div'); vwrap.className = 'video-msg-wrap';
@@ -12001,10 +12709,10 @@ function renderMediaContent(bub, base64, type, fileName, fileSize, flow) {
         vidEl.className = 'media-img'; vidEl.src = base64; vidEl.controls = true; vidEl.playsInline = true; vidEl.preload = 'metadata';
         vidEl.onloadedmetadata = function() { if (chatInitialLoadActive && flow) flow.scrollTop = flow.scrollHeight; };
         vwrap.appendChild(vidEl);
-        var vdl = document.createElement('a');
+        var vdl = document.createElement('button');
         vdl.className = 'video-dl-btn';
-        vdl.href = base64; vdl.download = fileName || 'video.mp4';
         vdl.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Baixar vídeo' + (fileSize ? ' · ' + formatFileSize(fileSize) : '');
+        vdl.onclick = function(e) { e.stopPropagation(); baixarArquivo(base64, fileName || 'video.mp4', 'video/mp4'); };
         vwrap.appendChild(vdl);
         bub.appendChild(vwrap);
     } else {
@@ -12012,15 +12720,22 @@ function renderMediaContent(bub, base64, type, fileName, fileSize, flow) {
         var fsize = fileSize ? ' · ' + formatFileSize(fileSize) : '';
         var ph = document.createElement('div'); ph.className = 'media-ph';
         ph.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> <span>' + esc(fname) + fsize + '</span>';
-        var dl = document.createElement('a');
-        dl.href = base64; dl.download = fname;
-        dl.style.cssText = 'margin-left:8px;color:var(--accent);font-size:11px;font-family:Syne,sans-serif;font-weight:700;';
-        dl.textContent = 'Baixar'; ph.appendChild(dl); bub.appendChild(ph);
+        var dl = document.createElement('button');
+        dl.style.cssText = 'margin-left:8px;color:var(--accent);font-size:11px;font-family:Syne,sans-serif;font-weight:700;background:rgba(0,229,204,.1);border:1px solid rgba(0,229,204,.25);border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap;';
+        dl.textContent = 'Baixar';
+        dl.onclick = function(e) {
+            e.stopPropagation();
+            // Qualquer formato: PDF, planilha, texto, compactado. Quem
+            // decide com o que abrir é a pessoa, na lista do próprio
+            // aparelho.
+            baixarArquivo(base64, fname, mimeType || '');
+        };
+        ph.appendChild(dl); bub.appendChild(ph);
     }
     if (flow) flow.scrollTop = flow.scrollHeight;
 }
 
-function renderVideoDownloadPh(bub, mediaId, type, fileName, fileSize, flow) {
+function renderVideoDownloadPh(bub, mediaId, type, fileName, fileSize, flow, mimeType) {
     bub.innerHTML = '';
     var ph = document.createElement('div'); ph.className = 'video-download-ph';
     var icon = document.createElement('div'); icon.className = 'vd-icon';
@@ -12043,7 +12758,7 @@ function renderVideoDownloadPh(bub, mediaId, type, fileName, fileSize, flow) {
             var pctEl = document.getElementById('dp-pct-' + mediaId);
             if (fill) fill.style.width = pct + '%'; if (pctEl) pctEl.textContent = pct + '%';
         }).then(function(base64) {
-            renderMediaContent(bub, base64, type, fileName, fileSize, flow);
+            renderMediaContent(bub, base64, type, fileName, fileSize, flow, mimeType);
         }).catch(function(e) {
             ph.style.opacity = '1'; ph._loading = false; prog.style.display = 'none';
             notify('Erro ao baixar: ' + friendlyError(e), 'err');
@@ -12177,7 +12892,16 @@ function renderMsg(doc, isHistorical) {
     if (!isMe && !isHistorical) {
         var isNew = (Date.now() - m.time) < 8000;
         if (isNew) {
-            playMsgSound(); showMsgNotif(m.senderName || chatName, m.senderId || m.senderName || 'unknown');
+            // ── SÓ O SOM AQUI ──
+            // Antes esta linha também abria um aviso no topo. Só que quem
+            // recebe a mensagem já está COM A CONVERSA ABERTA — a mensagem
+            // acabou de aparecer na tela dela. Um aviso em cima disso é
+            // avisar sobre algo que já está sendo lido.
+            //
+            // Pior: o aviso de fora da conversa é montado em outro lugar
+            // (ver syncGlobalMsgListeners). Os dois juntos faziam chegar
+            // dois avisos pela mesma mensagem.
+            playMsgSound();
             var _dist = flow.scrollHeight - flow.scrollTop - flow.clientHeight;
             if (_dist > 120) { var _sb = document.getElementById('scroll-bottom-btn'); if (_sb) { _sb.classList.add('visible'); _sb.classList.add('has-unread'); } }
         }
@@ -12250,6 +12974,18 @@ function renderMsg(doc, isHistorical) {
     }
     var t = document.createElement('span'); t.className = 'mtime'; t.textContent = fmtTime(m.time);
     meta.appendChild(t);
+
+    // ── SITUAÇÃO DA MENSAGEM (só nas que EU enviei) ──
+    // Um traço = saiu do aparelho mas ainda não chegou (a pessoa estava
+    // sem internet). Dois traços = chegou no aparelho dela. Dois traços
+    // coloridos = ela abriu a conversa e leu.
+    if (isMe && !chatIsGroup) {
+        var sit = document.createElement('span');
+        sit.className = 'msg-situacao';
+        sit.id = 'sit-' + doc.id;
+        sit.innerHTML = iconeDaSituacao(m);
+        meta.appendChild(sit);
+    }
     wrap.appendChild(meta);
     insertMsgWrap(flow, wrap, m.time, day);
     renderLikes(m.likes, m.likedBy, wrap);
@@ -12273,17 +13009,17 @@ function renderMsg(doc, isHistorical) {
     if (m.type === 'location') { renderLocationCard(bub, m, doc.id); flow.scrollTop = flow.scrollHeight; return; }
     if (m.type === 'location_live') { renderLocationLiveCard(bub, m, doc.id); flow.scrollTop = flow.scrollHeight; return; }
     if (m.type === 'location_route') { renderLocationRouteCard(bub, m, doc.id); flow.scrollTop = flow.scrollHeight; return; }
-    if (m.mediaData) { renderMediaContent(bub, m.mediaData, m.type, m.fileName, m.fileSize, flow); return; }
+    if (m.mediaData) { renderMediaContent(bub, m.mediaData, m.type, m.fileName, m.fileSize, flow, m.mimeType); return; }
     if (m.mediaId) {
         localforage.getItem(m.mediaId).then(function(cached) {
-            if (cached) renderMediaContent(bub, cached, m.type, m.fileName, m.fileSize, flow);
-            else        renderVideoDownloadPh(bub, m.mediaId, m.type, m.fileName, m.fileSize, flow);
-        }).catch(function() { renderVideoDownloadPh(bub, m.mediaId, m.type, m.fileName, m.fileSize, flow); });
+            if (cached) renderMediaContent(bub, cached, m.type, m.fileName, m.fileSize, flow, m.mimeType);
+            else        renderVideoDownloadPh(bub, m.mediaId, m.type, m.fileName, m.fileSize, flow, m.mimeType);
+        }).catch(function() { renderVideoDownloadPh(bub, m.mediaId, m.type, m.fileName, m.fileSize, flow, m.mimeType); });
         return;
     }
     if (m.legacyMediaId) {
         localforage.getItem(m.legacyMediaId).then(function(cachedData) {
-            if (cachedData) renderMediaContent(bub, cachedData, m.type, m.fileName, m.fileSize, flow);
+            if (cachedData) renderMediaContent(bub, cachedData, m.type, m.fileName, m.fileSize, flow, m.mimeType);
             else { var phE = document.createElement('div'); phE.className = 'media-ph'; phE.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> <span>' + m.type + ' · não disponível</span>'; bub.appendChild(phE); }
             flow.scrollTop = flow.scrollHeight;
         }).catch(function() { bub.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Mídia indisponível'; });
@@ -13180,12 +13916,29 @@ async function acceptIncomingCall() {
 
         // Troca o listener do doc (antes só olhava cancelamento; agora olha o fim da chamada)
         if (callDocUnsub) callDocUnsub();
-        callDocUnsub = db.collection('calls').doc(id).onSnapshot(function(snap) {
+        var ultimaReconexao = 0;
+        callDocUnsub = db.collection('calls').doc(id).onSnapshot(async function(snap) {
             if (!snap.exists) { teardownCall(); return; }
             var d = snap.data();
             if (d.status === 'ended' && callState !== 'idle') {
                 notify('Chamada encerrada', 'info');
                 teardownCall();
+                return;
+            }
+            // ── Proposta de caminho novo vinda de quem ligou ──
+            // Acontece quando a internet oscilou do lado de lá. Aceitamos
+            // e devolvemos a resposta, e a ligação retoma sem cair.
+            if (d.reconnectAt && d.reconnectAt !== ultimaReconexao && d.offer && callPC) {
+                ultimaReconexao = d.reconnectAt;
+                try {
+                    await callPC.setRemoteDescription(new RTCSessionDescription(d.offer));
+                    var resposta = await callPC.createAnswer();
+                    await callPC.setLocalDescription(resposta);
+                    await db.collection('calls').doc(id).update({
+                        answer: { type: resposta.type, sdp: resposta.sdp },
+                        updatedAt: Date.now()
+                    });
+                } catch (e) { console.warn('Falha ao responder à reconexão:', e); }
             }
         });
 
@@ -13263,7 +14016,17 @@ function createCallPeerConnection(id, myCandidatesField) {
         reforcarAuricular();
     };
     pc.onconnectionstatechange = function() {
-        if (pc.connectionState === 'connected' && callState !== 'active') onCallConnected();
+        if (pc.connectionState === 'connected' && callState !== 'active') {
+            onCallConnected();
+            // Voltou do "caiu": desfaz o aviso e o prazo de desistência.
+            if (callReconnectTimeout) { clearTimeout(callReconnectTimeout); callReconnectTimeout = null; }
+            if (callEstavaCaida) {
+                callEstavaCaida = false;
+                notify('Conexão restabelecida', 'ok', 2000);
+                var st = document.getElementById('call-status');
+                if (st) st.textContent = 'Em chamada';
+            }
+        }
         // ── Rede de segurança contra "chamada travada" ──
         // Se o outro lado encerrar mas, por qualquer motivo, o aviso via
         // Firestore (status:'ended') não chegar até aqui (perda de conexão,
@@ -13274,24 +14037,98 @@ function createCallPeerConnection(id, myCandidatesField) {
         // encerramos a chamada localmente também, em vez de deixar a tela
         // (e o cronômetro, que é só local e não depende de rede) travada
         // como se a chamada ainda estivesse rolando.
-        if ((pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed')
+        // ══════════════════════════════════════════════════════════
+        //  OSCILAÇÃO DE INTERNET NÃO DERRUBA MAIS A LIGAÇÃO
+        // ══════════════════════════════════════════════════════════
+        //  Antes, 6 segundos de conexão instável já encerravam a chamada.
+        //  Só que trocar de Wi-Fi para dados móveis, passar por um ponto
+        //  de sinal fraco ou uma queda rápida da operadora levam mais que
+        //  isso — e a ligação caía sozinha, do nada, no meio da conversa.
+        //
+        //  Agora, quando a conexão se perde, a chamada NÃO é encerrada.
+        //  Em vez disso:
+        //    · a tela avisa "Reconectando..." e o cronômetro continua;
+        //    · tentamos refazer o caminho da conexão (o chamado "ICE
+        //      restart", que é como o WebRTC reencontra a rota quando o
+        //      endereço do aparelho muda);
+        //    · só depois de 45 segundos sem sucesso é que desistimos.
+        //
+        //  Se a internet voltar nesse intervalo, a ligação retoma sozinha
+        //  e a pessoa nem precisa ligar de novo.
+        if ((pc.connectionState === 'disconnected' || pc.connectionState === 'failed')
             && (callState === 'active' || callState === 'connecting') && callId === id) {
-            if (callPCDropTimeout) clearTimeout(callPCDropTimeout);
-            // Pequeno atraso: 'disconnected' pode ser só uma oscilação breve
-            // de rede que se recupera sozinha; só encerramos de fato se o
-            // estado continuar "caído" por alguns segundos.
-            callPCDropTimeout = setTimeout(function() {
-                if (!callPC || callPC !== pc) return;
-                if (pc.connectionState !== 'connected' && (callState === 'active' || callState === 'connecting')) {
-                    notify('Chamada encerrada', 'info');
+
+            if (!callEstavaCaida) {
+                callEstavaCaida = true;
+                var stEl = document.getElementById('call-status');
+                if (stEl) stEl.textContent = 'Reconectando...';
+                notify('Conexão instável — tentando reconectar', 'warn', 3000);
+            }
+
+            // Quem iniciou a chamada é quem refaz a proposta de conexão.
+            // Se os dois tentassem ao mesmo tempo, as propostas se
+            // atropelariam e a reconexão nunca fecharia.
+            if (callRole === 'caller' && pc.connectionState === 'failed') tentarReconectarChamada(id, pc);
+
+            if (!callReconnectTimeout) {
+                callReconnectTimeout = setTimeout(function () {
+                    callReconnectTimeout = null;
+                    if (!callPC || callPC !== pc) return;
+                    if (pc.connectionState === 'connected') return;   // voltou no meio do caminho
+                    if (callState !== 'active' && callState !== 'connecting') return;
+                    notify('Não foi possível reconectar — chamada encerrada', 'info');
                     if (callRole === 'caller') logCallToChat('completed');
                     try { db.collection('calls').doc(id).update({ status: 'ended', updatedAt: Date.now() }); } catch(e) {}
                     teardownCall();
-                }
-            }, pc.connectionState === 'closed' ? 0 : 6000);
+                }, 45000);
+            }
+        }
+
+        // 'closed' é diferente: a conexão foi fechada de propósito, não
+        // caiu. Aí encerra na hora mesmo.
+        if (pc.connectionState === 'closed' && (callState === 'active' || callState === 'connecting') && callId === id) {
+            if (callRole === 'caller') logCallToChat('completed');
+            teardownCall();
         }
     };
     return pc;
+}
+
+// ══════════════════════════════════════════════════════════
+//  REFAZER O CAMINHO DA CONEXÃO (ICE restart)
+// ══════════════════════════════════════════════════════════
+//  Quando o aparelho troca de rede — Wi-Fi para dados, por exemplo — o
+//  endereço dele muda e o caminho que a chamada usava deixa de existir.
+//  A conversa não acabou; só o "cano" por onde ela passava sumiu.
+//
+//  Esta função pede ao WebRTC que procure um caminho novo, sem desmontar
+//  a chamada: a câmera e o microfone continuam ligados e o cronômetro
+//  não zera. Se der certo, a pessoa só percebe alguns segundos de
+//  silêncio, em vez da ligação cair.
+//
+//  Só quem iniciou a chamada faz isso — se os dois lados propusessem um
+//  caminho novo ao mesmo tempo, as propostas se atropelariam.
+async function tentarReconectarChamada(id, pc) {
+    if (callReconectando) return;
+    if (!pc || pc !== callPC) return;
+    callReconectando = true;
+    try {
+        var offer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(offer);
+        await db.collection('calls').doc(id).update({
+            offer: { type: offer.type, sdp: offer.sdp },
+            answer: null,
+            reconnectAt: Date.now(),
+            updatedAt: Date.now()
+        });
+        callAnsweredOnce = false; // libera o listener a aceitar a nova resposta
+    } catch (e) {
+        console.warn('Falha ao tentar reconectar a chamada:', e);
+    } finally {
+        // Espera antes de permitir nova tentativa, para não inundar o
+        // Firestore de propostas enquanto a rede ainda está ruim.
+        setTimeout(function () { callReconectando = false; }, 5000);
+    }
 }
 
 function onCallConnected() {
@@ -13681,6 +14518,8 @@ function teardownCall() {
     if (callCandUnsub) { callCandUnsub(); callCandUnsub = null; }
     if (callDialTimeout) { clearTimeout(callDialTimeout); callDialTimeout = null; }
     if (callPCDropTimeout) { clearTimeout(callPCDropTimeout); callPCDropTimeout = null; }
+    if (callReconnectTimeout) { clearTimeout(callReconnectTimeout); callReconnectTimeout = null; }
+    callEstavaCaida = false; callReconectando = false;
 
     stopCallTimer();
     stopRingtone();
@@ -13865,6 +14704,10 @@ function pauseAllMedia() {
     document.querySelectorAll('audio, video').forEach(function(el) {
         if (!el.paused) el.pause();
     });
+    // Silencia também o áudio embutido das publicações da Comunidade:
+    // sair do post (ou do app) tem que calar a voz, senão ela continua
+    // tocando sem nada na tela explicando de onde vem.
+    if (typeof window.sfPararTudoAoSair === 'function') { try { window.sfPararTudoAoSair(); } catch (e) {} }
     document.querySelectorAll('.ap-play').forEach(function(btn) { btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>'; });
 }
 
