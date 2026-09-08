@@ -257,6 +257,19 @@
 .sf-comment-body{flex:1;min-width:0;background:var(--surface2);border-radius:12px;padding:8px 10px;}\
 .sf-comment-name{font-weight:700;font-size:12px;color:var(--accent);}\
 .sf-comment-text{font-size:12.5px;color:var(--text);margin-top:2px;word-break:break-word;line-height:1.4;}\
+.sf-comment-acoes{display:flex;align-items:center;gap:12px;margin-top:3px;}\
+.sf-c-curtir,.sf-c-responder{background:none;border:none;padding:0;cursor:pointer;color:var(--muted);font-size:11px;font-weight:700;font-family:Syne,sans-serif;display:inline-flex;align-items:center;gap:3px;}\
+.sf-c-curtir .icon{width:13px;height:13px;}\
+.sf-c-curtir.on{color:var(--danger);}\
+.sf-c-responder:active,.sf-c-curtir:active{opacity:.6;}\
+.sf-ver-respostas{background:none;border:none;cursor:pointer;color:var(--accent);font-size:11.5px;font-weight:700;font-family:Syne,sans-serif;padding:2px 0 6px 46px;display:block;}\
+.sf-respostas{display:none;padding-left:26px;border-left:1px solid var(--border);margin-left:20px;}\
+.sf-respostas.aberta{display:block;}\
+.sf-comment-row.sf-resposta .sf-comment-name{font-size:11.5px;}\
+.sf-comment-row.sf-resposta .sf-comment-text{font-size:12px;}\
+#sf-respondendo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;background:var(--surface2);border-top:1px solid var(--border);font-size:11.5px;color:var(--muted);}\
+#sf-respondendo b{color:var(--accent);}\
+#sf-respondendo button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;}\
 .sf-comment-time{font-size:10px;color:var(--muted);margin-top:3px;}\
 .sf-comments-empty{padding:14px 16px;color:var(--muted);font-size:12px;text-align:center;}\
 .sf-comment-inputbar{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0;}\
@@ -431,6 +444,8 @@
                         '<div class="sf-comments-title"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> Comentários (<span id="sf-detail-comment-count">0</span>)</div>' +
                         '<div class="sf-comments-list" id="sf-comments-list"></div>' +
                     '</div>' +
+                    '<div id="sf-respondendo" style="display:none;"><span>Respondendo <b id="sf-respondendo-nome"></b></span>' +
+                        '<button onclick="sfCancelarResposta()" title="Cancelar resposta">✕</button></div>' +
                     '<div class="sf-comment-inputbar">' +
                         '<input type="text" id="sf-comment-input" maxlength="300" placeholder="Escreva um comentário...">' +
                         '<button class="sf-comment-send" id="sf-comment-send-btn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>' +
@@ -2227,6 +2242,8 @@
 
     // Chamada de fora (ver pararTodosOsAudios, no index.html) para que
     // um áudio de conversa e um de publicação nunca toquem juntos.
+    window.sfCancelarResposta = sfCancelarResposta;
+
     window.sfPararAudios = function (exceto) {
         document.querySelectorAll('.sf-feed audio, #sf-detail-modal audio, .sf-card-audio audio').forEach(function (el) {
             if (el === exceto) return;
@@ -2401,31 +2418,140 @@
                     list.innerHTML = '<div class="sf-comments-empty">Nenhum comentário ainda. Seja o primeiro!</div>';
                     return;
                 }
-                var html = '';
-                snap.forEach(function (d) {
-                    var c = d.data();
-                    // O autor do comentário pode excluir o próprio comentário;
-                    // o dono do post pode excluir qualquer comentário no seu post.
-                    var canDelete = !!(me && (c.uid === me.uid || (sfDetailPostOwnerUid && sfDetailPostOwnerUid === me.uid)));
-                    html += '<div class="sf-comment-row">' +
-                        '<div class="sf-avatar" style="width:28px;height:28px;">' + avInner(c.nome, c.foto) + '</div>' +
+                // ══════════════════════════════════════════════════
+                //  COMENTÁRIOS E RESPOSTAS
+                // ══════════════════════════════════════════════════
+                //  O que aparece na publicação são os COMENTÁRIOS. As
+                //  respostas a cada um ficam guardadas dentro dele e só
+                //  aparecem se a pessoa tocar em "Ver N respostas" — do
+                //  mesmo jeito que Instagram e YouTube fazem. Sem isso,
+                //  uma discussão longa afogaria os outros comentários.
+                //
+                //  É um nível só: responde-se ao comentário, não à
+                //  resposta. Evita conversa aninhada sem fim.
+                var todos = [];
+                snap.forEach(function (d) { todos.push(Object.assign({ id: d.id }, d.data())); });
+
+                // Separa quem é comentário e quem é resposta de quem.
+                var raiz = todos.filter(function (c) { return !c.parentId; });
+                var respostasPor = {};
+                todos.forEach(function (c) {
+                    if (!c.parentId) return;
+                    (respostasPor[c.parentId] = respostasPor[c.parentId] || []).push(c);
+                });
+
+                function podeApagar(c) {
+                    return !!(me && (c.uid === me.uid || (sfDetailPostOwnerUid && sfDetailPostOwnerUid === me.uid)));
+                }
+
+                function htmlDeUm(c, ehResposta) {
+                    var curtido = !!(me && c.likedBy && c.likedBy[me.uid]);
+                    var qtd = c.likes || 0;
+                    return '<div class="sf-comment-row' + (ehResposta ? ' sf-resposta' : '') + '">' +
+                        '<div class="sf-avatar" style="width:' + (ehResposta ? '22px;height:22px' : '28px;height:28px') + ';">' + avInner(c.nome, c.foto) + '</div>' +
                         '<div class="sf-comment-body">' +
                             '<div class="sf-comment-name">' + esc(c.nome || 'Usuário') + sfBadgeHtml(c.uid) + '</div>' +
                             '<div class="sf-comment-text">' + sfLinkify(c.text || '') + '</div>' +
-                            '<div class="sf-comment-time">' + sfRelTime(c.createdAt) + '</div>' +
+                            '<div class="sf-comment-acoes">' +
+                                '<span class="sf-comment-time">' + sfRelTime(c.createdAt) + '</span>' +
+                                '<button class="sf-c-curtir' + (curtido ? ' on' : '') + '" data-clike="' + c.id + '">' +
+                                    (curtido
+                                      ? '<svg class="icon icon-fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
+                                      : '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>') +
+                                    (qtd ? ' <b>' + qtd + '</b>' : '') +
+                                '</button>' +
+                                (ehResposta ? '' : '<button class="sf-c-responder" data-creply="' + c.id + '" data-cnome="' + esc(c.nome || 'Usuário') + '">Responder</button>') +
+                            '</div>' +
                         '</div>' +
-                        (canDelete ? '<button class="sf-comment-del-btn" data-cdel="' + d.id + '" title="Excluir comentário"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button>' : '') +
+                        (podeApagar(c) ? '<button class="sf-comment-del-btn" data-cdel="' + c.id + '" title="Excluir"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button>' : '') +
                     '</div>';
+                }
+
+                var html = '';
+                raiz.forEach(function (c) {
+                    html += htmlDeUm(c, false);
+                    var filhas = (respostasPor[c.id] || []).sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+                    if (!filhas.length) return;
+                    var aberto = !!sfRespostasAbertas[c.id];
+                    html += '<button class="sf-ver-respostas" data-ctoggle="' + c.id + '">' +
+                        (aberto ? 'Ocultar respostas' : 'Ver ' + filhas.length + ' resposta' + (filhas.length > 1 ? 's' : '')) +
+                        '</button>';
+                    html += '<div class="sf-respostas' + (aberto ? ' aberta' : '') + '" data-cbox="' + c.id + '">' +
+                        filhas.map(function (r) { return htmlDeUm(r, true); }).join('') + '</div>';
                 });
                 list.innerHTML = html;
-                list.scrollTop = list.scrollHeight;
+
                 list.querySelectorAll('[data-cdel]').forEach(function (btn) {
+                    btn.onclick = function (e) { e.stopPropagation(); sfDeleteComment(sfDetailPostId, btn.getAttribute('data-cdel')); };
+                });
+                list.querySelectorAll('[data-clike]').forEach(function (btn) {
+                    btn.onclick = function (e) { e.stopPropagation(); sfCurtirComentario(sfDetailPostId, btn.getAttribute('data-clike')); };
+                });
+                list.querySelectorAll('[data-creply]').forEach(function (btn) {
                     btn.onclick = function (e) {
                         e.stopPropagation();
-                        sfDeleteComment(sfDetailPostId, btn.getAttribute('data-cdel'));
+                        sfResponderA(btn.getAttribute('data-creply'), btn.getAttribute('data-cnome'));
+                    };
+                });
+                list.querySelectorAll('[data-ctoggle]').forEach(function (btn) {
+                    btn.onclick = function (e) {
+                        e.stopPropagation();
+                        var id = btn.getAttribute('data-ctoggle');
+                        sfRespostasAbertas[id] = !sfRespostasAbertas[id];
+                        var cx = list.querySelector('[data-cbox="' + id + '"]');
+                        if (cx) cx.classList.toggle('aberta', sfRespostasAbertas[id]);
+                        var n = cx ? cx.children.length : 0;
+                        btn.textContent = sfRespostasAbertas[id]
+                            ? 'Ocultar respostas'
+                            : 'Ver ' + n + ' resposta' + (n > 1 ? 's' : '');
                     };
                 });
             }, function (err) { console.error('comments:', err); });
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  CURTIR E RESPONDER COMENTÁRIOS
+    // ══════════════════════════════════════════════════════════
+    var sfRespostasAbertas = {};   // quais comentários estão com as respostas à mostra
+    var sfRespondendoA     = null; // id do comentário que estou respondendo agora
+
+    // Curtir funciona como um interruptor: toca de novo e descurte. Quem
+    // curtiu fica guardado em likedBy, o que impede a mesma pessoa de
+    // contar duas vezes mesmo em dois aparelhos.
+    async function sfCurtirComentario(postId, commentId) {
+        if (!me || !postId || !commentId) return;
+        var ref = db.collection('social_posts').doc(postId).collection('comments').doc(commentId);
+        try {
+            await db.runTransaction(async function (t) {
+                var doc = await t.get(ref);
+                if (!doc.exists) return;
+                var d = doc.data();
+                var jaCurtiu = !!(d.likedBy && d.likedBy[me.uid]);
+                var novos = Object.assign({}, d.likedBy || {});
+                if (jaCurtiu) delete novos[me.uid]; else novos[me.uid] = true;
+                t.update(ref, { likedBy: novos, likes: Object.keys(novos).length });
+            });
+        } catch (e) { console.warn('curtir comentário:', e); }
+    }
+
+    // Prepara o campo para responder: mostra de quem é o comentário e
+    // deixa claro que o que for escrito vai para dentro dele.
+    function sfResponderA(commentId, nome) {
+        sfRespondendoA = commentId;
+        var barra = document.getElementById('sf-respondendo');
+        var alvo  = document.getElementById('sf-respondendo-nome');
+        if (alvo) alvo.textContent = nome || 'comentário';
+        if (barra) barra.style.display = 'flex';
+        var inp = document.getElementById('sf-comment-input');
+        if (inp) { inp.placeholder = 'Respondendo ' + (nome || '') + '...'; inp.focus(); }
+    }
+
+    function sfCancelarResposta() {
+        sfRespondendoA = null;
+        var barra = document.getElementById('sf-respondendo');
+        if (barra) barra.style.display = 'none';
+        var inp = document.getElementById('sf-comment-input');
+        if (inp) inp.placeholder = 'Escreva um comentário...';
     }
 
     async function sfDeleteComment(postId, commentId) {
@@ -2447,7 +2573,16 @@
         inp.value = '';
         try {
             var ref = db.collection('social_posts').doc(sfDetailPostId);
-            await ref.collection('comments').add({ uid: me.uid, nome: me.nome, foto: me.foto || null, text: text, createdAt: Date.now() });
+            var dados = { uid: me.uid, nome: me.nome, foto: me.foto || null, text: text, createdAt: Date.now() };
+            // Se estiver respondendo alguém, a resposta fica amarrada ao
+            // comentário — é o parentId que a coloca dentro dele, escondida
+            // atrás do "Ver respostas", em vez de solta na lista.
+            if (sfRespondendoA) {
+                dados.parentId = sfRespondendoA;
+                sfRespostasAbertas[sfRespondendoA] = true; // já abre, para a pessoa ver a própria resposta
+            }
+            await ref.collection('comments').add(dados);
+            sfCancelarResposta();
             await ref.update({ commentsCount: firebase.firestore.FieldValue.increment(1) });
             // Avisa o dono da postagem (se não for eu mesmo) que recebeu um
             // comentário novo. Usa o post já em cache (sfPosts) quando

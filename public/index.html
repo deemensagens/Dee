@@ -711,7 +711,35 @@
         @keyframes tdot { 0%, 80%, 100% { transform: scale(.7); opacity: .35; } 40% { transform: scale(1.1); opacity: 1; } }
 
         /* ── INPUT BAR ── */
-        .input-bar { padding: 8px 10px; padding-bottom: calc(var(--safe-bottom) + 8px); padding-left: calc(var(--safe-left) + 18px); padding-right: calc(var(--safe-right) + 18px); background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: flex-end; gap: 6px; flex-shrink: 0; position: relative; }
+        /* ══════════════════════════════════════════════════════════
+           ORDEM DAS CAMADAS NA CONVERSA
+           ──────────────────────────────────────────────────────────
+           O mini-mapa da localização é desenhado pelo Leaflet, que usa
+           camadas internas de até 1000 para empilhar as peças dele
+           (fundo, pino, controles). Como a barra de digitar não tinha
+           camada definida, esse 1000 passava por cima dela: o mapa
+           cobria os botões de anexar, câmera, emoji, microfone e enviar.
+
+           A correção tem duas partes:
+
+           1) "isolation: isolate" na área das mensagens cria um
+              compartimento fechado. Tudo o que é desenhado lá dentro —
+              inclusive o 1000 do mapa — só disputa espaço ali dentro, e
+              nunca sobe acima da área de mensagens como um todo.
+
+           2) A barra de digitar, o cabeçalho e os menus que eles abrem
+              ganham camada própria e maior. Assim os botões e o que eles
+              abrem ficam sempre acima de qualquer conteúdo da conversa.
+           ══════════════════════════════════════════════════════════ */
+        #msgs-wrap { isolation: isolate; z-index: 0; }
+
+        .input-bar { padding: 8px 10px; padding-bottom: calc(var(--safe-bottom) + 8px); padding-left: calc(var(--safe-left) + 18px); padding-right: calc(var(--safe-right) + 18px); background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: flex-end; gap: 6px; flex-shrink: 0; position: relative; z-index: 30; }
+        .chat-hdr { z-index: 30; }
+        /* O que os botões abrem fica acima da própria barra. */
+        #emoji-picker, #attach-menu, #rec-bar, #reply-bar { z-index: 60 !important; }
+        /* Trava de segurança: nenhuma peça do mapa dentro de uma mensagem
+           pode escapar do compartimento acima. */
+        .bubble .leaflet-container, .bubble .leaflet-pane, .bubble .leaflet-control { z-index: 1 !important; }
         .inp-wrap { flex: 1; min-width: 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; display: flex; align-items: center; padding: 3px 4px 3px 12px; margin: 0 4px; transition: border-color .2s; min-height: 42px; }
         .inp-wrap:focus-within { border-color: rgba(0,229,204,.3); }
         #msg-input { flex: 1; min-width: 0; background: none; border: none; color: var(--text); font-size: 14px; font-family: inherit; padding: 8px 0; resize: none; line-height: 1.4; max-height: 96px; overflow-y: auto; }
@@ -5298,7 +5326,22 @@ function closeTopUIIfAny() {
 
     // 4) qualquer outro modal genérico (perfil, grupo, amigos, status, etc.)
     var overlay = document.querySelector('.overlay.open');
-    if (overlay) { overlay.classList.remove('open'); return true; }
+    if (overlay) {
+        // ── O ÁUDIO DA PUBLICAÇÃO PRECISA PARAR AQUI ──
+        // Fechar pelo X chamava a rotina da Comunidade, que silenciava o
+        // áudio. Já o botão voltar do celular caía direto neste trecho,
+        // que só tira a classe do modal pelo CSS — a janela some da tela
+        // mas nada dentro dela é avisado, e o áudio seguia tocando sem
+        // nada visível explicando de onde vinha.
+        //
+        // Agora, se o que está fechando é a publicação, avisamos a
+        // Comunidade antes, exatamente como o X faz.
+        if (overlay.id === 'sf-detail-modal' && typeof window.sfPararTudoAoSair === 'function') {
+            try { window.sfPararTudoAoSair(); } catch (e) {}
+        }
+        overlay.classList.remove('open');
+        return true;
+    }
 
     // 5) dentro de uma conversa/grupo aberta -> volta para a lista de chats
     if (chatUid || chatGid) { backList(); return true; }

@@ -455,7 +455,21 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if signedIn() &&
         request.resource.data.uid == request.auth.uid;
-      allow update: if false;
+
+      // ── CURTIR COMENTÁRIO ──
+      //  Antes nada podia ser alterado num comentário, o que também
+      //  impedia curtir. Agora a alteração é permitida, mas SÓ nos dois
+      //  campos da curtida — e apenas a própria marca da pessoa pode
+      //  entrar ou sair. Ou seja: ninguém edita o texto de um comentário
+      //  alheio nem infla a contagem de curtidas.
+      allow update: if signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['likes', 'likedBy']) &&
+        request.resource.data.likedBy.keys().toSet()
+          .difference(resource.data.get('likedBy', {}).keys().toSet())
+          .union(resource.data.get('likedBy', {}).keys().toSet()
+                 .difference(request.resource.data.likedBy.keys().toSet()))
+          .hasOnly([request.auth.uid]);
       allow delete: if signedIn() && (
         resource.data.uid == request.auth.uid ||
         admin() ||
