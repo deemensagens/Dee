@@ -517,6 +517,39 @@
     .tema-tag.off { background: rgba(255,59,92,.12); color: var(--danger); }
     .tema-tag.fer { background: rgba(255,179,0,.12); color: var(--warn); }
     .tema-acoes { display: flex; gap: 6px; padding: 0 12px 12px; }
+    /* ══ SIMULAÇÃO DO TEMA DENTRO DO APP ══
+       Uma maquete em miniatura do Dee — lista à esquerda, conversa à
+       direita — para ver o tema vestido, e não só a cor crua. */
+    .sim-app { display: flex; gap: 0; height: 260px; border-radius: 12px; overflow: hidden;
+               border: 1px solid var(--border); margin-top: 8px; background: #030508; font-size: 9px; }
+    .sim-lado { width: 38%; min-width: 110px; display: flex; flex-direction: column;
+                background: #0b0d12; background-size: cover; background-position: center; }
+    .sim-chat { flex: 1; display: flex; flex-direction: column; min-width: 0;
+                background: #030508; background-size: cover; background-position: center; }
+    .sim-topo, .sim-chat-topo { display: flex; align-items: center; justify-content: space-between;
+                gap: 6px; padding: 7px 8px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .sim-chat-topo { justify-content: flex-start; }
+    .sim-logo { font-family: 'Syne', sans-serif; font-weight: 900; color: #e8eaf0; font-size: 11px; }
+    .sim-icones { color: rgba(232,234,240,.55); letter-spacing: 3px; margin-left: auto; }
+    .sim-abas { display: flex; gap: 8px; padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .sim-abas b { color: #00e5cc; } .sim-abas span { color: rgba(232,234,240,.4); }
+    .sim-conversa, .sim-perfil { display: flex; align-items: center; gap: 6px; padding: 7px 8px; }
+    .sim-perfil { margin-top: auto; border-top: 1px solid rgba(255,255,255,.07); }
+    .sim-av { width: 18px; height: 18px; border-radius: 50%; background: rgba(0,229,204,.2);
+              color: #00e5cc; display: flex; align-items: center; justify-content: center;
+              font-style: normal; font-weight: 800; flex-shrink: 0; font-size: 8px; }
+    .sim-conversa b, .sim-perfil b, .sim-chat-topo b { display: block; color: #e8eaf0; font-size: 9px; }
+    .sim-conversa small, .sim-perfil small { color: rgba(232,234,240,.45); font-size: 7.5px; }
+    .sim-msgs { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 5px; overflow: hidden; }
+    .sim-bolha { max-width: 78%; padding: 5px 8px; border-radius: 9px; color: #e8eaf0; line-height: 1.35; }
+    .sim-bolha.rec { background: rgba(255,255,255,.08); align-self: flex-start; }
+    .sim-bolha.env { background: rgba(0,229,204,.18); align-self: flex-end; }
+    .sim-barra { display: flex; align-items: center; gap: 7px; padding: 7px 8px;
+                 border-top: 1px solid rgba(255,255,255,.07); color: rgba(232,234,240,.5); }
+    .sim-barra em { flex: 1; font-style: normal; color: rgba(232,234,240,.35); }
+    .sim-barra b { width: 20px; height: 20px; border-radius: 50%; background: #00e5cc; color: #04140f;
+                   display: flex; align-items: center; justify-content: center; font-size: 9px; }
+
     .tema-preview-live { height: 90px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface3); background-size: cover; background-position: center; margin-top: 8px; }
 
 
@@ -538,8 +571,28 @@
        ══════════════════════════════════════════════════════════ */
     @media (max-width: 760px) {
 
-        /* Nada mais rola para o lado em lugar nenhum */
+        /* ── NADA MAIS SAI PELA LATERAL ──
+           A tabela tinha largura mínima de 920px, pensada para o
+           computador. Mesmo virando cartão, ela continuava com essa
+           largura — e era por isso que o texto do conteúdo e os últimos
+           botões ficavam para fora da tela. */
         .ads-table-wrap { overflow-x: visible !important; border: none; background: transparent; }
+        table.ads-table { min-width: 0 !important; width: 100% !important; }
+
+        /* ── TEXTO QUEBRA EM VEZ DE SER CORTADO ──
+           Vários textos estavam configurados para ficar numa linha só e
+           cortar com "...". No computador isso mantém a tabela alinhada;
+           no celular só escondia a informação. */
+        .td-title, .pd-post-text, .pd-pin-text, .pd-pinned-text,
+        .rank-name, .kw-term, .tm-term,
+        .ads-table-wrap td, .ads-table-wrap td * {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            max-width: none !important;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
         .ads-table-wrap table, .ads-table-wrap thead, .ads-table-wrap tbody,
         .ads-table-wrap th, .ads-table-wrap td, .ads-table-wrap tr { display: block; width: auto; }
 
@@ -577,9 +630,22 @@
         .ads-table-wrap tbody td > * { min-width: 0; }
         .ads-table-wrap tbody td { word-break: break-word; }
 
-        /* Botões de ação em linha, com espaço de toque decente */
-        .row-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; width: 100%; }
-        .mini-btn { padding: 8px 12px; font-size: 11.5px; }
+        /* ── BOTÕES QUE CABEM NA TELA ──
+           Eles ficavam numa linha só e os últimos saíam pela direita.
+           Agora quebram em várias linhas e cada um ocupa a largura que
+           precisa, sem espremer nem sumir. */
+        .row-actions {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            justify-content: flex-start; width: 100%;
+        }
+        .mini-btn {
+            padding: 9px 13px; font-size: 11.5px;
+            flex: 0 1 auto; white-space: nowrap;
+        }
+        .toolbar { flex-wrap: wrap; gap: 8px; }
+        .toolbar input[type="search"] { min-width: 0; width: 100%; flex: 1 1 100%; }
+        .link-detect-row { flex-wrap: wrap; }
+        .link-detect-row .btn { flex: 1 1 auto; }
 
         /* Títulos: uma linha só, com o número virando um selo ao lado */
         .panel h2 {
@@ -615,6 +681,107 @@
         .row-actions { justify-content: flex-start; }
     }
 
+    /* ══════════════════════════════════════════════════════════
+       LISTAS LONGAS EM JANELA PRÓPRIA
+       ──────────────────────────────────────────────────────────
+       Contas excluídas, usuários, publicações e anúncios crescem
+       sozinhos conforme o app é usado. Deixá-los soltos na página fazia
+       ela esticar sem fim — no celular, rolar até o rodapé virava uma
+       viagem.
+
+       Agora cada uma dessas listas tem um botão que a abre numa janela
+       própria, com rolagem e busca dentro dela. A página fica curta e do
+       mesmo tamanho, não importa quantos registros existam.
+
+       Detalhe de implementação que evita quebrar o que já funciona: a
+       lista não é redesenhada dentro da janela. O próprio bloco é MOVIDO
+       para lá e devolvido ao fechar. Como todo o código existente
+       procura os elementos pelo id, ele continua funcionando sem saber
+       que o bloco mudou de lugar.
+       ══════════════════════════════════════════════════════════ */
+    .lista-abrir-btn {
+        display: none; width: 100%; margin-top: 4px; padding: 12px;
+        background: var(--surface2); border: 1px dashed var(--border);
+        border-radius: 10px; color: var(--accent); cursor: pointer;
+        font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12.5px;
+        align-items: center; justify-content: center; gap: 8px;
+    }
+    .lista-abrir-btn:hover { border-color: var(--accent); background: var(--surface3); }
+    .lista-abrir-btn .icon { width: 15px; height: 15px; }
+
+    #lista-modal-overlay .mcard-lista {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 14px; width: min(760px, 96vw);
+        max-height: 88vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .lista-modal-hdr {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border);
+        background: var(--surface2); flex-shrink: 0;
+    }
+    .lista-modal-hdr h3 { font-family: 'Syne', sans-serif; font-size: 14.5px; font-weight: 800; color: var(--text); }
+    .lista-modal-fechar {
+        width: 32px; height: 32px; flex-shrink: 0; border: none; border-radius: 8px;
+        background: var(--surface3); color: var(--text); cursor: pointer; font-size: 15px;
+    }
+    .lista-modal-corpo { padding: 14px 16px; overflow-y: auto; flex: 1; min-height: 0; }
+    /* Dentro da janela a lista usa a altura toda disponível, em vez do
+       limite pequeno que ela tem quando fica na página. */
+    .lista-modal-corpo .user-list { max-height: none !important; overflow: visible !important; }
+    .lista-modal-corpo .ads-table-wrap { max-height: none !important; }
+
+    @media (max-width: 760px) {
+        /* No celular a lista sai da página e passa a viver só na janela:
+           é o que impede a página de esticar. */
+        .lista-abrir-btn { display: flex; }
+        .lista-conteudo.recolhido { display: none; }
+        #lista-modal-overlay .mcard-lista { width: 100vw; max-width: 100vw; height: 100%; max-height: 100%; border-radius: 0; border: none; }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       TRAVA FINAL CONTRA CONTEÚDO SAINDO DA TELA
+       ──────────────────────────────────────────────────────────
+       Este bloco fica depois de todas as outras regras de propósito.
+       O arquivo tem vários trechos antigos que limitam largura e cortam
+       texto com "…" (pensados para tabela no computador), e alguns deles
+       vinham vencendo. Aqui a conta é fechada de uma vez: no celular,
+       nada tem largura fixa, nada corta texto e nada passa da borda.
+       ══════════════════════════════════════════════════════════ */
+    @media (max-width: 760px) {
+        html, body { overflow-x: hidden; max-width: 100vw; }
+        .wrap, .panel, .tab-pane { max-width: 100%; overflow-x: hidden; }
+
+        /* Nenhuma tabela mantém largura de computador */
+        .ads-table-wrap, .ads-table-wrap table { max-width: 100% !important; min-width: 0 !important; width: 100% !important; }
+
+        /* Nenhum texto é cortado: tudo quebra e desce para a linha de baixo */
+        .ads-table-wrap td, .ads-table-wrap td *,
+        .td-title, .td-sub, .pd-post-text, .pd-post-preview,
+        .pd-pin-text, .pd-pin-name, .pd-pinned-text, .pd-pinned-name,
+        .rank-name, .kw-term, .tm-term, .u-name, .u-email,
+        .tema-nome, .rep-person .rp-name {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            max-width: none !important;
+            min-width: 0 !important;
+            overflow-wrap: anywhere !important;
+            word-break: break-word !important;
+        }
+
+        /* Botões: sempre todos visíveis, quebrando em quantas linhas precisar */
+        .row-actions, .tema-acoes, .filter-row, .sub-tabs, .mbtns, .confirm-actions {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            max-width: 100% !important;
+        }
+        .row-actions .mini-btn, .tema-acoes .mini-btn { flex: 0 1 auto; max-width: 100%; }
+
+        /* Miniaturas e prévias nunca esticam a linha */
+        .thumb, .rank-thumb, .pd-pin-thumb, .pd-pinned-thumb,
+        .ins-post-thumb, .preview-box img, .preview-box video { max-width: 100% !important; }
+    }
+
     /* ── PWA INSTALL BUTTON ── */
     .install-btn { display: none; align-items: center; gap: 6px; background: var(--accent); color: var(--on-accent); border: none; border-radius: 6px; padding: 8px 14px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 12.5px; cursor: pointer; white-space: nowrap; transition: background .15s; }
     .install-btn:hover { background: var(--accent2); }
@@ -631,6 +798,20 @@
 <div id="toast" class="toast"></div>
 
 <!-- ════ MODAL DE CONFIRMAÇÃO (substitui o confirm() nativo do navegador) ════ -->
+<!-- ══ JANELA DAS LISTAS LONGAS ══
+     Recebe o bloco de qualquer lista que cresça muito (usuários, contas
+     excluídas, publicações, anúncios), com rolagem e busca por dentro.
+     Ver ListaModal, mais abaixo. -->
+<div class="modal-overlay" id="lista-modal-overlay">
+    <div class="mcard-lista">
+        <div class="lista-modal-hdr">
+            <h3 id="lista-modal-titulo">Lista</h3>
+            <button class="lista-modal-fechar" onclick="ListaModal.fechar()" title="Fechar">✕</button>
+        </div>
+        <div class="lista-modal-corpo" id="lista-modal-corpo"></div>
+    </div>
+</div>
+
 <div class="modal-overlay confirm-overlay" id="confirm-modal-overlay">
     <div class="modal-box confirm-box">
         <div class="confirm-ic" id="confirm-modal-ic">⚠️</div>
@@ -901,7 +1082,8 @@
                 <div class="filter-chip" data-filter="mais-antigos" onclick="setFilter('mais-antigos')">Mais antigos</div>
             </div>
 
-            <div class="ads-table-wrap">
+            <div class="lista-conteudo" id="lista-anuncios">
+<div class="ads-table-wrap">
                 <table class="ads-table">
                     <thead>
                         <tr>
@@ -920,6 +1102,9 @@
                     <tbody id="ads-table-body"></tbody>
                 </table>
             </div>
+</div>
+<button class="lista-abrir-btn" onclick="ListaModal.abrir('lista-anuncios','Anúncios cadastrados','ads-search')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/></svg> Abrir lista de anúncios</button>
+
             <div id="ads-empty" class="empty" style="display:none;">Nenhum anúncio encontrado.</div>
             <div class="pagination" id="ads-pagination"></div>
         </div>
@@ -1209,8 +1394,40 @@
             </div>
 
             <div class="field">
-                <label>Prévia</label>
+                <label>Prévia da cor</label>
                 <div class="tema-preview-live" id="tema-preview"></div>
+            </div>
+
+            <!-- ══ SIMULAÇÃO DENTRO DO APP ══
+                 A prévia acima mostra só a cor crua. Esta simulação mostra
+                 como ela realmente fica vestindo o Dee: a lista de conversas
+                 à esquerda e uma conversa aberta à direita, com os botões e
+                 as bolhas de mensagem por cima. É onde dá para perceber, por
+                 exemplo, que um tom claro demais some com o texto branco. -->
+            <div class="field">
+                <label>Como vai ficar no app</label>
+                <div class="sim-app" id="tema-sim">
+                    <div class="sim-lado" id="sim-lado">
+                        <div class="sim-topo">
+                            <span class="sim-logo">Dee</span>
+                            <span class="sim-icones">◐ ↑ ⇥</span>
+                        </div>
+                        <div class="sim-abas"><b>CHATS</b><span>GRUPOS</span><span>AMIGOS</span></div>
+                        <div class="sim-conversa"><i class="sim-av">A</i><span><b>Aline</b><small>online</small></span></div>
+                        <div class="sim-conversa"><i class="sim-av">M</i><span><b>Michael</b><small>offline</small></span></div>
+                        <div class="sim-perfil"><i class="sim-av">V</i><span><b>Você</b><small>seu@email.com</small></span></div>
+                    </div>
+                    <div class="sim-chat" id="sim-chat">
+                        <div class="sim-chat-topo"><i class="sim-av">A</i><b>Aline</b><span class="sim-icones">▢ ✆ ⌕</span></div>
+                        <div class="sim-msgs">
+                            <div class="sim-bolha rec">Oi! Tudo bem?</div>
+                            <div class="sim-bolha env">Tudo, e você? ✓✓</div>
+                            <div class="sim-bolha rec">Vamos marcar hoje?</div>
+                        </div>
+                        <div class="sim-barra"><span>＋</span><span>▢</span><em>Mensagem...</em><span>☺</span><b>➤</b></div>
+                    </div>
+                </div>
+                <div class="hint">Toque em qualquer cor acima para ver a mudança aqui na hora.</div>
             </div>
 
             <div class="row" style="margin-top:6px;">
@@ -1357,7 +1574,10 @@
                 <div class="filter-chip" data-f="online" onclick="UsersDash.setUserFilter('online')">🟢 Online <span class="fc-count" id="ud-fc-online">0</span></div>
                 <div class="filter-chip" data-f="offline" onclick="UsersDash.setUserFilter('offline')">⚪ Offline <span class="fc-count" id="ud-fc-offline">0</span></div>
             </div>
-            <ul class="user-list" id="ud-user-list"></ul>
+            <div class="lista-conteudo" id="lista-usuarios">
+                <ul class="user-list" id="ud-user-list"></ul>
+            </div>
+            <button class="lista-abrir-btn" onclick="ListaModal.abrir('lista-usuarios','Usuários em tempo real','ud-user-search')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/></svg> Abrir lista de usuários</button>
             <div class="footnote">
                 🟢 "Online" considera o sinal de presença enviado pelo app (atualizado a cada ~20s enquanto a pessoa está com a aba/app em primeiro plano) e um limite de expiração de <span id="ud-stale-note">45s</span> — se o app fechar de forma abrupta (queda de conexão, encerrar à força) sem avisar, o usuário é automaticamente marcado como offline aqui assim que o sinal expira, mesmo que o último status salvo ainda diga "online". Minimizar a janela ou trocar de aba também marca offline imediatamente, graças ao evento de visibilidade já implementado no app.
             </div>
@@ -1371,7 +1591,10 @@
             <div class="toolbar">
                 <input type="search" id="ud-deleted-search" placeholder="Buscar por nome ou e-mail…" oninput="UsersDash.renderDeletedList()">
             </div>
-            <ul class="user-list" id="ud-deleted-list"></ul>
+            <div class="lista-conteudo" id="lista-excluidas">
+                <ul class="user-list" id="ud-deleted-list"></ul>
+            </div>
+            <button class="lista-abrir-btn" onclick="ListaModal.abrir('lista-excluidas','Contas excluídas','ud-deleted-search')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/></svg> Abrir lista de contas excluídas</button>
             <div class="footnote">
                 ℹ️ Toda vez que alguém exclui a própria conta pelo app, um registro é salvo (nome, e-mail e data) antes dos dados do usuário serem apagados, apenas para fins de estatística. Nenhuma informação de senha é armazenada aqui.
             </div>
@@ -1425,7 +1648,8 @@
         <div class="toolbar">
             <input type="search" id="pd-search" placeholder="🔎 Buscar por autor ou conteúdo…" oninput="PostsDash.renderPostsList()">
         </div>
-        <div class="ads-table-wrap">
+        <div class="lista-conteudo" id="lista-publicacoes">
+<div class="ads-table-wrap">
             <table class="ads-table">
                 <thead>
                     <tr>
@@ -1442,6 +1666,9 @@
                 <tbody id="pd-posts-body"></tbody>
             </table>
         </div>
+</div>
+<button class="lista-abrir-btn" onclick="ListaModal.abrir('lista-publicacoes','Publicações','pd-search')"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/></svg> Abrir lista de publicações</button>
+
         <div class="empty" id="pd-posts-empty" style="display:none;">Nenhuma publicação encontrada.</div>
     </div>
 </div>
@@ -4311,7 +4538,11 @@ if ('serviceWorker' in navigator) {
 (function() {
     function updateScrollHints() {
         document.querySelectorAll('.ads-table-wrap').forEach(function(wrap) {
-            var needsHint = wrap.scrollWidth > wrap.clientWidth + 4;
+            // No celular a tabela virou cartão e não rola mais para o
+            // lado — a dica ali só confundiria. Continua valendo no
+            // computador, onde a tabela pode passar da largura.
+            var celular = window.matchMedia('(max-width: 760px)').matches;
+            var needsHint = !celular && wrap.scrollWidth > wrap.clientWidth + 4;
             var hint = wrap.nextElementSibling;
             var hasHint = hint && hint.classList && hint.classList.contains('scroll-hint');
             if (needsHint && !hasHint) {
@@ -4558,16 +4789,45 @@ var Temas = (function () {
 
     function atualizarPrevia() {
         var el = document.getElementById('tema-preview');
-        if (!el) return;
         var tipo = document.getElementById('tema-tipo').value;
         var v = valorAtual();
-        if (tipo === 'imagem') {
-            el.style.background = '';
-            el.style.backgroundImage = v ? 'url(' + v + ')' : '';
-        } else {
-            el.style.backgroundImage = '';
-            el.style.background = v;
+
+        if (el) {
+            if (tipo === 'imagem') {
+                el.style.background = '';
+                el.style.backgroundImage = v ? 'url(' + v + ')' : '';
+            } else {
+                el.style.backgroundImage = '';
+                el.style.background = v;
+            }
         }
+
+        // ── Simulação dentro do app ──
+        // Veste a maquete com o tema, exatamente como o app faz: cor e
+        // degradê pintam a lista lateral e a conversa; imagem entra como
+        // papel de parede nas duas. É aqui que dá para perceber se o tom
+        // engole o texto ou some com os botões antes de publicar.
+        var lado = document.getElementById('sim-lado');
+        var chat = document.getElementById('sim-chat');
+        if (!lado || !chat) return;
+
+        [lado, chat].forEach(function (parte) {
+            if (tipo === 'imagem') {
+                parte.style.background = '';
+                parte.style.backgroundImage = v ? 'url(' + v + ')' : '';
+                parte.style.backgroundSize = 'cover';
+                parte.style.backgroundPosition = 'center';
+            } else if (v) {
+                parte.style.backgroundImage = '';
+                parte.style.background = v;
+            } else {
+                parte.style.backgroundImage = '';
+                parte.style.background = '';
+            }
+        });
+        // A conversa fica um tom mais escura que a lista, como no app.
+        if (tipo !== 'imagem' && v) chat.style.filter = 'brightness(.82)';
+        else chat.style.filter = '';
     }
 
     // A imagem é reduzida antes de ser publicada: ela vai ser lida por
@@ -4747,6 +5007,102 @@ var Temas = (function () {
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligarObservador);
     else ligarObservador();
+})();
+</script>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  JANELA DAS LISTAS LONGAS
+// ══════════════════════════════════════════════════════════
+//  Contas excluídas, usuários, publicações e anúncios crescem sozinhos
+//  conforme o app é usado. Soltas na página, elas a esticavam sem fim —
+//  no celular, chegar ao rodapé virava uma viagem.
+//
+//  Aqui a lista é MOVIDA para uma janela própria, com rolagem e busca
+//  por dentro, e devolvida ao lugar quando a janela fecha.
+//
+//  Mover em vez de redesenhar é proposital: todo o código existente
+//  procura os elementos pelo id e continua funcionando sem saber que o
+//  bloco mudou de lugar. Se fosse redesenhado, cada atualização em tempo
+//  real teria que ser reescrita — e qualquer uma esquecida quebraria.
+// ══════════════════════════════════════════════════════════
+var ListaModal = (function () {
+    var idAtual = null;      // id do bloco que está dentro da janela
+    var ancora  = null;      // marcador do lugar de onde ele saiu
+
+    function abrir(idConteudo, titulo, idCampoBusca) {
+        var bloco = document.getElementById(idConteudo);
+        var corpo = document.getElementById('lista-modal-corpo');
+        if (!bloco || !corpo) return;
+
+        fechar(); // nunca duas listas na mesma janela
+
+        // Deixa um marcador no lugar original, para devolver exatamente ali.
+        ancora = document.createComment('lista:' + idConteudo);
+        bloco.parentNode.insertBefore(ancora, bloco);
+
+        // A busca da lista vai junto, senão a pessoa perderia o filtro.
+        var busca = idCampoBusca ? document.getElementById(idCampoBusca) : null;
+        if (busca && busca.parentNode) {
+            var caixaBusca = busca.closest('.toolbar') || busca;
+            caixaBusca.dataset.voltaPara = idConteudo;
+            corpo.appendChild(caixaBusca);
+        }
+        corpo.appendChild(bloco);
+        bloco.classList.remove('recolhido');
+
+        document.getElementById('lista-modal-titulo').textContent = titulo || 'Lista';
+        document.getElementById('lista-modal-overlay').classList.add('show');
+        idAtual = idConteudo;
+
+        if (busca) setTimeout(function () { try { busca.focus(); } catch (e) {} }, 120);
+    }
+
+    function fechar() {
+        var overlay = document.getElementById('lista-modal-overlay');
+        var corpo   = document.getElementById('lista-modal-corpo');
+        if (overlay) overlay.classList.remove('show');
+        if (!idAtual || !corpo) { idAtual = null; return; }
+
+        var bloco = document.getElementById(idAtual);
+        // Devolve a busca primeiro, para ela voltar acima da lista.
+        Array.prototype.slice.call(corpo.children).forEach(function (filho) {
+            if (filho.dataset && filho.dataset.voltaPara && ancora && ancora.parentNode) {
+                ancora.parentNode.insertBefore(filho, ancora);
+                delete filho.dataset.voltaPara;
+            }
+        });
+        if (bloco && ancora && ancora.parentNode) {
+            ancora.parentNode.insertBefore(bloco, ancora);
+            ancora.parentNode.removeChild(ancora);
+        }
+        ancora = null;
+        idAtual = null;
+    }
+
+    // Tocar fora da janela e a tecla Esc fecham, como em qualquer outra.
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.id === 'lista-modal-overlay') fechar();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && idAtual) fechar();
+    });
+
+    // No celular a lista fica escondida na página e só existe na janela —
+    // é isso que impede a página de esticar. Ao girar para o computador
+    // (ou aumentar a janela) ela reaparece no lugar.
+    function ajustarAoTamanho() {
+        var celular = window.matchMedia('(max-width: 760px)').matches;
+        document.querySelectorAll('.lista-conteudo').forEach(function (bloco) {
+            if (bloco.id === idAtual) { bloco.classList.remove('recolhido'); return; }
+            bloco.classList.toggle('recolhido', celular);
+        });
+    }
+    window.addEventListener('resize', ajustarAoTamanho);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ajustarAoTamanho);
+    else ajustarAoTamanho();
+
+    return { abrir: abrir, fechar: fechar, ajustar: ajustarAoTamanho };
 })();
 </script>
 </body>
