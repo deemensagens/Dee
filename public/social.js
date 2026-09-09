@@ -143,7 +143,10 @@
 .sf-perfil-topo{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:0 18px;margin-top:-34px;flex-shrink:0;position:relative;z-index:2;}\
 .sf-perfil-foto{width:76px;height:76px;border-radius:50%;overflow:hidden;border:3px solid var(--surface);background:var(--surface2);flex-shrink:0;}\
 .sf-perfil-foto img{width:100%;height:100%;object-fit:cover;}\
-.sf-perfil-editar{background:rgba(0,229,204,.12);border:1px solid rgba(0,229,204,.3);color:var(--accent);border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;margin-bottom:6px;}\
+.sf-perfil-acoes{display:flex;align-items:center;gap:8px;margin-bottom:6px;}\
+.sf-perfil-editar{background:rgba(0,229,204,.12);border:1px solid rgba(0,229,204,.3);color:var(--accent);border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;margin:0;}\
+.sf-perfil-postar{background:linear-gradient(135deg,var(--accent),#00b8a8);color:#000;border:none;border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;margin:0;}\
+.sf-perfil-postar .icon{width:13px;height:13px;}\
 .sf-perfil-info{padding:12px 18px 4px;flex-shrink:0;}\
 .sf-perfil-nome{font-family:Syne,sans-serif;font-weight:800;font-size:18px;color:var(--text);}\
 .sf-perfil-arroba{font-size:13px;color:var(--accent);margin-top:1px;}\
@@ -489,7 +492,10 @@
                     '</div>' +
                     '<div class="sf-perfil-topo">' +
                         '<div class="sf-perfil-foto" id="sf-perfil-foto"></div>' +
-                        '<button class="sf-perfil-editar" id="sf-perfil-editar" onclick="sfAbrirEdicaoPerfil()" style="display:none;">Editar perfil</button>' +
+                        '<div class="sf-perfil-acoes" id="sf-perfil-acoes" style="display:none;">' +
+                            '<button class="sf-perfil-postar" id="sf-perfil-postar" onclick="sfOpenNewPostModal()" title="Nova postagem"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Postar</span></button>' +
+                            '<button class="sf-perfil-editar" id="sf-perfil-editar" onclick="sfAbrirEdicaoPerfil()">Editar perfil</button>' +
+                        '</div>' +
                     '</div>' +
                     '<div class="sf-perfil-info">' +
                         '<div class="sf-perfil-nome" id="sf-perfil-nome">—</div>' +
@@ -2899,9 +2905,9 @@
         bioEl.textContent = perfil.bio || '';
         bioEl.style.display = perfil.bio ? 'block' : 'none';
 
-        // O botão de editar só existe no próprio perfil.
-        var btnEd = document.getElementById('sf-perfil-editar');
-        if (btnEd) btnEd.style.display = (me && uid === me.uid) ? 'inline-flex' : 'none';
+        // "Postar" e "Editar perfil" só existem no próprio perfil.
+        var acoesEl = document.getElementById('sf-perfil-acoes');
+        if (acoesEl) acoesEl.style.display = (me && uid === me.uid) ? 'flex' : 'none';
 
         sfRenderPerfilPosts(uid);
     }
@@ -2913,25 +2919,65 @@
 
     // As publicações da pessoa, em grade — tocar em qualquer uma abre a
     // publicação inteira, igual ao feed.
+    //
+    // Em vez de colocar todas de uma vez na tela, elas entram de 3 em 3
+    // (uma fileira por vez): só as 3 primeiras aparecem já de cara, e as
+    // próximas 3 só entram quando a pessoa rola até quase o fim da grade
+    // — e assim por diante, até acabarem as publicações.
+    var SF_PERFIL_LOTE = 3;
+    var sfPerfilPostsScrollFn = null; // listener de rolagem em uso, pra poder tirar antes de pôr outro
+
     function sfRenderPerfilPosts(uid) {
         var caixa = document.getElementById('sf-perfil-posts');
         if (!caixa) return;
         var lista = sfPosts.filter(function (p) { return p.uid === uid; });
         document.getElementById('sf-perfil-qtd').textContent = lista.length;
 
+        // Tira o listener da vez anterior (outro perfil, ou este mesmo
+        // reaberto), pra nunca ficar mais de um ligado ao mesmo tempo.
+        if (sfPerfilPostsScrollFn) {
+            caixa.removeEventListener('scroll', sfPerfilPostsScrollFn);
+            sfPerfilPostsScrollFn = null;
+        }
+        caixa.innerHTML = '';
+
         if (!lista.length) {
             caixa.innerHTML = '<div class="sf-perfil-vazio">Nenhuma publicação ainda.</div>';
             return;
         }
-        caixa.innerHTML = lista.map(function (p) {
+
+        var qtdMostrada = 0;
+
+        function tileHtml(p) {
             var capa = p.mediaData
                 ? '<img src="' + p.mediaData + '" alt="">'
                 : '<span class="sf-perfil-tile-txt">' + esc((p.text || '').slice(0, 60)) + '</span>';
             return '<button class="sf-perfil-tile" data-pid="' + p.id + '">' + capa + '</button>';
-        }).join('');
-        caixa.querySelectorAll('[data-pid]').forEach(function (b) {
-            b.onclick = function () { sfOpenPostDetail(b.getAttribute('data-pid')); };
-        });
+        }
+
+        function ligarCliques() {
+            caixa.querySelectorAll('[data-pid]').forEach(function (b) {
+                b.onclick = function () { sfOpenPostDetail(b.getAttribute('data-pid')); };
+            });
+        }
+
+        function mostrarMais() {
+            if (qtdMostrada >= lista.length) return;
+            var proximas = lista.slice(qtdMostrada, qtdMostrada + SF_PERFIL_LOTE);
+            caixa.insertAdjacentHTML('beforeend', proximas.map(tileHtml).join(''));
+            qtdMostrada += proximas.length;
+            ligarCliques();
+        }
+
+        mostrarMais(); // primeira fileira (3 publicações)
+
+        // Perto do fim da rolagem da grade? Entra mais uma fileira de 3.
+        sfPerfilPostsScrollFn = function () {
+            if (caixa.scrollTop + caixa.clientHeight >= caixa.scrollHeight - 60) {
+                mostrarMais();
+            }
+        };
+        caixa.addEventListener('scroll', sfPerfilPostsScrollFn);
     }
 
     // ── EDIÇÃO ──
@@ -3284,6 +3330,7 @@
     window.sfAbrirEdicaoPerfil  = sfAbrirEdicaoPerfil;
     window.sfSalvarPerfil       = sfSalvarPerfil;
     window.sfAbrirBusca         = sfAbrirBusca;
+    window.sfOpenNewPostModal   = sfOpenNewPostModal;
 
     async function sfDeleteComment(postId, commentId) {
         if (!me || !postId || !commentId) return;
