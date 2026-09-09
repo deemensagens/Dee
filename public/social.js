@@ -337,6 +337,10 @@
 .sf-comment-mic-btn:hover{background:var(--surface3);}\
 .sf-comment-mic-btn .icon{width:18px;height:18px;}\
 .sf-comment-mic-btn.rec-on{color:var(--danger);border-color:rgba(255,59,92,.45);background:rgba(255,59,92,.1);animation:sf-blink 1s ease infinite;}\
+/* Um só botão de microfone abre este menu com as duas opções (gravar / enviar arquivo),\
+   em vez de dois botões redondos fixos que empurravam o de enviar para fora da tela. */\
+.sf-cmt-mic-menu{display:none;flex-direction:column;gap:8px;padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0;}\
+.sf-cmt-mic-menu.show{display:flex;}\
 .sf-cmt-rec-bar{display:none;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--border);background:rgba(255,59,92,.07);font-size:12px;color:var(--danger);flex-shrink:0;}\
 .sf-cmt-rec-bar.show{display:flex;}\
 .sf-cmt-rec-time{font-family:"Syne",sans-serif;font-weight:800;margin-left:auto;}\
@@ -356,7 +360,7 @@
 .sf-cmt-cheia{height:100%;width:0%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2,var(--accent)));}\
 .sf-cmt-tempo{font-size:10.5px;color:var(--muted);font-family:"Syne",sans-serif;font-weight:700;white-space:nowrap;flex-shrink:0;min-width:26px;text-align:right;}\
 .sf-cmt-audio.carregando{opacity:.6;}\
-/* Com quatro botoes na barra do comentario o campo de texto fica apertado em telas pequenas: ali os botoes e o espacamento encolhem um pouco. */\
+/* Em telas bem pequenas os botoes e o espacamento da barra do comentario encolhem um pouco. */\
 @media (max-width:420px){.sf-comment-inputbar{gap:6px;padding:9px 10px;}.sf-comment-emoji-btn,.sf-comment-mic-btn,.sf-comment-send{width:32px;height:32px;}.sf-comment-emoji-btn .icon,.sf-comment-mic-btn .icon{width:16px;height:16px;}.sf-comment-inputbar input{padding:8px 12px;}}\
 @media (max-width:340px){.sf-comment-inputbar{gap:4px;padding:8px;}.sf-comment-emoji-btn,.sf-comment-mic-btn,.sf-comment-send{width:30px;height:30px;}}\
 /* ── Modal: compartilhar ── */\
@@ -663,15 +667,20 @@
                         '<div id="sf-cmt-audio-preview-player"></div>' +
                         '<button class="sf-cmt-rm-audio" id="sf-cmt-rm-audio" title="Descartar áudio"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
                     '</div>' +
+                    // Menu do microfone: em vez de dois botões redondos fixos (gravar +
+                    // enviar arquivo) espremidos ao lado do campo de texto — o que
+                    // empurrava o botão de enviar para fora da tela em telas estreitas —
+                    // um só botão de microfone abre este menu com as duas opções.
+                    '<div class="sf-cmt-mic-menu" id="sf-cmt-mic-menu">' +
+                        '<div class="sf-pick-photo-btn" id="sf-cmt-mic-menu-rec"><span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></span><span>Gravar áudio (até 10s)</span></div>' +
+                        '<div class="sf-pick-photo-btn" id="sf-cmt-mic-menu-file"><span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span><span>Enviar arquivo de áudio</span></div>' +
+                    '</div>' +
                     '<div class="sf-comment-inputbar">' +
                         '<input type="text" id="sf-comment-input" maxlength="300" placeholder="Escreva um comentário...">' +
                         '<button class="sf-comment-emoji-btn" id="sf-comment-emoji-btn" type="button" title="Emojis"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>' +
-                        // Mesmo microfone da barra de conversa do chat. Aqui é
-                        // tocar para começar e tocar de novo para parar: como o
-                        // limite é 10 segundos, segurar o dedo atrapalharia mais
-                        // do que ajudaria.
-                        '<button class="sf-comment-mic-btn" id="sf-comment-mic-btn" type="button" title="Gravar áudio (até 10s)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>' +
-                        '<button class="sf-comment-mic-btn" id="sf-comment-audio-file-btn" type="button" title="Enviar arquivo de áudio (até 10s)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></button>' +
+                        // Um só microfone: tocar com a gravação parada abre o menu acima
+                        // (gravar / enviar arquivo); tocar de novo enquanto grava, para.
+                        '<button class="sf-comment-mic-btn" id="sf-comment-mic-btn" type="button" title="Áudio (gravar ou enviar arquivo)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>' +
                         '<input type="file" id="sf-comment-audio-file" accept="audio/*" hidden>' +
                         '<button class="sf-comment-send" id="sf-comment-send-btn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>' +
                     '</div>' +
@@ -848,6 +857,7 @@
             sfLiveLeaveIfViewing(); // sai da live se eu estava só assistindo (anfitrião continua no ar em segundo plano)
             var epFechar = document.getElementById('sf-emoji-picker');
             if (epFechar) epFechar.classList.remove('open'); // não deixa aberto pro próximo post
+            sfFecharCmtMicMenu(); // idem para o menu do microfone
         };
         document.getElementById('sf-detail-del-btn').onclick = function () { if (sfDetailPostId) sfDeletePost(sfDetailPostId, true); };
         document.getElementById('sf-detail-more-btn').onclick = function () {
@@ -864,12 +874,26 @@
         document.getElementById('sf-comment-input').onkeydown = function (e) { if (e.key === 'Enter') sfSubmitComment(); };
         document.getElementById('sf-comment-emoji-btn').onclick = sfToggleEmoji;
         // ── Comentário em áudio ──
-        document.getElementById('sf-comment-mic-btn').onclick = sfCmtStartRec;
-        document.getElementById('sf-cmt-rec-stop').onclick = sfCmtStopRec;
-        document.getElementById('sf-comment-audio-file-btn').onclick = function () {
+        // Um só botão de microfone: se já está gravando, tocar nele para. Se não,
+        // abre o menu com as duas opções (gravar / enviar arquivo) em vez de dois
+        // botões fixos que espremiam o botão de enviar para fora da tela.
+        document.getElementById('sf-comment-mic-btn').onclick = function (e) {
+            e.stopPropagation();
+            if (sfCmtRec.isRecording) { sfCmtStopRec(); return; }
+            sfToggleCmtMicMenu();
+        };
+        document.getElementById('sf-cmt-mic-menu-rec').onclick = function (e) {
+            e.stopPropagation();
+            sfFecharCmtMicMenu();
+            sfCmtStartRec();
+        };
+        document.getElementById('sf-cmt-mic-menu-file').onclick = function (e) {
+            e.stopPropagation();
             if (sfCmtRec.isRecording) { notify('Pare a gravação primeiro', 'warn'); return; }
+            sfFecharCmtMicMenu();
             document.getElementById('sf-comment-audio-file').click();
         };
+        document.getElementById('sf-cmt-rec-stop').onclick = sfCmtStopRec;
         document.getElementById('sf-comment-audio-file').onchange = sfCmtHandleAudioFile;
         document.getElementById('sf-cmt-rm-audio').onclick = function (e) { e.stopPropagation(); sfCmtLimparAudio(); };
 
@@ -899,6 +923,13 @@
             if (!ep || !ep.classList.contains('open')) return;
             if (e.target.closest('#sf-comment-emoji-btn') || ep.contains(e.target)) return;
             ep.classList.remove('open');
+        });
+        // Fecha o menu do microfone (gravar / enviar arquivo) ao clicar fora dele.
+        document.addEventListener('click', function (e) {
+            var menu = document.getElementById('sf-cmt-mic-menu');
+            if (!menu || !menu.classList.contains('show')) return;
+            if (e.target.closest('#sf-comment-mic-btn') || menu.contains(e.target)) return;
+            menu.classList.remove('show');
         });
 
         sfInitDrag();
@@ -3218,8 +3249,27 @@
     function sfToggleEmoji(e) {
         if (e) e.stopPropagation();
         if (!sfEmojiPickerReady) { sfInitEmojiPicker(); sfEmojiPickerReady = true; }
+        sfFecharCmtMicMenu(); // não deixa os dois painéis abertos ao mesmo tempo
         var ep = document.getElementById('sf-emoji-picker');
         if (ep) ep.classList.toggle('open');
+    }
+
+    // ── Menu do microfone do comentário (gravar / enviar arquivo) ──
+    // Fica escondido por padrão e só aparece quando o botão de microfone é
+    // tocado, em vez de dois botões fixos que apertavam a barra de comentário.
+    function sfToggleCmtMicMenu() {
+        var menu = document.getElementById('sf-cmt-mic-menu');
+        if (!menu) return;
+        var abrir = !menu.classList.contains('show');
+        if (abrir) {
+            var ep = document.getElementById('sf-emoji-picker');
+            if (ep) ep.classList.remove('open'); // não deixa os dois painéis abertos ao mesmo tempo
+        }
+        menu.classList.toggle('show', abrir);
+    }
+    function sfFecharCmtMicMenu() {
+        var menu = document.getElementById('sf-cmt-mic-menu');
+        if (menu) menu.classList.remove('show');
     }
 
     function sfInitEmojiPicker() {
