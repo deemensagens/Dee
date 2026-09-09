@@ -137,10 +137,10 @@
 .sf-track.dragging{transition:none;cursor:grabbing;}\
 .sf-card{flex:0 0 100%;width:100%;min-width:100%;height:100%;box-sizing:border-box;display:flex;flex-direction:column;padding:8px 12px 10px;overflow:hidden;}\
 .sf-perfil-card{max-width:520px;width:100%;padding:0;overflow:hidden;max-height:90vh;display:flex;flex-direction:column;}\
-.sf-perfil-capa{height:130px;background:linear-gradient(135deg,rgba(0,229,204,.25),rgba(0,136,255,.2));background-size:cover;background-position:center;position:relative;flex-shrink:0;}\
+.sf-perfil-capa{height:130px;background:linear-gradient(135deg,rgba(0,229,204,.25),rgba(0,136,255,.2));background-size:cover;background-position:center;position:relative;z-index:1;flex-shrink:0;}\
 .sf-perfil-capa.sem-capa{background:linear-gradient(135deg,rgba(0,229,204,.25),rgba(0,136,255,.2));}\
 .sf-perfil-voltar{position:absolute;top:12px;left:12px;width:34px;height:34px;border-radius:50%;border:none;background:rgba(0,0,0,.5);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}\
-.sf-perfil-topo{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:0 18px;margin-top:-34px;flex-shrink:0;}\
+.sf-perfil-topo{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:0 18px;margin-top:-34px;flex-shrink:0;position:relative;z-index:2;}\
 .sf-perfil-foto{width:76px;height:76px;border-radius:50%;overflow:hidden;border:3px solid var(--surface);background:var(--surface2);flex-shrink:0;}\
 .sf-perfil-foto img{width:100%;height:100%;object-fit:cover;}\
 .sf-perfil-editar{background:rgba(0,229,204,.12);border:1px solid rgba(0,229,204,.3);color:var(--accent);border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;margin-bottom:6px;}\
@@ -373,6 +373,22 @@
 .sf-live-camoff .sf-avatar{width:56px;height:56px;font-size:20px;}\
 .sf-live-camoff span{color:var(--muted);font-size:11.5px;}\
 .sf-live-hint{font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.4;}\
+.sf-edit-foto-row{display:flex;align-items:center;gap:12px;}\
+.sf-edit-foto-preview{width:56px;height:56px;border-radius:50%;overflow:hidden;background:var(--surface2);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:"Syne",sans-serif;font-weight:900;font-size:18px;color:var(--accent);}\
+.sf-edit-foto-preview img{width:100%;height:100%;object-fit:cover;display:block;}\
+.sf-edit-capa-preview{width:100%;height:70px;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,rgba(0,229,204,.2),rgba(0,136,255,.16));background-size:cover;background-position:center;border:1px solid var(--border);margin-bottom:10px;}\
+.sf-edit-escolher-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 14px;font-family:"Syne",sans-serif;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap;}\
+.sf-edit-escolher-btn:hover{border-color:var(--accent);color:var(--accent);}\
+.sf-crop-card{max-width:420px;}\
+.sf-crop-stage-wrap{display:flex;justify-content:center;padding:8px 0 16px;}\
+.sf-crop-stage{position:relative;overflow:hidden;background:#05070c;margin:0 auto;touch-action:none;cursor:grab;}\
+.sf-crop-stage.dragging{cursor:grabbing;}\
+.sf-crop-stage.sf-crop-foto{width:min(220px,100%);aspect-ratio:1/1;border-radius:50%;}\
+.sf-crop-stage.sf-crop-capa{width:100%;max-width:340px;aspect-ratio:4/1;border-radius:14px;}\
+.sf-crop-stage img{position:absolute;top:0;left:0;max-width:none;max-height:none;user-select:none;-webkit-user-drag:none;pointer-events:none;}\
+.sf-crop-zoom-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;color:var(--muted);}\
+.sf-crop-zoom-row input[type=range]{flex:1;accent-color:var(--accent);}\
+.sf-crop-hint{font-size:11.5px;color:var(--muted);text-align:center;margin-bottom:4px;line-height:1.4;}\
 ';
         var style = document.createElement('style');
         style.id = 'sf-styles';
@@ -489,12 +505,18 @@
                 '<div class="mcard">' +
                     '<h3 class="mtitle">Editar perfil</h3>' +
                     '<div class="sf-edit-campo">' +
-                        '<label>Foto de perfil</label>' +
-                        '<input type="file" id="sf-edit-foto" accept="image/*">' +
+                        '<label>Foto de capa</label>' +
+                        '<div class="sf-edit-capa-preview" id="sf-edit-capa-preview"></div>' +
+                        '<button type="button" class="sf-edit-escolher-btn" id="sf-edit-capa-escolher">Escolher capa</button>' +
+                        '<input type="file" id="sf-edit-capa" accept="image/*" hidden>' +
                     '</div>' +
                     '<div class="sf-edit-campo">' +
-                        '<label>Foto de capa</label>' +
-                        '<input type="file" id="sf-edit-capa" accept="image/*">' +
+                        '<label>Foto de perfil</label>' +
+                        '<div class="sf-edit-foto-row">' +
+                            '<div class="sf-edit-foto-preview" id="sf-edit-foto-preview"></div>' +
+                            '<button type="button" class="sf-edit-escolher-btn" id="sf-edit-foto-escolher">Escolher foto</button>' +
+                        '</div>' +
+                        '<input type="file" id="sf-edit-foto" accept="image/*" hidden>' +
                     '</div>' +
                     '<div class="sf-edit-campo">' +
                         '<label>Nome</label>' +
@@ -516,6 +538,31 @@
                     '<div class="mbtns">' +
                         '<button class="mbtn sec" onclick="closeModal(\'sf-perfil-editar-modal\')">Cancelar</button>' +
                         '<button class="mbtn" onclick="sfSalvarPerfil()">Salvar</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+
+            // Recorte/zoom da foto de perfil ou da capa, aberto assim que
+            // um arquivo é escolhido em "Editar perfil". O palco já mostra
+            // o formato final exato (círculo ou faixa larga), então o que
+            // a pessoa vê aqui é exatamente o que vai ser usado.
+            '<div id="sf-crop-modal" class="overlay">' +
+                '<div class="mcard sf-crop-card">' +
+                    '<h3 class="mtitle" id="sf-crop-titulo">Ajustar foto</h3>' +
+                    '<div class="sf-crop-stage-wrap">' +
+                        '<div class="sf-crop-stage" id="sf-crop-stage">' +
+                            '<img id="sf-crop-img" src="" alt="" draggable="false">' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="sf-crop-zoom-row">' +
+                        '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="8" y1="11" x2="14" y2="11"/></svg>' +
+                        '<input type="range" id="sf-crop-zoom" min="0" max="100" value="0">' +
+                        '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/></svg>' +
+                    '</div>' +
+                    '<div class="sf-crop-hint">Arraste para posicionar. Belisque com dois dedos, use a roda do mouse ou o controle acima para dar zoom.</div>' +
+                    '<div class="mbtns">' +
+                        '<button class="mbtn sec" id="sf-crop-cancelar">Cancelar</button>' +
+                        '<button class="mbtn pri" id="sf-crop-confirmar">Usar esta foto</button>' +
                     '</div>' +
                 '</div>' +
             '</div>' +
@@ -653,9 +700,35 @@
             };
         }
         var fotoEd = document.getElementById('sf-edit-foto');
-        if (fotoEd) fotoEd.onchange = function () { sfLerImagem(this, 420, function (v) { sfMinhaFotoNova = v; }); };
+        if (fotoEd) fotoEd.onchange = function () {
+            sfAbrirCrop(this, 'foto', function (v) { sfMinhaFotoNova = v; sfEditPreviewFoto(v); });
+        };
         var capaEd = document.getElementById('sf-edit-capa');
-        if (capaEd) capaEd.onchange = function () { sfLerImagem(this, 900, function (v) { sfMinhaCapaNova = v; }); };
+        if (capaEd) capaEd.onchange = function () {
+            sfAbrirCrop(this, 'capa', function (v) { sfMinhaCapaNova = v; sfEditPreviewCapa(v); });
+        };
+        var fotoEscolherBtn = document.getElementById('sf-edit-foto-escolher');
+        if (fotoEscolherBtn) fotoEscolherBtn.onclick = function () { fotoEd.click(); };
+        var capaEscolherBtn = document.getElementById('sf-edit-capa-escolher');
+        if (capaEscolherBtn) capaEscolherBtn.onclick = function () { capaEd.click(); };
+
+        // Palco de recorte/zoom: arrastar (mouse/touch), beliscão de dois
+        // dedos, roda do mouse e o controle deslizante todos levam ao
+        // mesmo estado (sfCrop), então ficam sempre sincronizados.
+        var cropStage = document.getElementById('sf-crop-stage');
+        if (cropStage) {
+            cropStage.addEventListener('pointerdown', sfCropPointerDown);
+            cropStage.addEventListener('pointermove', sfCropPointerMove);
+            cropStage.addEventListener('pointerup', sfCropPointerUp);
+            cropStage.addEventListener('pointercancel', sfCropPointerUp);
+            cropStage.addEventListener('wheel', sfCropWheel, { passive: false });
+        }
+        var cropZoomSlider = document.getElementById('sf-crop-zoom');
+        if (cropZoomSlider) cropZoomSlider.oninput = sfCropSliderMudou;
+        var cropCancelarBtn = document.getElementById('sf-crop-cancelar');
+        if (cropCancelarBtn) cropCancelarBtn.onclick = sfCropCancelar;
+        var cropConfirmarBtn = document.getElementById('sf-crop-confirmar');
+        if (cropConfirmarBtn) cropConfirmarBtn.onclick = sfCropConfirmar;
         document.getElementById('sf-blocked-close').onclick = function () { closeModal('sf-blocked-modal'); };
         document.getElementById('sf-rank-btn').onclick = sfOpenRankModal;
         document.getElementById('sf-rank-close').onclick = function () { closeModal('sf-rank-modal'); };
@@ -2870,6 +2943,10 @@
         document.getElementById('sf-edit-bio').value     = perfil.bio || '';
         document.getElementById('sf-edit-msg').textContent = '';
         sfMinhaFotoNova = null; sfMinhaCapaNova = null;
+        // Mostra a foto/capa atuais nas prévias (com o mesmo fallback da
+        // foto do chat, pra quem ainda não editou o perfil da Comunidade).
+        sfEditPreviewFoto(perfil.foto || (me && me.foto) || null, perfil.nome || (me && me.nome));
+        sfEditPreviewCapa(perfil.capa || null);
 
         // Cada nome tem a própria contagem de 30 dias: trocar um não
         // bloqueia o outro.
@@ -2900,25 +2977,192 @@
         }
     }
 
-    // Reduz a imagem antes de guardar: ela é lida por todo mundo que
-    // abrir o perfil, então não pode ser pesada.
-    function sfLerImagem(input, maxDim, guardar) {
+    // Atualiza as prévias pequenas do formulário de edição de perfil.
+    function sfEditPreviewFoto(url, nomeFallback) {
+        var el = document.getElementById('sf-edit-foto-preview');
+        if (!el) return;
+        el.innerHTML = url ? '<img src="' + url + '" alt="">' : esc((nomeFallback || '?').charAt(0).toUpperCase());
+    }
+    function sfEditPreviewCapa(url) {
+        var el = document.getElementById('sf-edit-capa-preview');
+        if (!el) return;
+        el.style.backgroundImage = url ? 'url(' + url + ')' : '';
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  RECORTE E ZOOM (foto de perfil / capa)
+    // ══════════════════════════════════════════════════════════
+    //  Ao escolher um arquivo, abrimos um palco no formato final exato
+    //  (círculo para a foto de perfil, faixa larga para a capa). Arrastar
+    //  reposiciona e beliscar/roda do mouse/controle dão zoom — como o
+    //  palco JÁ tem o formato de saída, o que aparece nele é exatamente
+    //  o que vai ser salvo: a prévia é o resultado final, não uma
+    //  aproximação.
+    var sfCrop = null;         // estado da sessão de recorte atual (só uma por vez)
+    var sfCropPointers = {};   // pointerId -> {x,y} dos dedos/mouse ativos no palco
+    var SF_CROP_SAIDA = {      // resolução final exportada, por tipo
+        foto: { w: 480,  h: 480 },
+        capa: { w: 1000, h: 250 }
+    };
+
+    function sfAbrirCrop(input, tipo, guardar) {
         var file = input.files && input.files[0];
         if (!file) return;
         var r = new FileReader();
         r.onload = function (e) {
             var img = new Image();
             img.onload = function () {
-                var escala = Math.min(1, maxDim / Math.max(img.width, img.height));
-                var c = document.createElement('canvas');
-                c.width  = Math.max(2, Math.round(img.width  * escala));
-                c.height = Math.max(2, Math.round(img.height * escala));
-                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-                guardar(c.toDataURL('image/jpeg', 0.8));
+                var stage = document.getElementById('sf-crop-stage');
+                stage.className = 'sf-crop-stage ' + (tipo === 'foto' ? 'sf-crop-foto' : 'sf-crop-capa');
+                document.getElementById('sf-crop-titulo').textContent =
+                    tipo === 'foto' ? 'Ajustar foto de perfil' : 'Ajustar capa';
+                document.getElementById('sf-crop-img').src = e.target.result;
+
+                // O palco só assume o tamanho final depois de aberto (o
+                // CSS usa aspect-ratio, e o modal começa com display:none),
+                // por isso medimos DEPOIS de abrir o modal.
+                openModal('sf-crop-modal');
+                var rect = stage.getBoundingClientRect();
+                var minScale = Math.max(rect.width / img.width, rect.height / img.height);
+                sfCrop = {
+                    img: img, natW: img.width, natH: img.height,
+                    scale: minScale, minScale: minScale, maxScale: minScale * 4,
+                    stageW: rect.width, stageH: rect.height,
+                    tipo: tipo, guardar: guardar
+                };
+                // Começa cobrindo o palco inteiro, centralizada — igual ao
+                // "cover" que já era usado antes, só que agora ajustável.
+                sfCrop.offX = (rect.width  - img.width  * minScale) / 2;
+                sfCrop.offY = (rect.height - img.height * minScale) / 2;
+                document.getElementById('sf-crop-zoom').value = 0;
+                sfCropRenderizar();
             };
             img.src = e.target.result;
         };
         r.readAsDataURL(file);
+        // Limpa o valor: escolher o MESMO arquivo de novo (após cancelar,
+        // por exemplo) precisa disparar o onchange outra vez.
+        input.value = '';
+    }
+
+    // Aplica a posição/zoom atuais na <img> do palco.
+    function sfCropRenderizar() {
+        if (!sfCrop) return;
+        var img = document.getElementById('sf-crop-img');
+        img.style.width  = (sfCrop.natW * sfCrop.scale) + 'px';
+        img.style.height = (sfCrop.natH * sfCrop.scale) + 'px';
+        img.style.left = sfCrop.offX + 'px';
+        img.style.top  = sfCrop.offY + 'px';
+    }
+
+    // Nunca deixa sobrar área vazia dentro do palco.
+    function sfCropLimitar() {
+        var dispW = sfCrop.natW * sfCrop.scale;
+        var dispH = sfCrop.natH * sfCrop.scale;
+        sfCrop.offX = Math.min(0, Math.max(sfCrop.stageW - dispW, sfCrop.offX));
+        sfCrop.offY = Math.min(0, Math.max(sfCrop.stageH - dispH, sfCrop.offY));
+    }
+
+    // Muda o zoom mantendo o ponto (mx,my) do palco fixo na tela — é o
+    // que faz o beliscão e a roda do mouse "zoomarem" no dedo/cursor em
+    // vez de puxar a imagem inteira para o canto.
+    function sfCropZoomEm(mx, my, novaScale) {
+        novaScale = Math.min(sfCrop.maxScale, Math.max(sfCrop.minScale, novaScale));
+        var pontoX = (mx - sfCrop.offX) / sfCrop.scale;
+        var pontoY = (my - sfCrop.offY) / sfCrop.scale;
+        sfCrop.scale = novaScale;
+        sfCrop.offX = mx - pontoX * novaScale;
+        sfCrop.offY = my - pontoY * novaScale;
+        sfCropLimitar();
+        sfCropRenderizar();
+        var faixa = sfCrop.maxScale - sfCrop.minScale;
+        var pct = faixa > 0 ? Math.round((sfCrop.scale - sfCrop.minScale) / faixa * 100) : 0;
+        document.getElementById('sf-crop-zoom').value = pct;
+    }
+
+    function sfCropPosRelativa(clientX, clientY) {
+        var rect = document.getElementById('sf-crop-stage').getBoundingClientRect();
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function sfCropPointerDown(e) {
+        if (!sfCrop) return;
+        if (e.target.setPointerCapture) { try { e.target.setPointerCapture(e.pointerId); } catch (err) {} }
+        sfCropPointers[e.pointerId] = sfCropPosRelativa(e.clientX, e.clientY);
+        document.getElementById('sf-crop-stage').classList.add('dragging');
+    }
+
+    function sfCropPointerMove(e) {
+        if (!sfCrop || !sfCropPointers[e.pointerId]) return;
+        var anterior = sfCropPointers[e.pointerId];
+        var atual = sfCropPosRelativa(e.clientX, e.clientY);
+        var ids = Object.keys(sfCropPointers);
+
+        if (ids.length === 1) {
+            // Um dedo (ou mouse): arrasta.
+            sfCrop.offX += atual.x - anterior.x;
+            sfCrop.offY += atual.y - anterior.y;
+            sfCropPointers[e.pointerId] = atual;
+            sfCropLimitar();
+            sfCropRenderizar();
+        } else {
+            // Dois dedos: belisca para dar zoom, ancorado no ponto médio
+            // entre eles.
+            var outroId = ids.filter(function (id) { return id !== String(e.pointerId); })[0];
+            var outro = sfCropPointers[outroId];
+            var distAntes = Math.hypot(anterior.x - outro.x, anterior.y - outro.y) || 1;
+            sfCropPointers[e.pointerId] = atual;
+            var distDepois = Math.hypot(atual.x - outro.x, atual.y - outro.y) || 1;
+            sfCropZoomEm((atual.x + outro.x) / 2, (atual.y + outro.y) / 2, sfCrop.scale * (distDepois / distAntes));
+        }
+    }
+
+    function sfCropPointerUp(e) {
+        delete sfCropPointers[e.pointerId];
+        if (!Object.keys(sfCropPointers).length) {
+            var stage = document.getElementById('sf-crop-stage');
+            if (stage) stage.classList.remove('dragging');
+        }
+    }
+
+    function sfCropWheel(e) {
+        if (!sfCrop) return;
+        e.preventDefault();
+        var p = sfCropPosRelativa(e.clientX, e.clientY);
+        sfCropZoomEm(p.x, p.y, sfCrop.scale * (e.deltaY < 0 ? 1.08 : 1 / 1.08));
+    }
+
+    function sfCropSliderMudou() {
+        if (!sfCrop) return;
+        var pct = Number(document.getElementById('sf-crop-zoom').value) / 100;
+        sfCropZoomEm(sfCrop.stageW / 2, sfCrop.stageH / 2, sfCrop.minScale + (sfCrop.maxScale - sfCrop.minScale) * pct);
+    }
+
+    function sfCropCancelar() {
+        closeModal('sf-crop-modal');
+        sfCrop = null;
+        sfCropPointers = {};
+    }
+
+    // Recorta exatamente o que está visível no palco — por isso a prévia
+    // já é o resultado final — e gera a imagem definitiva, no tamanho
+    // certo para cada uso (foto quadrada, capa em faixa larga).
+    function sfCropConfirmar() {
+        if (!sfCrop) return;
+        var saida = SF_CROP_SAIDA[sfCrop.tipo];
+        var origemX = -sfCrop.offX / sfCrop.scale;
+        var origemY = -sfCrop.offY / sfCrop.scale;
+        var origemW = sfCrop.stageW / sfCrop.scale;
+        var origemH = sfCrop.stageH / sfCrop.scale;
+
+        var c = document.createElement('canvas');
+        c.width = saida.w; c.height = saida.h;
+        c.getContext('2d').drawImage(sfCrop.img, origemX, origemY, origemW, origemH, 0, 0, saida.w, saida.h);
+        sfCrop.guardar(c.toDataURL('image/jpeg', 0.85));
+
+        closeModal('sf-crop-modal');
+        sfCrop = null;
+        sfCropPointers = {};
     }
 
     async function sfSalvarPerfil() {
