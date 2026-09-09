@@ -311,6 +311,13 @@
 .sf-comment-inputbar input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:9px 14px;color:var(--text);font-size:13px;font-family:inherit;}\
 .sf-comment-inputbar input:focus{outline:none;border-color:var(--accent);}\
 .sf-comment-send{background:var(--accent);border:none;color:#000;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:14px;flex-shrink:0;}\
+/* ── Emojis no comentário (mesmo seletor do chat, preso ao campo de comentário) ── */\
+.sf-comment-emoji-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);width:36px;height:36px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}\
+.sf-comment-emoji-btn:hover{background:var(--surface3);}\
+.sf-comment-emoji-btn.on{color:var(--accent);border-color:var(--accent);}\
+.sf-comment-emoji-btn .icon{width:18px;height:18px;}\
+#sf-emoji-picker{display:none;flex-direction:column;gap:8px;padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0;}\
+#sf-emoji-picker.open{display:flex;}\
 /* ── Modal: compartilhar ── */\
 .sf-share-preview{display:flex;gap:10px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:8px;margin-bottom:14px;}\
 .sf-share-preview img{width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#000;}\
@@ -548,8 +555,13 @@
                     '</div>' +
                     '<div id="sf-respondendo" style="display:none;"><span>Respondendo <b id="sf-respondendo-nome"></b></span>' +
                         '<button onclick="sfCancelarResposta()" title="Cancelar resposta">✕</button></div>' +
+                    '<div id="sf-emoji-picker" role="dialog" aria-label="Emojis">' +
+                        '<div class="ep-cats" id="sf-ep-cats"></div>' +
+                        '<div class="ep-grid" id="sf-ep-grid"></div>' +
+                    '</div>' +
                     '<div class="sf-comment-inputbar">' +
                         '<input type="text" id="sf-comment-input" maxlength="300" placeholder="Escreva um comentário...">' +
+                        '<button class="sf-comment-emoji-btn" id="sf-comment-emoji-btn" type="button" title="Emojis"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>' +
                         '<button class="sf-comment-send" id="sf-comment-send-btn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>' +
                     '</div>' +
                 '</div>' +
@@ -686,6 +698,8 @@
             sfStopCommentsListener();
             sfStopDetailMedia(); // para qualquer áudio/vídeo que tenha ficado tocando (legenda em áudio, etc.)
             sfLiveLeaveIfViewing(); // sai da live se eu estava só assistindo (anfitrião continua no ar em segundo plano)
+            var epFechar = document.getElementById('sf-emoji-picker');
+            if (epFechar) epFechar.classList.remove('open'); // não deixa aberto pro próximo post
         };
         document.getElementById('sf-detail-del-btn').onclick = function () { if (sfDetailPostId) sfDeletePost(sfDetailPostId, true); };
         document.getElementById('sf-detail-more-btn').onclick = function () {
@@ -700,6 +714,7 @@
         };
         document.getElementById('sf-comment-send-btn').onclick = sfSubmitComment;
         document.getElementById('sf-comment-input').onkeydown = function (e) { if (e.key === 'Enter') sfSubmitComment(); };
+        document.getElementById('sf-comment-emoji-btn').onclick = sfToggleEmoji;
 
         document.getElementById('sf-share-cancel').onclick = function () { closeModal('sf-share-modal'); };
         document.getElementById('sf-share-submit').onclick = sfDoShare;
@@ -719,6 +734,15 @@
             sfOptionsPost = null;
         };
         document.getElementById('sf-opt-cancel').onclick = function () { closeModal('sf-post-options-modal'); sfOptionsPost = null; };
+
+        // Fecha o seletor de emojis do comentário ao clicar fora dele
+        // (mesmo comportamento do seletor de emojis do chat).
+        document.addEventListener('click', function (e) {
+            var ep = document.getElementById('sf-emoji-picker');
+            if (!ep || !ep.classList.contains('open')) return;
+            if (e.target.closest('#sf-comment-emoji-btn') || ep.contains(e.target)) return;
+            ep.classList.remove('open');
+        });
 
         sfInitDrag();
     }
@@ -2673,6 +2697,64 @@
         if (inp) inp.placeholder = 'Escreva um comentário...';
     }
 
+    // ══════════════════════════════════════════════════════════
+    //  EMOJIS NO COMENTÁRIO — mesmo seletor (mesma lista `emojiData`,
+    //  as mesmas categorias) já usado no campo de mensagem do chat, ver
+    //  index.html. Aqui ele fica preso ao campo de comentário/resposta
+    //  da Comunidade em vez do campo de mensagem da conversa.
+    // ══════════════════════════════════════════════════════════
+    var sfEmojiPickerReady = false;
+
+    function sfToggleEmoji(e) {
+        if (e) e.stopPropagation();
+        if (!sfEmojiPickerReady) { sfInitEmojiPicker(); sfEmojiPickerReady = true; }
+        var ep = document.getElementById('sf-emoji-picker');
+        if (ep) ep.classList.toggle('open');
+    }
+
+    function sfInitEmojiPicker() {
+        // `emojiData` vem do script principal (index.html), carregado
+        // antes deste arquivo — ver comentário no fim de index.html.
+        if (typeof emojiData === 'undefined') return;
+        var cats = Object.keys(emojiData);
+        var catsEl = document.getElementById('sf-ep-cats');
+        if (!catsEl) return;
+        catsEl.innerHTML = cats.map(function (k, i) {
+            return '<button type="button" class="ep-cat' + (i === 0 ? ' on' : '') + '" data-cat="' + k + '">' + k + '</button>';
+        }).join('');
+        catsEl.querySelectorAll('.ep-cat').forEach(function (btn) {
+            btn.onclick = function () {
+                catsEl.querySelectorAll('.ep-cat').forEach(function (b) { b.classList.remove('on'); });
+                btn.classList.add('on');
+                sfRenderEmojiGrid(btn.getAttribute('data-cat'));
+            };
+        });
+        sfRenderEmojiGrid(cats[0]);
+    }
+
+    function sfRenderEmojiGrid(cat) {
+        var grid = document.getElementById('sf-ep-grid');
+        if (!grid || !emojiData[cat]) return;
+        grid.innerHTML = emojiData[cat].map(function (em) {
+            return '<button type="button" class="ep-em">' + em + '</button>';
+        }).join('');
+        grid.querySelectorAll('.ep-em').forEach(function (btn) {
+            btn.onclick = function () { sfInsertEmoji(btn.textContent); };
+        });
+    }
+
+    // Insere o emoji na posição do cursor dentro do campo de comentário
+    // — igual à função insertEmoji() do chat, só que mirando o
+    // #sf-comment-input em vez do #msg-input.
+    function sfInsertEmoji(em) {
+        var inp = document.getElementById('sf-comment-input');
+        if (!inp) return;
+        var pos = inp.selectionStart !== undefined ? inp.selectionStart : inp.value.length;
+        inp.value = inp.value.slice(0, pos) + em + inp.value.slice(pos);
+        inp.focus();
+        var newPos = pos + em.length;
+        inp.setSelectionRange(newPos, newPos);
+    }
 
     // ══════════════════════════════════════════════════════════
     //  PERFIL DA REDE SOCIAL
