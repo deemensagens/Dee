@@ -136,6 +136,41 @@
 .sf-track{display:flex;height:100%;transition:transform .32s cubic-bezier(.16,1,.3,1);cursor:grab;touch-action:pan-y;}\
 .sf-track.dragging{transition:none;cursor:grabbing;}\
 .sf-card{flex:0 0 100%;width:100%;min-width:100%;height:100%;box-sizing:border-box;display:flex;flex-direction:column;padding:8px 12px 10px;overflow:hidden;}\
+.sf-perfil-card{max-width:520px;width:100%;padding:0;overflow:hidden;max-height:90vh;display:flex;flex-direction:column;}\
+.sf-perfil-capa{height:130px;background:linear-gradient(135deg,rgba(0,229,204,.25),rgba(0,136,255,.2));background-size:cover;background-position:center;position:relative;flex-shrink:0;}\
+.sf-perfil-capa.sem-capa{background:linear-gradient(135deg,rgba(0,229,204,.25),rgba(0,136,255,.2));}\
+.sf-perfil-voltar{position:absolute;top:12px;left:12px;width:34px;height:34px;border-radius:50%;border:none;background:rgba(0,0,0,.5);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}\
+.sf-perfil-topo{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:0 18px;margin-top:-34px;flex-shrink:0;}\
+.sf-perfil-foto{width:76px;height:76px;border-radius:50%;overflow:hidden;border:3px solid var(--surface);background:var(--surface2);flex-shrink:0;}\
+.sf-perfil-foto img{width:100%;height:100%;object-fit:cover;}\
+.sf-perfil-editar{background:rgba(0,229,204,.12);border:1px solid rgba(0,229,204,.3);color:var(--accent);border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;margin-bottom:6px;}\
+.sf-perfil-info{padding:12px 18px 4px;flex-shrink:0;}\
+.sf-perfil-nome{font-family:Syne,sans-serif;font-weight:800;font-size:18px;color:var(--text);}\
+.sf-perfil-arroba{font-size:13px;color:var(--accent);margin-top:1px;}\
+.sf-perfil-bio{font-size:13px;color:var(--muted);line-height:1.5;margin-top:8px;white-space:pre-wrap;}\
+.sf-perfil-numeros{font-size:12px;color:var(--muted);margin-top:10px;}\
+.sf-perfil-numeros b{color:var(--text);font-family:Syne,sans-serif;font-weight:800;font-size:14px;}\
+.sf-perfil-posts{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:14px 4px 4px;overflow-y:auto;flex:1;min-height:0;}\
+.sf-perfil-tile{aspect-ratio:1;border:none;padding:0;background:var(--surface2);cursor:pointer;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;}\
+.sf-perfil-tile img{width:100%;height:100%;object-fit:cover;}\
+.sf-perfil-tile-txt{font-size:10.5px;color:var(--muted);padding:8px;line-height:1.35;text-align:left;overflow:hidden;}\
+.sf-perfil-vazio{grid-column:1/-1;text-align:center;padding:34px 16px;color:var(--muted);font-size:13px;}\
+.sf-edit-campo{margin-bottom:14px;}\
+.sf-edit-campo label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:5px;}\
+.sf-edit-campo input[type=text],.sf-edit-campo textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13.5px;font-family:inherit;}\
+.sf-edit-campo input:disabled{opacity:.55;}\
+.sf-edit-arroba{display:flex;align-items:center;gap:0;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:0 0 0 12px;}\
+.sf-edit-arroba span{color:var(--muted);font-size:13.5px;}\
+.sf-edit-arroba input{flex:1;background:none!important;border:none!important;padding:10px 12px 10px 2px!important;}\
+.sf-edit-aviso{font-size:11px;color:var(--muted2);margin-top:5px;line-height:1.4;}\
+.sf-edit-aviso.travado{color:var(--warn);}\
+.sf-edit-msg{font-size:12.5px;color:var(--muted);min-height:17px;margin:4px 0 10px;}\
+.sf-edit-msg.erro{color:var(--danger);}\
+.sf-busca-resultado{margin-top:14px;min-height:70px;}\
+.sf-busca-dica{font-size:12.5px;color:var(--muted);padding:16px 4px;text-align:center;}\
+.sf-busca-item{display:flex;align-items:center;gap:12px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 13px;cursor:pointer;text-align:left;color:var(--text);}\
+.sf-busca-item b{display:block;font-size:13.5px;}\
+.sf-busca-item small{display:block;font-size:12px;color:var(--accent);margin-top:1px;}\
 .sf-card-head{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-bottom:6px;}\
 .sf-head-click{display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;border-radius:8px;transition:background .15s;}\
 .sf-head-click:hover{background:rgba(0,229,204,.06);}\
@@ -352,7 +387,8 @@
             '<div class="sf-header">' +
                 '<div class="sf-header-btns">' +
                     '<button class="sf-hbtn sf-tab on" id="sf-community-toggle" title="Ver postagens da comunidade"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="sf-hbtn-label">Comunidade</span><span class="tab-badge" id="sf-community-badge" style="display:none;">0</span></button>' +
-                    '<button class="sf-hbtn sf-tab" id="sf-mine-toggle" title="Ver só meus posts"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="sf-hbtn-label">Meus posts</span><span class="tab-badge" id="sf-mine-badge" style="display:none;">0</span></button>' +
+                    '<button class="sf-hbtn" id="sf-buscar-btn" title="Buscar pessoa pelo @nome" onclick="sfAbrirBusca()"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>' +
+                    '<button class="sf-hbtn sf-tab" id="sf-mine-toggle" title="Meu perfil na Comunidade"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="sf-hbtn-label">Meu perfil</span><span class="tab-badge" id="sf-mine-badge" style="display:none;">0</span></button>' +
                     '<button class="sf-hbtn sf-hbtn-icon-only" id="sf-rank-btn" title="Ranking da Comunidade" aria-label="Ranking da Comunidade"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg><span class="unread-badge sf-rank-badge" id="sf-rank-badge" style="display:none;">0</span></button>' +
                     '<button class="sf-hbtn sf-hbtn-icon-only" id="sf-blocked-btn" title="Usuários bloqueados" aria-label="Usuários bloqueados"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>' +
                     '<button class="sf-hbtn new" id="sf-new-btn" title="Nova postagem"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span class="sf-hbtn-label">Postar</span></button>' +
@@ -422,6 +458,72 @@
             '<input type="file" id="sf-live-new-cover-file-input" hidden accept="image/*">' +
             '<input type="file" id="sf-live-new-audio-file-input" hidden accept="audio/*">' +
             // Detalhe do post + comentários
+            '<div id="sf-perfil-modal" class="overlay">' +
+                '<div class="mcard sf-perfil-card">' +
+                    '<div class="sf-perfil-capa" id="sf-perfil-capa">' +
+                        '<button class="sf-perfil-voltar" onclick="sfFecharPerfil()" title="Voltar">' +
+                            '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>' +
+                    '</div>' +
+                    '<div class="sf-perfil-topo">' +
+                        '<div class="sf-perfil-foto" id="sf-perfil-foto"></div>' +
+                        '<button class="sf-perfil-editar" id="sf-perfil-editar" onclick="sfAbrirEdicaoPerfil()" style="display:none;">Editar perfil</button>' +
+                    '</div>' +
+                    '<div class="sf-perfil-info">' +
+                        '<div class="sf-perfil-nome" id="sf-perfil-nome">—</div>' +
+                        '<div class="sf-perfil-arroba" id="sf-perfil-arroba"></div>' +
+                        '<div class="sf-perfil-bio" id="sf-perfil-bio"></div>' +
+                        '<div class="sf-perfil-numeros"><b id="sf-perfil-qtd">0</b> <span>publicações</span></div>' +
+                    '</div>' +
+                    '<div class="sf-perfil-posts" id="sf-perfil-posts"></div>' +
+                '</div>' +
+            '</div>' +
+
+            '<div id="sf-perfil-editar-modal" class="overlay">' +
+                '<div class="mcard">' +
+                    '<h3 class="mtitle">Editar perfil</h3>' +
+                    '<div class="sf-edit-campo">' +
+                        '<label>Foto de perfil</label>' +
+                        '<input type="file" id="sf-edit-foto" accept="image/*">' +
+                    '</div>' +
+                    '<div class="sf-edit-campo">' +
+                        '<label>Foto de capa</label>' +
+                        '<input type="file" id="sf-edit-capa" accept="image/*">' +
+                    '</div>' +
+                    '<div class="sf-edit-campo">' +
+                        '<label>Nome</label>' +
+                        '<input type="text" id="sf-edit-nome" maxlength="40" placeholder="Seu nome">' +
+                        '<div class="sf-edit-aviso" id="sf-edit-nome-aviso"></div>' +
+                    '</div>' +
+                    '<div class="sf-edit-campo">' +
+                        '<label>Nome de usuário</label>' +
+                        '<div class="sf-edit-arroba"><span>@</span>' +
+                            '<input type="text" id="sf-edit-usuario" maxlength="20" placeholder="seunome" autocapitalize="none" autocorrect="off" spellcheck="false">' +
+                        '</div>' +
+                        '<div class="sf-edit-aviso" id="sf-edit-usuario-aviso"></div>' +
+                    '</div>' +
+                    '<div class="sf-edit-campo">' +
+                        '<label>Descrição</label>' +
+                        '<textarea id="sf-edit-bio" maxlength="160" rows="3" placeholder="Escreva algo sobre você..."></textarea>' +
+                    '</div>' +
+                    '<div class="sf-edit-msg" id="sf-edit-msg"></div>' +
+                    '<div class="mbtns">' +
+                        '<button class="mbtn sec" onclick="closeModal(\'sf-perfil-editar-modal\')">Cancelar</button>' +
+                        '<button class="mbtn" onclick="sfSalvarPerfil()">Salvar</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+
+            '<div id="sf-buscar-modal" class="overlay">' +
+                '<div class="mcard">' +
+                    '<h3 class="mtitle">Buscar pessoa</h3>' +
+                    '<div class="sf-edit-arroba"><span>@</span>' +
+                        '<input type="text" id="sf-buscar-input" placeholder="nome de usuário" autocapitalize="none" autocorrect="off" spellcheck="false">' +
+                    '</div>' +
+                    '<div class="sf-busca-resultado" id="sf-busca-resultado"></div>' +
+                    '<div class="mbtns"><button class="mbtn sec" onclick="closeModal(\'sf-buscar-modal\')">Fechar</button></div>' +
+                '</div>' +
+            '</div>' +
+
             '<div id="sf-detail-modal" class="overlay">' +
                 '<div class="mcard">' +
                     '<div class="sf-detail-head">' +
@@ -519,15 +621,29 @@
             sfRenderCarousel();
         };
         document.getElementById('sf-mine-toggle').onclick = function () {
-            sfMarkNotificationsRead(); // toca em "Meus posts": considera as notificações pendentes (nas minhas postagens) como vistas
-            if (sfMode === 'mine') return;
-            sfMode = 'mine';
-            document.getElementById('sf-mine-toggle').classList.add('on');
-            document.getElementById('sf-community-toggle').classList.remove('on');
-            sfIndex = 0;
-            sfRenderCarousel();
+            sfMarkNotificationsRead(); // considera as notificações das minhas postagens como vistas
+            // Antes isto só filtrava o carrossel para mostrar as minhas
+            // postagens. Agora abre o PERFIL: as publicações continuam lá,
+            // junto com foto, capa, descrição e o lugar de editar o nome
+            // e o @nome.
+            sfAbrirPerfil(me && me.uid);
         };
         document.getElementById('sf-blocked-btn').onclick = sfOpenBlockedModal;
+
+        // Busca por @nome: procura enquanto digita, com uma pausa curta
+        // para não consultar a cada letra.
+        var campoBusca = document.getElementById('sf-buscar-input');
+        if (campoBusca) {
+            var timerBusca = null;
+            campoBusca.oninput = function () {
+                clearTimeout(timerBusca);
+                timerBusca = setTimeout(sfBuscarUsuario, 380);
+            };
+        }
+        var fotoEd = document.getElementById('sf-edit-foto');
+        if (fotoEd) fotoEd.onchange = function () { sfLerImagem(this, 420, function (v) { sfMinhaFotoNova = v; }); };
+        var capaEd = document.getElementById('sf-edit-capa');
+        if (capaEd) capaEd.onchange = function () { sfLerImagem(this, 900, function (v) { sfMinhaCapaNova = v; }); };
         document.getElementById('sf-blocked-close').onclick = function () { closeModal('sf-blocked-modal'); };
         document.getElementById('sf-rank-btn').onclick = sfOpenRankModal;
         document.getElementById('sf-rank-close').onclick = function () { closeModal('sf-rank-modal'); };
@@ -931,7 +1047,10 @@
             el.onclick = function (e) {
                 e.stopPropagation();
                 var uid = el.getAttribute('data-profile');
-                if (uid && typeof window.viewUserProfile === 'function') window.viewUserProfile(uid, el.getAttribute('data-profile-name'), e, true);
+                // Antes isto abria o cartão de perfil do CHAT. Agora abre o
+                // perfil da Comunidade daquela pessoa — com a capa, o
+                // @nome, a descrição e todas as publicações dela.
+                if (uid) sfAbrirPerfil(uid);
             };
         });
         track.querySelectorAll('[data-recognize]').forEach(function (el) {
@@ -2553,6 +2672,288 @@
         var inp = document.getElementById('sf-comment-input');
         if (inp) inp.placeholder = 'Escreva um comentário...';
     }
+
+
+    // ══════════════════════════════════════════════════════════
+    //  PERFIL DA REDE SOCIAL
+    // ══════════════════════════════════════════════════════════
+    //  Cada pessoa tem um perfil na Comunidade, separado do perfil do
+    //  chat: foto, capa, nome, @nome e descrição, mais todas as suas
+    //  publicações num lugar só.
+    //
+    //  A Comunidade mostra as publicações de todo mundo; o perfil mostra
+    //  as de uma pessoa. Dá para chegar nele tocando no nome ou na foto
+    //  de quem publicou, ou buscando pelo @nome.
+    // ══════════════════════════════════════════════════════════
+    var sfPerfilAberto  = null;   // uid do perfil que está na tela
+    var sfPerfilCache   = {};     // uid -> dados do perfil, para não reler toda hora
+    var sfMinhaFotoNova = null;   // foto escolhida na edição, ainda não salva
+    var sfMinhaCapaNova = null;
+
+    var TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000;
+
+    // O @nome é sempre guardado em minúsculas e sem acento: é assim que
+    // "Joao" e "joão" deixam de ser dois nomes diferentes para a mesma
+    // grafia — e ninguém consegue registrar um parecido para se passar
+    // por outra pessoa.
+    function sfNormalizarUsuario(txt) {
+        return String(txt || '')
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9_.]/g, '')
+            .slice(0, 20);
+    }
+
+    async function sfCarregarPerfil(uid) {
+        if (!uid) return null;
+        if (sfPerfilCache[uid]) return sfPerfilCache[uid];
+        try {
+            var doc = await db.collection('social_profiles').doc(uid).get();
+            var dados = doc.exists ? doc.data() : {};
+            sfPerfilCache[uid] = dados;
+            return dados;
+        } catch (e) { return {}; }
+    }
+
+    async function sfAbrirPerfil(uid) {
+        if (!uid) return;
+        sfPerfilAberto = uid;
+        openModal('sf-perfil-modal');
+
+        var perfil = await sfCarregarPerfil(uid);
+        // Se a pessoa ainda não editou o perfil da Comunidade, usamos o
+        // nome e a foto que ela já tem no chat — assim o perfil nunca
+        // aparece vazio, mesmo para quem nunca mexeu nele.
+        var doChat = (typeof allUsers !== 'undefined' && allUsers)
+            ? allUsers.find(function (u) { return u.uid === uid; })
+            : null;
+        var nome = perfil.nome || (doChat && doChat.nome) || (uid === (me && me.uid) ? me.nome : 'Usuário');
+        var foto = perfil.foto || (doChat && doChat.foto) || (uid === (me && me.uid) ? me.foto : null);
+
+        var capaEl = document.getElementById('sf-perfil-capa');
+        if (capaEl) {
+            capaEl.style.backgroundImage = perfil.capa ? 'url(' + perfil.capa + ')' : '';
+            capaEl.classList.toggle('sem-capa', !perfil.capa);
+        }
+        document.getElementById('sf-perfil-foto').innerHTML = avInner(nome, foto);
+        document.getElementById('sf-perfil-nome').textContent = nome;
+        var arrobaEl = document.getElementById('sf-perfil-arroba');
+        arrobaEl.textContent = perfil.username ? '@' + perfil.username : '';
+        arrobaEl.style.display = perfil.username ? 'block' : 'none';
+        var bioEl = document.getElementById('sf-perfil-bio');
+        bioEl.textContent = perfil.bio || '';
+        bioEl.style.display = perfil.bio ? 'block' : 'none';
+
+        // O botão de editar só existe no próprio perfil.
+        var btnEd = document.getElementById('sf-perfil-editar');
+        if (btnEd) btnEd.style.display = (me && uid === me.uid) ? 'inline-flex' : 'none';
+
+        sfRenderPerfilPosts(uid);
+    }
+
+    function sfFecharPerfil() {
+        closeModal('sf-perfil-modal');
+        sfPerfilAberto = null;
+    }
+
+    // As publicações da pessoa, em grade — tocar em qualquer uma abre a
+    // publicação inteira, igual ao feed.
+    function sfRenderPerfilPosts(uid) {
+        var caixa = document.getElementById('sf-perfil-posts');
+        if (!caixa) return;
+        var lista = sfPosts.filter(function (p) { return p.uid === uid; });
+        document.getElementById('sf-perfil-qtd').textContent = lista.length;
+
+        if (!lista.length) {
+            caixa.innerHTML = '<div class="sf-perfil-vazio">Nenhuma publicação ainda.</div>';
+            return;
+        }
+        caixa.innerHTML = lista.map(function (p) {
+            var capa = p.mediaData
+                ? '<img src="' + p.mediaData + '" alt="">'
+                : '<span class="sf-perfil-tile-txt">' + esc((p.text || '').slice(0, 60)) + '</span>';
+            return '<button class="sf-perfil-tile" data-pid="' + p.id + '">' + capa + '</button>';
+        }).join('');
+        caixa.querySelectorAll('[data-pid]').forEach(function (b) {
+            b.onclick = function () { sfOpenPostDetail(b.getAttribute('data-pid')); };
+        });
+    }
+
+    // ── EDIÇÃO ──
+    async function sfAbrirEdicaoPerfil() {
+        if (!me) return;
+        var perfil = await sfCarregarPerfil(me.uid);
+        document.getElementById('sf-edit-nome').value    = perfil.nome || me.nome || '';
+        document.getElementById('sf-edit-usuario').value = perfil.username || '';
+        document.getElementById('sf-edit-bio').value     = perfil.bio || '';
+        document.getElementById('sf-edit-msg').textContent = '';
+        sfMinhaFotoNova = null; sfMinhaCapaNova = null;
+
+        // Cada nome tem a própria contagem de 30 dias: trocar um não
+        // bloqueia o outro.
+        sfMostrarTrava('sf-edit-nome',    'sf-edit-nome-aviso',    perfil.nomeChangedAt,     'nome');
+        sfMostrarTrava('sf-edit-usuario', 'sf-edit-usuario-aviso', perfil.usernameChangedAt, 'nome de usuário');
+
+        openModal('sf-perfil-editar-modal');
+    }
+
+    function sfDiasParaLiberar(ultimaTroca) {
+        if (!ultimaTroca) return 0;
+        var falta = TRINTA_DIAS - (Date.now() - ultimaTroca);
+        return falta <= 0 ? 0 : Math.ceil(falta / (24 * 60 * 60 * 1000));
+    }
+
+    function sfMostrarTrava(idCampo, idAviso, ultimaTroca, rotulo) {
+        var dias = sfDiasParaLiberar(ultimaTroca);
+        var campo = document.getElementById(idCampo);
+        var aviso = document.getElementById(idAviso);
+        if (dias > 0) {
+            campo.disabled = true;
+            aviso.textContent = 'Você poderá trocar o ' + rotulo + ' novamente em ' + dias + (dias === 1 ? ' dia.' : ' dias.');
+            aviso.className = 'sf-edit-aviso travado';
+        } else {
+            campo.disabled = false;
+            aviso.textContent = 'Depois de salvar, só poderá trocar de novo em 30 dias.';
+            aviso.className = 'sf-edit-aviso';
+        }
+    }
+
+    // Reduz a imagem antes de guardar: ela é lida por todo mundo que
+    // abrir o perfil, então não pode ser pesada.
+    function sfLerImagem(input, maxDim, guardar) {
+        var file = input.files && input.files[0];
+        if (!file) return;
+        var r = new FileReader();
+        r.onload = function (e) {
+            var img = new Image();
+            img.onload = function () {
+                var escala = Math.min(1, maxDim / Math.max(img.width, img.height));
+                var c = document.createElement('canvas');
+                c.width  = Math.max(2, Math.round(img.width  * escala));
+                c.height = Math.max(2, Math.round(img.height * escala));
+                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                guardar(c.toDataURL('image/jpeg', 0.8));
+            };
+            img.src = e.target.result;
+        };
+        r.readAsDataURL(file);
+    }
+
+    async function sfSalvarPerfil() {
+        if (!me) return;
+        var msg = document.getElementById('sf-edit-msg');
+        msg.className = 'sf-edit-msg';
+        msg.textContent = '';
+
+        var perfil    = await sfCarregarPerfil(me.uid);
+        var nomeNovo  = document.getElementById('sf-edit-nome').value.trim().slice(0, 40);
+        var userNovo  = sfNormalizarUsuario(document.getElementById('sf-edit-usuario').value);
+        var bioNova   = document.getElementById('sf-edit-bio').value.trim().slice(0, 160);
+
+        var nomeAntes = perfil.nome || '';
+        var userAntes = perfil.username || '';
+
+        if (!nomeNovo) { msg.textContent = 'O nome não pode ficar vazio.'; return; }
+        if (userNovo && userNovo.length < 3) {
+            msg.textContent = 'O nome de usuário precisa ter pelo menos 3 letras.';
+            return;
+        }
+
+        var trocouNome = nomeNovo !== nomeAntes;
+        var trocouUser = userNovo !== userAntes;
+
+        // Trava de 30 dias, conferida separadamente para cada nome.
+        if (trocouNome && sfDiasParaLiberar(perfil.nomeChangedAt) > 0) {
+            msg.textContent = 'Ainda não é possível trocar o nome.'; return;
+        }
+        if (trocouUser && sfDiasParaLiberar(perfil.usernameChangedAt) > 0) {
+            msg.textContent = 'Ainda não é possível trocar o nome de usuário.'; return;
+        }
+
+        var dados = { nome: nomeNovo, bio: bioNova, uid: me.uid, atualizadoEm: Date.now() };
+        if (sfMinhaFotoNova) dados.foto = sfMinhaFotoNova;
+        if (sfMinhaCapaNova) dados.capa = sfMinhaCapaNova;
+        if (trocouNome) dados.nomeChangedAt = Date.now();
+
+        try {
+            // ── RESERVA DO @NOME ──
+            // O nome vira o identificador do documento. O Firestore não
+            // permite dois documentos com o mesmo id, e a regra proíbe
+            // sobrescrever um existente — então, se duas pessoas
+            // tentarem o mesmo nome no mesmo instante, só a primeira
+            // consegue e a segunda recebe erro. Não existe brecha.
+            if (trocouUser && userNovo) {
+                try {
+                    await db.collection('social_usernames').doc(userNovo).create({
+                        uid: me.uid, criadoEm: Date.now()
+                    });
+                } catch (e) {
+                    msg.textContent = 'O nome @' + userNovo + ' já está em uso. Escolha outro.';
+                    msg.className = 'sf-edit-msg erro';
+                    return;
+                }
+                // Só depois de garantir o novo é que o antigo é liberado.
+                if (userAntes) {
+                    try { await db.collection('social_usernames').doc(userAntes).delete(); } catch (e) {}
+                }
+                dados.username = userNovo;
+                dados.usernameChangedAt = Date.now();
+            }
+
+            await db.collection('social_profiles').doc(me.uid).set(dados, { merge: true });
+            delete sfPerfilCache[me.uid];
+            notify('Perfil atualizado', 'ok');
+            closeModal('sf-perfil-editar-modal');
+            sfAbrirPerfil(me.uid);
+        } catch (e) {
+            msg.textContent = 'Erro ao salvar: ' + friendlyError(e);
+            msg.className = 'sf-edit-msg erro';
+        }
+    }
+
+    // ── BUSCA POR @NOME ──
+    function sfAbrirBusca() {
+        document.getElementById('sf-buscar-input').value = '';
+        document.getElementById('sf-busca-resultado').innerHTML =
+            '<div class="sf-busca-dica">Digite o nome de usuário de alguém para ver o perfil.</div>';
+        openModal('sf-buscar-modal');
+        setTimeout(function () { document.getElementById('sf-buscar-input').focus(); }, 150);
+    }
+
+    async function sfBuscarUsuario() {
+        var alvo = sfNormalizarUsuario(document.getElementById('sf-buscar-input').value);
+        var caixa = document.getElementById('sf-busca-resultado');
+        if (!alvo || alvo.length < 2) {
+            caixa.innerHTML = '<div class="sf-busca-dica">Digite pelo menos 2 letras.</div>';
+            return;
+        }
+        caixa.innerHTML = '<div class="sf-busca-dica">Procurando...</div>';
+        try {
+            var doc = await db.collection('social_usernames').doc(alvo).get();
+            if (!doc.exists) {
+                caixa.innerHTML = '<div class="sf-busca-dica">Ninguém usa @' + esc(alvo) + '.</div>';
+                return;
+            }
+            var uid = doc.data().uid;
+            var perfil = await sfCarregarPerfil(uid);
+            caixa.innerHTML = '<button class="sf-busca-item" id="sf-busca-ir">' +
+                '<div class="sf-avatar" style="width:40px;height:40px;">' + avInner(perfil.nome || 'Usuário', perfil.foto) + '</div>' +
+                '<div><b>' + esc(perfil.nome || 'Usuário') + '</b><small>@' + esc(alvo) + '</small></div>' +
+            '</button>';
+            document.getElementById('sf-busca-ir').onclick = function () {
+                closeModal('sf-buscar-modal');
+                sfAbrirPerfil(uid);
+            };
+        } catch (e) {
+            caixa.innerHTML = '<div class="sf-busca-dica">Não foi possível buscar agora.</div>';
+        }
+    }
+
+    window.sfAbrirPerfil        = sfAbrirPerfil;
+    window.sfFecharPerfil       = sfFecharPerfil;
+    window.sfAbrirEdicaoPerfil  = sfAbrirEdicaoPerfil;
+    window.sfSalvarPerfil       = sfSalvarPerfil;
+    window.sfAbrirBusca         = sfAbrirBusca;
 
     async function sfDeleteComment(postId, commentId) {
         if (!me || !postId || !commentId) return;

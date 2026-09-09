@@ -567,6 +567,44 @@ service cloud.firestore {
     //
     //  Qualquer pessoa logada lê (precisa, para os temas aparecerem na
     //  lista); só o administrador cria, altera ou apaga.
+    // ══════════════════════════════════════════════════════════
+    //  PERFIL DA REDE SOCIAL
+    // ══════════════════════════════════════════════════════════
+    //  Guarda nome de exibição, @nome, foto, capa e descrição de cada
+    //  pessoa na Comunidade, além das datas da última troca de cada nome
+    //  (a trava de 30 dias é contada separadamente para cada um).
+    //
+    //  Qualquer pessoa logada lê — é o que permite abrir o perfil de
+    //  outra pessoa e buscar por @nome. Só o dono escreve no seu.
+    match /social_profiles/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if signedIn() && (request.auth.uid == uid || admin());
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  RESERVA DE @NOME
+    // ══════════════════════════════════════════════════════════
+    //  Esta coleção existe por um motivo específico: garantir que dois
+    //  @nomes iguais nunca coexistam.
+    //
+    //  Só conferir "esse nome já existe?" antes de salvar não basta —
+    //  duas pessoas podem conferir no mesmo instante, as duas verem
+    //  "livre", e as duas salvarem. O jeito de impedir isso de verdade é
+    //  transformar o próprio nome no IDENTIFICADOR do documento: o
+    //  Firestore não deixa criar dois documentos com o mesmo id, e a
+    //  regra abaixo proíbe sobrescrever um já existente. A segunda
+    //  pessoa recebe um erro em vez de roubar o nome.
+    //
+    //  Apagar só é permitido a quem é dono do nome — é o que libera o
+    //  nome antigo quando alguém troca de @.
+    match /social_usernames/{username} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if false;   // nome reservado nunca troca de dono por cima
+      allow delete: if signedIn() && (resource.data.uid == request.auth.uid || admin());
+    }
+
     match /app_temas/{id} {
       allow read: if signedIn();
       allow write: if admin();

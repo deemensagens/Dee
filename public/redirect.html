@@ -5,48 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#00e5cc">
-<title>Redirecionando... — Dee</title>
-
-<!-- ══════════════════════════════════════════════════════════
-     GOOGLE ADSENSE — script principal / Auto Ads, carregado no
-     <head> como o Google exige. client = ca-pub-5978910912781724.
-   ══════════════════════════════════════════════════════════ -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5978910912781724" crossorigin="anonymous"></script>
-
-<!-- ══════════════════════════════════════════════════════════
-     PÁGINA INTERSTICIAL DE REDIRECIONAMENTO (AD GATE)
-     ──────────────────────────────────────────────────────────
-     Como funciona:
-     - Todo link enviado em mensagens de chat ou em legendas de
-       posts passa a apontar para ESTA página em vez do destino
-       final (isso é feito em index.html/linkify() e em
-       social.js, via buildAdGateUrl()).
-     - O destino real vem na querystring, URL-encoded:
-         redirect.html?to=<encodeURIComponent(url)>&t=<segundos>
-     - Enquanto o anúncio (bloco do AdSense) e o tempo mínimo
-       (?t=, padrão 5s) não terminam, o botão "Continuar" fica
-       bloqueado. Passado esse tempo, o botão libera.
-     - IMPORTANTE: o redirecionamento NUNCA acontece sozinho.
-       Não existe nenhum setTimeout, evento de vídeo ou qualquer
-       outro gatilho automático que chame a navegação — a ÚNICA
-       forma de sair desta página é o usuário clicar/tocar no
-       botão "Continuar" já liberado.
-     - Enquanto espera, o usuário vê um conteúdo real sobre por que
-       esse passo existe (não é só enfeite — é isso que tira a página
-       da categoria "tela sem conteúdo" nas políticas do AdSense).
-       Ler esse conteúdo não é obrigatório nem afeta o timer/botão.
-     - IMPORTANTE (política do AdSense): não colocar de volta nenhum
-       tipo de jogo/mini-game nesta página. O próprio guia oficial do
-       AdSense cita "interstitial pages" e "game interfaces" como duas
-       categorias separadas onde anúncios de conteúdo não são
-       permitidos — esta página já é a primeira; não pode virar as
-       duas ao mesmo tempo.
-     - Se um dia vocês usarem um <video> próprio como "anúncio"
-       (em vez do bloco padrão do AdSense), basta dar a esse
-       vídeo o id="ad-gate-video": este script detecta o evento
-       "ended" e libera o botão na hora (nunca redireciona
-       sozinho), sem esperar o restante do timer.
-   ══════════════════════════════════════════════════════════ -->
+<title>Redirecionando… — Dee</title>
 
 <style>
     :root {
@@ -106,28 +65,9 @@
     .progress-fill {
         height: 100%; width: 0%; border-radius: 4px;
         background: linear-gradient(90deg, var(--accent), var(--accent2));
-        transition: width 1s linear;
+        transition: width 0.3s ease;
     }
 
-    /* ── Área do anúncio AdSense ── */
-    .ad-slot {
-        width: 100%; min-height: 250px; background: var(--surface);
-        border: 1px solid var(--border); border-radius: 18px;
-        display: flex; align-items: center; justify-content: center;
-        flex-direction: column; gap: 8px; margin-bottom: 18px; overflow: hidden;
-        position: relative;
-    }
-    .ad-slot-label {
-        position: absolute; top: 8px; left: 10px; font-size: 10px;
-        letter-spacing: .5px; text-transform: uppercase; color: var(--muted);
-    }
-    .ad-slot .adsbygoogle { width: 100%; }
-    .ad-fallback { color: var(--muted); font-size: 12.5px; padding: 0 16px; text-align: center; }
-
-    /* ── Bloco de conteúdo real (por que este passo existe) ──
-       Isto NÃO é enfeite: é conteúdo genuíno do editor, necessário
-       pra página não cair em "screens without publisher-content"
-       nas políticas do AdSense. */
     .info-card {
         width: 100%; background: var(--surface); border: 1px solid var(--border);
         border-radius: 18px; padding: 20px; margin-bottom: 18px;
@@ -135,15 +75,6 @@
     .info-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
     .info-text { font-size: 13px; line-height: 1.65; color: var(--muted); margin-bottom: 12px; }
     .info-text:last-child { margin-bottom: 0; }
-    .info-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-    .info-list li {
-        font-size: 12.5px; line-height: 1.5; color: var(--muted);
-        display: flex; align-items: flex-start; gap: 8px;
-    }
-    .info-list li::before {
-        content: "•"; color: var(--accent); font-weight: 700; flex-shrink: 0;
-    }
-    .info-list strong { color: var(--text); }
 
     .continue-btn {
         width: 100%; padding: 15px; border-radius: 14px; border: none;
@@ -160,7 +91,22 @@
     .continue-btn .cd { font-variant-numeric: tabular-nums; }
 
     .foot-note { margin-top: 14px; font-size: 11.5px; color: var(--muted); text-align: center; line-height: 1.5; }
-    .foot-note a { color: var(--accent); text-decoration: none; }
+    
+    .btn-seguranca {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        background: rgba(0, 229, 204, 0.1);
+        border: 1px solid var(--accent);
+        color: var(--accent);
+        font-weight: 700;
+        text-decoration: none;
+        transition: background 0.2s;
+    }
+    .btn-seguranca:hover {
+        background: rgba(0, 229, 204, 0.2);
+    }
 
     .error-box { text-align: center; padding: 40px 16px; }
     .error-box h1 { font-size: 18px; margin-bottom: 8px; }
@@ -191,77 +137,30 @@
         <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
     </div>
 
-    <div class="ad-slot" id="ad-slot">
-        <div class="ad-slot-label">Publicidade</div>
-
-        <!-- Anuncio_Pagina_Especifica_Redirect -->
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-5978910912781724"
-             data-ad-slot="9734660415"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>
-            (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
-
-        <!-- Se um dia vocês usarem um vídeo próprio de anúncio em vez do
-             AdSense, é só colocar aqui um elemento assim (o script lá
-             embaixo detecta o fim sozinho e libera o botão — nunca
-             redireciona automaticamente):
-             <video id="ad-gate-video" src="..." autoplay playsinline muted></video>
-        -->
-
-        <div class="ad-fallback" id="ad-fallback" style="display:none">
-            O anúncio não pôde ser carregado, mas o botão libera normalmente.
-        </div>
+    <div class="foot-note">
+        Este link foi verificado pelo Dee antes de te enviar ao destino final.<br>
+        Por segurança, acesse a Central antes de prosseguir:<br>
+        <a id="link-seguranca" class="btn-seguranca" href="central-seguranca.html">Acessar Central de Segurança</a>
     </div>
 
-    <div class="info-card">
+    <div class="info-card" style="margin-top: 18px;">
         <div class="info-title">🛡️ Por que esse passo existe</div>
         <p class="info-text">
             Links compartilhados em conversas e publicações podem levar a páginas fora do nosso controle — incluindo sites de phishing que imitam bancos, redes sociais ou serviços conhecidos para roubar senhas e dados. Por isso, antes de sair do Dee, mostramos exatamente para onde você vai e esperamos alguns segundos antes de liberar o botão, dando tempo de conferir o endereço acima.
         </p>
-        <p class="info-text">Enquanto aguarda, alguns sinais que vale sempre observar em qualquer link, dentro ou fora do Dee:</p>
-        <ul class="info-list">
-            <li><strong>Endereço estranho:</strong> letras trocadas, números no lugar de letras (ex. "paypa1.com") ou domínios que não batem com a empresa real.</li>
-            <li><strong>Pressa ou ameaça:</strong> mensagens como "sua conta será bloqueada" ou "oferta expira em minutos" são táticas clássicas pra te fazer clicar sem pensar.</li>
-            <li><strong>Pedido de senha fora do app oficial:</strong> nenhum serviço sério pede login em uma página que chegou por link de terceiros.</li>
-        </ul>
     </div>
 
     <button class="continue-btn" id="continue-btn" disabled>
         <span id="continue-label">Aguarde</span>
-        <span class="cd" id="continue-cd">5s</span>
+        <span class="cd" id="continue-cd"></span>
     </button>
-
-    <div class="foot-note">
-        Este link foi verificado pelo Dee antes de te enviar ao destino final.<br>
-        Por segurança, o redirecionamento só acontece quando você toca em Continuar.
-    </div>
 </div>
 
 <script>
-/* ══════════════════════════════════════════════════════════
-   1) REDIRECIONAMENTO — leitura da querystring, timer e
-      liberação manual do botão.
-      NENHUM redirecionamento automático acontece neste arquivo:
-      goToTarget() só é chamada dentro do listener de click do
-      botão "Continuar", em nenhum outro lugar.
-   ══════════════════════════════════════════════════════════ */
 (function () {
     'use strict';
 
     var params = new URLSearchParams(window.location.search);
-
-    // ── Destino (?to=) ──────────────────────────────────────
-    // URLSearchParams.get() JÁ decodifica o valor automaticamente
-    // (é o par exato do encodeURIComponent() usado em buildAdGateUrl()
-    // no index.html). NÃO chamar decodeURIComponent() de novo aqui:
-    // isso causaria um duplo decode e quebraria (ou derrubaria com
-    // erro, mostrando "link inválido" em um link válido) qualquer
-    // destino que já contivesse "%" na própria URL — comum em buscas
-    // com acento ou em redirects encadeados (?next=https%3A%2F%2F...).
     var target = params.get('to') || '';
 
     function isSafeHttpUrl(u) {
@@ -284,10 +183,40 @@
         return;
     }
 
-    // ── Tempo mínimo de espera (?t=), travado entre 3s e 60s ──
+    // Repassa os parâmetros da URL para o link da Central de Segurança
+    var linkSeguranca = document.getElementById('link-seguranca');
+    if (linkSeguranca && window.location.search) {
+        linkSeguranca.href = 'central-seguranca.html' + window.location.search;
+    }
+
+    // Tempo mínimo de espera (?t=), entre 3s e 60s
     var minSeconds = parseInt(params.get('t'), 10);
     if (!minSeconds || isNaN(minSeconds)) minSeconds = 5;
     minSeconds = Math.max(3, Math.min(60, minSeconds));
+
+    // Chave única para o sessionStorage baseada na URL de destino
+    var storageKey = 'dee_gate_' + btoa(target).slice(0, 32);
+
+    // Recupera o estado salvo ou inicializa um novo
+    var savedState = {};
+    try {
+        savedState = JSON.parse(sessionStorage.getItem(storageKey)) || {};
+    } catch (e) { savedState = {}; }
+
+    var now = Date.now();
+    var endTime = savedState.endTime || (now + minSeconds * 1000);
+    var clickedSecurity = !!savedState.clickedSecurity;
+
+    function saveState() {
+        try {
+            sessionStorage.setItem(storageKey, JSON.stringify({
+                endTime: endTime,
+                clickedSecurity: clickedSecurity
+            }));
+        } catch (e) {}
+    }
+
+    saveState();
 
     var statusTitle  = document.getElementById('status-title');
     var statusSub    = document.getElementById('status-sub');
@@ -296,78 +225,72 @@
     var btn          = document.getElementById('continue-btn');
     var btnLabel     = document.getElementById('continue-label');
     var btnCd        = document.getElementById('continue-cd');
-    var adFallback   = document.getElementById('ad-fallback');
 
     var hostname = '';
     try { hostname = new URL(target).hostname.replace(/^www\./, ''); } catch (e) {}
-    statusSub.textContent = hostname ? ('Destino: ' + hostname) : 'Preparando seu link';
 
     var ready = false;
-    var remaining = minSeconds;
+    var timerId = null;
 
-    // Libera o botão "Continuar". Isto SÓ habilita o clique — não
-    // navega para lugar nenhum. A navegação real só acontece no
-    // listener de click do botão, mais abaixo.
-    function unlock() {
-        if (ready) return;
-        ready = true;
-        remaining = 0;
-        spinner.classList.add('done');
-        progressFill.style.width = '100%';
-        btn.disabled = false;
-        btn.classList.add('ready');
-        btnLabel.textContent = 'Continuar';
-        btnCd.textContent = '';
-        statusTitle.textContent = 'Pronto!';
-        statusSub.textContent = hostname
-            ? ('Toque em Continuar para ir até ' + hostname)
-            : 'Toque em Continuar para prosseguir';
+    function checkRequirements(timeDone) {
+        if (timeDone && clickedSecurity) {
+            ready = true;
+            spinner.classList.add('done');
+            progressFill.style.width = '100%';
+            btn.disabled = false;
+            btn.classList.add('ready');
+            btnLabel.textContent = 'Continuar';
+            btnCd.textContent = '';
+            statusTitle.textContent = 'Pronto!';
+            statusSub.textContent = hostname
+                ? ('Toque em Continuar para ir até ' + hostname)
+                : 'Toque em Continuar para prosseguir';
+        } else if (timeDone && !clickedSecurity) {
+            spinner.classList.add('done');
+            progressFill.style.width = '100%';
+            btnLabel.textContent = 'Continuar';
+            btnCd.textContent = '';
+            statusTitle.textContent = 'Ação necessária';
+            statusSub.textContent = 'Clique no botão da Central de Segurança acima para liberar o acesso.';
+        }
     }
 
-    function goToTarget() {
-        window.location.href = target;
-    }
-
-    function tick() {
-        if (ready) return;
-        remaining -= 1;
-        var pct = Math.min(100, Math.round(((minSeconds - remaining) / minSeconds) * 100));
-        progressFill.style.width = pct + '%';
-        btnCd.textContent = Math.max(remaining, 0) + 's';
-        if (remaining <= 0) { unlock(); return; }
-        setTimeout(tick, 1000);
-    }
-    btnCd.textContent = remaining + 's';
-    setTimeout(tick, 1000);
-
-    // ── Suporte opcional a vídeo próprio como anúncio: se existir
-    //    #ad-gate-video no slot, libera o botão assim que o vídeo
-    //    terminar — nunca antes do tempo mínimo, e nunca redireciona
-    //    sozinho (só libera o clique, igual ao unlock() do timer). ──
-    var adVideo = document.getElementById('ad-gate-video');
-    if (adVideo) {
-        adVideo.addEventListener('ended', function () {
-            if (remaining > 0) return;
-            unlock();
+    // Marca a flag e salva o estado ao clicar no link da Central
+    if (linkSeguranca) {
+        linkSeguranca.addEventListener('click', function() {
+            clickedSecurity = true;
+            saveState();
+            var remainingSec = Math.ceil((endTime - Date.now()) / 1000);
+            checkRequirements(remainingSec <= 0);
         });
     }
 
-    // ── Se o bloco do AdSense não carregar (AdBlock, offline, sem
-    //    inventário etc.), avisamos — mas o botão segue liberando
-    //    normalmente pelo timer, ninguém fica travado por causa
-    //    disso. ──
-    setTimeout(function () {
-        var ins = document.querySelector('.adsbygoogle');
-        var loaded = ins && ins.getAttribute('data-adsbygoogle-status');
-        if (!loaded) adFallback.style.display = 'block';
-    }, 3000);
+    function tick() {
+        var currentNow = Date.now();
+        var remainingSec = Math.ceil((endTime - currentNow) / 1000);
 
-    // Único ponto de todo o arquivo que navega para o destino final —
-    // e só roda em resposta direta a um clique/toque do usuário no
-    // botão já liberado.
+        if (remainingSec <= 0) {
+            checkRequirements(true);
+            if (timerId) clearInterval(timerId);
+            return;
+        }
+
+        var elapsedMs = (minSeconds * 1000) - (endTime - currentNow);
+        var pct = Math.min(100, Math.max(0, Math.round((elapsedMs / (minSeconds * 1000)) * 100)));
+        
+        progressFill.style.width = pct + '%';
+        btnCd.textContent = remainingSec + 's';
+        
+        statusTitle.textContent = 'Redirecionando…';
+        statusSub.textContent = hostname ? ('Destino: ' + hostname) : 'Preparando seu link';
+    }
+
+    tick();
+    timerId = setInterval(tick, 250);
+
     btn.addEventListener('click', function () {
         if (!ready) return;
-        goToTarget();
+        window.location.href = target;
     });
 })();
 </script>
