@@ -2959,14 +2959,18 @@
 
         try {
             // ── RESERVA DO @NOME ──
-            // O nome vira o identificador do documento. O Firestore não
-            // permite dois documentos com o mesmo id, e a regra proíbe
-            // sobrescrever um existente — então, se duas pessoas
-            // tentarem o mesmo nome no mesmo instante, só a primeira
-            // consegue e a segunda recebe erro. Não existe brecha.
+            // O nome vira o identificador do documento. O SDK do Firestore
+            // para navegador não tem um método create() (isso só existe
+            // no SDK de servidor/Admin) — quem garante que ninguém
+            // sobrescreve o nome de outra pessoa é a REGRA no
+            // firestore.rules ("social_usernames": allow update: if
+            // false). Por isso o set() abaixo: se o documento já existir,
+            // o servidor recusa a escrita (é tratada como "update", que a
+            // regra proíbe) e cai no catch — se duas pessoas tentarem o
+            // mesmo nome no mesmo instante, só a primeira consegue.
             if (trocouUser && userNovo) {
                 try {
-                    await db.collection('social_usernames').doc(userNovo).create({
+                    await db.collection('social_usernames').doc(userNovo).set({
                         uid: me.uid, criadoEm: Date.now()
                     });
                 } catch (e) {
