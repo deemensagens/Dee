@@ -168,7 +168,7 @@
 #sf-new-post-modal,#sf-live-new-modal,#sf-perfil-editar-modal{z-index:1010;}\
 #sf-crop-modal{z-index:1020;}\
 .sf-edit-contador{font-size:11px;color:var(--muted2);text-align:right;margin-top:4px;}\
-.sf-edit-contador.cheio{color:var(--warn);}\
+.sf-edit-contador.cheio{color:var(--warn,#ffb020);}\
 .sf-edit-campo{margin-bottom:14px;}\
 .sf-edit-campo label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:5px;}\
 .sf-edit-campo input[type=text],.sf-edit-campo textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13.5px;font-family:inherit;}\
@@ -332,6 +332,33 @@
 .sf-comment-emoji-btn .icon{width:18px;height:18px;}\
 #sf-emoji-picker{display:none;flex-direction:column;gap:8px;padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0;}\
 #sf-emoji-picker.open{display:flex;}\
+/* -- Comentario em audio: botao de gravar (mesmo desenho do microfone do chat), barra de gravacao, previa antes de enviar e o tocador dentro do comentario -- */\
+.sf-comment-mic-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);width:36px;height:36px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}\
+.sf-comment-mic-btn:hover{background:var(--surface3);}\
+.sf-comment-mic-btn .icon{width:18px;height:18px;}\
+.sf-comment-mic-btn.rec-on{color:var(--danger);border-color:rgba(255,59,92,.45);background:rgba(255,59,92,.1);animation:sf-blink 1s ease infinite;}\
+.sf-cmt-rec-bar{display:none;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--border);background:rgba(255,59,92,.07);font-size:12px;color:var(--danger);flex-shrink:0;}\
+.sf-cmt-rec-bar.show{display:flex;}\
+.sf-cmt-rec-time{font-family:"Syne",sans-serif;font-weight:800;margin-left:auto;}\
+.sf-cmt-rec-stop{background:var(--danger);border:none;color:#fff;cursor:pointer;height:26px;padding:0 12px;border-radius:8px;font-family:"Syne",sans-serif;font-weight:800;font-size:11px;flex-shrink:0;}\
+.sf-cmt-audio-preview{display:none;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--border);background:var(--surface2);flex-shrink:0;}\
+.sf-cmt-audio-preview.show{display:flex;}\
+#sf-cmt-audio-preview-player{flex:1;min-width:0;}\
+.sf-cmt-audio-preview .sf-cmt-audio{max-width:none;margin-top:0;}\
+.sf-cmt-prev-label{font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;}\
+.sf-cmt-rm-audio{flex-shrink:0;background:rgba(0,0,0,.3);border:none;color:var(--text);width:26px;height:26px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;}\
+.sf-cmt-rm-audio .icon{width:13px;height:13px;}\
+.sf-cmt-audio{display:flex;align-items:center;gap:9px;background:var(--surface3,rgba(255,255,255,.05));border:1px solid var(--border);border-radius:20px;padding:5px 11px 5px 5px;margin-top:4px;max-width:230px;}\
+.sf-cmt-play{width:28px;height:28px;flex-shrink:0;border:none;border-radius:50%;background:rgba(0,229,204,.14);color:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;}\
+.sf-cmt-play .icon{width:13px;height:13px;}\
+.sf-cmt-play:active{transform:scale(.92);}\
+.sf-cmt-faixa{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;min-width:34px;cursor:pointer;}\
+.sf-cmt-cheia{height:100%;width:0%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2,var(--accent)));}\
+.sf-cmt-tempo{font-size:10.5px;color:var(--muted);font-family:"Syne",sans-serif;font-weight:700;white-space:nowrap;flex-shrink:0;min-width:26px;text-align:right;}\
+.sf-cmt-audio.carregando{opacity:.6;}\
+/* Com quatro botoes na barra do comentario o campo de texto fica apertado em telas pequenas: ali os botoes e o espacamento encolhem um pouco. */\
+@media (max-width:420px){.sf-comment-inputbar{gap:6px;padding:9px 10px;}.sf-comment-emoji-btn,.sf-comment-mic-btn,.sf-comment-send{width:32px;height:32px;}.sf-comment-emoji-btn .icon,.sf-comment-mic-btn .icon{width:16px;height:16px;}.sf-comment-inputbar input{padding:8px 12px;}}\
+@media (max-width:340px){.sf-comment-inputbar{gap:4px;padding:8px;}.sf-comment-emoji-btn,.sf-comment-mic-btn,.sf-comment-send{width:30px;height:30px;}}\
 /* ── Modal: compartilhar ── */\
 .sf-share-preview{display:flex;gap:10px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:8px;margin-bottom:14px;}\
 .sf-share-preview img{width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#000;}\
@@ -628,9 +655,24 @@
                         '<div class="ep-cats" id="sf-ep-cats"></div>' +
                         '<div class="ep-grid" id="sf-ep-grid"></div>' +
                     '</div>' +
+                    '<div class="sf-cmt-rec-bar" id="sf-cmt-rec-bar"><span class="sf-rdot"></span> Gravando comentário...' +
+                        '<span class="sf-cmt-rec-time" id="sf-cmt-rec-time">0,0s / 10s</span>' +
+                        '<button class="sf-cmt-rec-stop" id="sf-cmt-rec-stop">Parar</button></div>' +
+                    '<div class="sf-cmt-audio-preview" id="sf-cmt-audio-preview">' +
+                        '<span class="sf-cmt-prev-label">Áudio pronto</span>' +
+                        '<div id="sf-cmt-audio-preview-player"></div>' +
+                        '<button class="sf-cmt-rm-audio" id="sf-cmt-rm-audio" title="Descartar áudio"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+                    '</div>' +
                     '<div class="sf-comment-inputbar">' +
                         '<input type="text" id="sf-comment-input" maxlength="300" placeholder="Escreva um comentário...">' +
                         '<button class="sf-comment-emoji-btn" id="sf-comment-emoji-btn" type="button" title="Emojis"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>' +
+                        // Mesmo microfone da barra de conversa do chat. Aqui é
+                        // tocar para começar e tocar de novo para parar: como o
+                        // limite é 10 segundos, segurar o dedo atrapalharia mais
+                        // do que ajudaria.
+                        '<button class="sf-comment-mic-btn" id="sf-comment-mic-btn" type="button" title="Gravar áudio (até 10s)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>' +
+                        '<button class="sf-comment-mic-btn" id="sf-comment-audio-file-btn" type="button" title="Enviar arquivo de áudio (até 10s)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></button>' +
+                        '<input type="file" id="sf-comment-audio-file" accept="audio/*" hidden>' +
                         '<button class="sf-comment-send" id="sf-comment-send-btn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>' +
                     '</div>' +
                 '</div>' +
@@ -802,6 +844,7 @@
             sfStopDetailMedia(); closeModal('sf-detail-modal');
             sfStopCommentsListener();
             sfStopDetailMedia(); // para qualquer áudio/vídeo que tenha ficado tocando (legenda em áudio, etc.)
+            sfCmtCancelarAudio(); // solta o microfone e descarta o áudio que não chegou a ser enviado
             sfLiveLeaveIfViewing(); // sai da live se eu estava só assistindo (anfitrião continua no ar em segundo plano)
             var epFechar = document.getElementById('sf-emoji-picker');
             if (epFechar) epFechar.classList.remove('open'); // não deixa aberto pro próximo post
@@ -820,6 +863,15 @@
         document.getElementById('sf-comment-send-btn').onclick = sfSubmitComment;
         document.getElementById('sf-comment-input').onkeydown = function (e) { if (e.key === 'Enter') sfSubmitComment(); };
         document.getElementById('sf-comment-emoji-btn').onclick = sfToggleEmoji;
+        // ── Comentário em áudio ──
+        document.getElementById('sf-comment-mic-btn').onclick = sfCmtStartRec;
+        document.getElementById('sf-cmt-rec-stop').onclick = sfCmtStopRec;
+        document.getElementById('sf-comment-audio-file-btn').onclick = function () {
+            if (sfCmtRec.isRecording) { notify('Pare a gravação primeiro', 'warn'); return; }
+            document.getElementById('sf-comment-audio-file').click();
+        };
+        document.getElementById('sf-comment-audio-file').onchange = sfCmtHandleAudioFile;
+        document.getElementById('sf-cmt-rm-audio').onclick = function (e) { e.stopPropagation(); sfCmtLimparAudio(); };
 
         document.getElementById('sf-share-cancel').onclick = function () { closeModal('sf-share-modal'); };
         document.getElementById('sf-share-submit').onclick = sfDoShare;
@@ -2365,10 +2417,322 @@
     // ══════════════════════════════════════════════════════════════════
     //  DETALHE DO POST + COMENTÁRIOS
     // ══════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════
+    //  COMENTÁRIO EM ÁUDIO (só na Comunidade)
+    //  Grava na hora pelo microfone ou aceita um arquivo de áudio, com
+    //  um limite duro de 10 segundos nos dois caminhos. Vale igual para
+    //  comentário e para resposta — é o mesmo campo.
+    //
+    //  O gravador daqui é separado do gravador do chat E do gravador de
+    //  nova postagem: os três podem existir na mesma tela e não podem
+    //  disputar o microfone nem o estado um do outro.
+    // ══════════════════════════════════════════════════════════════════
+    var SF_CMT_AUDIO_SEG = 10;                 // limite: 10 segundos
+    var SF_CMT_AUDIO_MAX_BYTES = 4 * 1024 * 1024; // um arquivo de 10s nunca chega perto disso; corta absurdos antes de ler
+    var sfCmtAudio = null;   // { base64, mimeType, dur } esperando para ser enviado
+    var sfCmtRec   = { isRecording: false, stream: null, recorder: null, chunks: [], startTime: 0, timer: null, timeoutId: null };
+    var sfCmtSeq   = 0;      // id único para cada tocador desenhado na tela
+    var sfCmtAudioCache    = {}; // commentId -> base64 já baixado (a lista é redesenhada a cada curtida)
+    var sfCmtAudioBaixando = {}; // commentId -> true enquanto o download está em andamento
+
+    function sfCmtFmtDur(seg) {
+        var s = Math.max(0, Number(seg) || 0);
+        return (s < 10 ? s.toFixed(1).replace('.', ',') : String(Math.round(s))) + 's';
+    }
+
+    // ── Tocador compacto do comentário: play/pause, faixa de andamento e
+    //    o tempo. Diferente do áudio da publicação (que começa sozinho e
+    //    fica em laço), este só toca quando a pessoa manda. ──
+    function sfCmtAudioHtml(id, dur, carregando) {
+        return '<div class="sf-cmt-audio' + (carregando ? ' carregando' : '') + '" id="' + id + '">' +
+            '<button class="sf-cmt-play" type="button" title="Ouvir">' +
+                '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>' +
+            '</button>' +
+            '<div class="sf-cmt-faixa"><div class="sf-cmt-cheia"></div></div>' +
+            '<span class="sf-cmt-tempo">' + (dur ? sfCmtFmtDur(dur) : '--') + '</span>' +
+            '<audio preload="metadata" playsinline></audio>' +
+        '</div>';
+    }
+
+    var SF_ICON_PLAY  = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+    var SF_ICON_PAUSE = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+
+    function sfCmtAudioMontar(id, src, dur) {
+        var caixa = document.getElementById(id);
+        if (!caixa) return;
+        var audio = caixa.querySelector('audio');
+        var botao = caixa.querySelector('.sf-cmt-play');
+        var faixa = caixa.querySelector('.sf-cmt-faixa');
+        var cheia = caixa.querySelector('.sf-cmt-cheia');
+        var tempo = caixa.querySelector('.sf-cmt-tempo');
+        if (!audio || caixa.dataset.montado === '1') return;
+        caixa.dataset.montado = '1';
+        caixa.classList.remove('carregando');
+        audio.src = src;
+
+        function duracao() {
+            if (isFinite(audio.duration) && audio.duration > 0) return audio.duration;
+            return Number(dur) || 0;
+        }
+        function desenhar() {
+            botao.innerHTML = audio.paused ? SF_ICON_PLAY : SF_ICON_PAUSE;
+        }
+
+        botao.onclick = function (e) {
+            e.stopPropagation();
+            if (audio.paused) {
+                // Um áudio por vez em todo o app (vale também para os
+                // áudios de conversa — ver pararTodosOsAudios no index).
+                if (typeof pararTodosOsAudios === 'function') pararTodosOsAudios(audio);
+                audio.play().catch(function () {});
+            } else {
+                audio.pause();
+            }
+            desenhar();
+        };
+        // Tocar na faixa pula para aquele ponto.
+        faixa.onclick = function (e) {
+            e.stopPropagation();
+            var d = duracao();
+            if (!d) return;
+            var r = faixa.getBoundingClientRect();
+            var pos = (e.clientX - r.left) / (r.width || 1);
+            audio.currentTime = Math.max(0, Math.min(1, pos)) * d;
+        };
+        audio.addEventListener('timeupdate', function () {
+            var d = duracao();
+            if (!d) return;
+            cheia.style.width = Math.min(100, (audio.currentTime / d) * 100) + '%';
+            tempo.textContent = sfCmtFmtDur(Math.max(0, d - audio.currentTime));
+        });
+        audio.addEventListener('play',  desenhar);
+        audio.addEventListener('pause', desenhar);
+        audio.addEventListener('ended', function () {
+            cheia.style.width = '0%';
+            audio.currentTime = 0;
+            tempo.textContent = sfCmtFmtDur(duracao());
+            desenhar();
+        });
+        audio.addEventListener('loadedmetadata', function () {
+            tempo.textContent = sfCmtFmtDur(duracao());
+        });
+        tempo.textContent = sfCmtFmtDur(duracao());
+        desenhar();
+    }
+
+    // ── Mede a duração real de um áudio. O <audio> sozinho não serve:
+    //    em arquivos de MediaRecorder e em vários MP3 ele devolve
+    //    Infinity/NaN. Por isso a medida de verdade vem do
+    //    decodeAudioData, e o <audio> fica só como plano B. ──
+    function sfCmtMedirDuracao(base64, mimeType) {
+        return new Promise(function (resolve) {
+            var prontinho = false;
+            var ctx = null;
+            function fecharCtx() {
+                if (!ctx) return;
+                try { ctx.close(); } catch (e) {}
+                ctx = null;
+            }
+            function terminar(v) {
+                if (prontinho) return;
+                prontinho = true;
+                fecharCtx();
+                resolve(Number(v) || 0);
+            }
+
+            // Plano A: decodificar de verdade.
+            try {
+                var Ctx = window.AudioContext || window.webkitAudioContext;
+                if (Ctx && base64.indexOf(',') !== -1) {
+                    var bruto = atob(base64.slice(base64.indexOf(',') + 1));
+                    var bytes = new Uint8Array(bruto.length);
+                    for (var i = 0; i < bruto.length; i++) bytes[i] = bruto.charCodeAt(i);
+                    ctx = new Ctx();
+                    ctx.decodeAudioData(bytes.buffer, function (buf) {
+                        terminar(buf.duration);
+                    }, function () {
+                        fecharCtx();
+                        planoB();
+                    });
+                    // Alguns navegadores travam sem chamar nenhum dos dois.
+                    setTimeout(function () { if (!prontinho) { fecharCtx(); planoB(); } }, 4000);
+                    return;
+                }
+            } catch (e) { fecharCtx(); }
+            planoB();
+
+            function planoB() {
+                if (prontinho) return;
+                try {
+                    var a = document.createElement('audio');
+                    a.preload = 'metadata';
+                    a.onloadedmetadata = function () {
+                        terminar(isFinite(a.duration) ? a.duration : 0);
+                    };
+                    a.onerror = function () { terminar(0); };
+                    a.src = base64;
+                    setTimeout(function () { terminar(0); }, 3500);
+                } catch (e) { terminar(0); }
+            }
+        });
+    }
+
+    function sfCmtUpdateAudioPreview() {
+        var wrap = document.getElementById('sf-cmt-audio-preview');
+        var alvo = document.getElementById('sf-cmt-audio-preview-player');
+        if (!wrap || !alvo) return;
+        if (!sfCmtAudio) {
+            alvo.innerHTML = '';
+            wrap.classList.remove('show');
+            return;
+        }
+        var id = 'sf-cmt-prev-' + (++sfCmtSeq);
+        alvo.innerHTML = sfCmtAudioHtml(id, sfCmtAudio.dur, false);
+        sfCmtAudioMontar(id, sfCmtAudio.base64, sfCmtAudio.dur);
+        wrap.classList.add('show');
+    }
+
+    function sfCmtLimparAudio() {
+        var alvo = document.getElementById('sf-cmt-audio-preview-player');
+        if (alvo) {
+            alvo.querySelectorAll('audio').forEach(function (a) { try { a.pause(); } catch (e) {} });
+        }
+        sfCmtAudio = null;
+        sfCmtUpdateAudioPreview();
+    }
+
+    function sfCmtMicVisual(gravando) {
+        var btn = document.getElementById('sf-comment-mic-btn');
+        if (btn) btn.classList.toggle('rec-on', !!gravando);
+        var bar = document.getElementById('sf-cmt-rec-bar');
+        if (bar) bar.classList.toggle('show', !!gravando);
+    }
+
+    function sfCmtUpdateRecTime() {
+        var el = document.getElementById('sf-cmt-rec-time');
+        if (!el) return;
+        var s = (Date.now() - sfCmtRec.startTime) / 1000;
+        if (s > SF_CMT_AUDIO_SEG) s = SF_CMT_AUDIO_SEG;
+        el.textContent = s.toFixed(1).replace('.', ',') + 's / ' + SF_CMT_AUDIO_SEG + 's';
+    }
+
+    async function sfCmtStartRec() {
+        if (sfCmtRec.isRecording) { sfCmtStopRec(); return; } // tocar de novo = parar
+        if (!me || !sfDetailPostId) return;
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+            notify('Gravação de áudio não é suportada neste navegador', 'warn'); return;
+        }
+        // Respeita o mesmo interruptor de microfone das Configurações que o
+        // chat já respeita, em vez de pedir permissão por fora dele.
+        if (typeof mediaPermAllowed === 'function' && !mediaPermAllowed('mic')) return;
+        try {
+            var stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false } });
+            sfCmtRec.stream = stream;
+            sfCmtRec.chunks = [];
+            var options = {};
+            if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) options.mimeType = 'audio/webm;codecs=opus';
+            else if (MediaRecorder.isTypeSupported('audio/mp4')) options.mimeType = 'audio/mp4';
+            sfCmtRec.recorder = new MediaRecorder(stream, options);
+            sfCmtRec.startTime = Date.now();
+            sfCmtRec.isRecording = true;
+            sfCmtRec.recorder.ondataavailable = function (ev) { if (ev.data.size > 0) sfCmtRec.chunks.push(ev.data); };
+            sfCmtRec.recorder.onstop = function () {
+                sfCmtRec.isRecording = false;
+                // A duração vem do relógio, não do arquivo: o webm que o
+                // MediaRecorder entrega quase sempre vem sem essa
+                // informação dentro dele.
+                var seg = Math.min(SF_CMT_AUDIO_SEG, (Date.now() - sfCmtRec.startTime) / 1000);
+                var mimeType = sfCmtRec.recorder.mimeType || 'audio/webm';
+                var blob = new Blob(sfCmtRec.chunks, { type: mimeType });
+                stream.getTracks().forEach(function (t) { t.stop(); });
+                if (sfCmtRec.timer) { clearInterval(sfCmtRec.timer); sfCmtRec.timer = null; }
+                sfCmtMicVisual(false);
+                if (blob.size < 100 || seg < 0.4) { notify('Áudio muito curto', 'warn'); return; }
+                var reader = new FileReader();
+                reader.onload = function (ev) {
+                    sfCmtAudio = { base64: ev.target.result, mimeType: mimeType, dur: Math.round(seg * 10) / 10 };
+                    sfCmtUpdateAudioPreview();
+                };
+                reader.readAsDataURL(blob);
+            };
+            sfCmtRec.recorder.start();
+            sfCmtMicVisual(true);
+            sfCmtUpdateRecTime();
+            sfCmtRec.timer = setInterval(sfCmtUpdateRecTime, 100);
+            // Trava dos 10 segundos: mesmo que a pessoa esqueça, para sozinho.
+            sfCmtRec.timeoutId = setTimeout(function () {
+                if (sfCmtRec.isRecording) { sfCmtStopRec(); notify('Limite de 10 segundos atingido', 'info'); }
+            }, SF_CMT_AUDIO_SEG * 1000);
+        } catch (err) {
+            notify('Microfone não permitido: ' + (err && err.message ? err.message : ''), 'err');
+            sfCmtRec.isRecording = false;
+            sfCmtMicVisual(false);
+        }
+    }
+
+    function sfCmtStopRec() {
+        if (sfCmtRec.timeoutId) { clearTimeout(sfCmtRec.timeoutId); sfCmtRec.timeoutId = null; }
+        try {
+            if (sfCmtRec.recorder && sfCmtRec.recorder.state !== 'inactive') sfCmtRec.recorder.stop();
+        } catch (e) {}
+        sfCmtMicVisual(false);
+    }
+
+    // Cancelamento total: fecha o detalhe, some com a prévia e solta o
+    // microfone se ainda estiver ligado.
+    function sfCmtCancelarAudio() {
+        if (sfCmtRec.isRecording) {
+            try {
+                if (sfCmtRec.recorder && sfCmtRec.recorder.state !== 'inactive') sfCmtRec.recorder.stop();
+            } catch (e) {}
+        }
+        if (sfCmtRec.timeoutId) { clearTimeout(sfCmtRec.timeoutId); sfCmtRec.timeoutId = null; }
+        if (sfCmtRec.timer) { clearInterval(sfCmtRec.timer); sfCmtRec.timer = null; }
+        if (sfCmtRec.stream) {
+            try { sfCmtRec.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+            sfCmtRec.stream = null;
+        }
+        sfCmtRec.isRecording = false;
+        sfCmtMicVisual(false);
+        sfCmtLimparAudio();
+    }
+
+    async function sfCmtHandleAudioFile(e) {
+        var file = e.target.files[0];
+        e.target.value = '';
+        if (!file) return;
+        if (!(file.type || '').startsWith('audio/')) { notify('Escolha um arquivo de áudio', 'warn'); return; }
+        if (file.size > SF_CMT_AUDIO_MAX_BYTES) {
+            notify('Arquivo muito grande para um áudio de 10 segundos', 'warn'); return;
+        }
+        var lido = await new Promise(function (resolve) {
+            var reader = new FileReader();
+            reader.onload  = function (ev) { resolve(ev.target.result); };
+            reader.onerror = function () { resolve(null); };
+            reader.readAsDataURL(file);
+        });
+        if (!lido) { notify('Não foi possível ler esse áudio', 'err'); return; }
+
+        var seg = await sfCmtMedirDuracao(lido, file.type);
+        if (!seg) { notify('Não foi possível ler a duração desse áudio', 'warn'); return; }
+        // Uma folguinha de 0,3s cobre arredondamento de quem gravou "10s"
+        // em outro aplicativo e saiu 10,05s.
+        if (seg > SF_CMT_AUDIO_SEG + 0.3) {
+            notify('Esse áudio tem ' + sfCmtFmtDur(seg) + '. O limite no comentário é de 10 segundos.', 'warn', 6000);
+            return;
+        }
+        sfCmtAudio = { base64: lido, mimeType: file.type || 'audio/mpeg', dur: Math.round(Math.min(seg, SF_CMT_AUDIO_SEG) * 10) / 10 };
+        sfCmtUpdateAudioPreview();
+    }
+
     function sfStopCommentsListener() {
         if (sfCommentsUnsub) { sfCommentsUnsub(); sfCommentsUnsub = null; }
         sfDetailPostId = null;
         sfDetailPostOwnerUid = null;
+        // Fechar (ou trocar de) publicação solta o microfone e joga fora um
+        // áudio que ficou na prévia sem ser enviado — ele não pode
+        // aparecer depois na caixa de comentário de outra postagem.
+        sfCmtCancelarAudio();
     }
 
     // ── Pausa qualquer áudio/vídeo que tenha ficado tocando dentro do
@@ -2695,11 +3059,21 @@
                 function htmlDeUm(c, ehResposta) {
                     var curtido = !!(me && c.likedBy && c.likedBy[me.uid]);
                     var qtd = c.likes || 0;
+                    // Comentário em áudio: o tocador entra no lugar (ou
+                    // abaixo) do texto. Quando o áudio ficou guardado em
+                    // partes (audioId), o quadro entra "carregando" e é
+                    // preenchido logo depois, sem travar a lista.
+                    var audioHtml = '';
+                    if (c.audioData || c.audioId) {
+                        var aid = 'sf-cmt-au-' + c.id;
+                        audioHtml = sfCmtAudioHtml(aid, c.audioDur, !c.audioData);
+                    }
                     return '<div class="sf-comment-row' + (ehResposta ? ' sf-resposta' : '') + '">' +
                         '<div class="sf-avatar" style="width:' + (ehResposta ? '22px;height:22px' : '28px;height:28px') + ';">' + avInner(c.nome, c.foto) + '</div>' +
                         '<div class="sf-comment-body">' +
                             '<div class="sf-comment-name">' + esc(c.nome || 'Usuário') + sfBadgeHtml(c.uid) + '</div>' +
-                            '<div class="sf-comment-text">' + sfLinkify(c.text || '') + '</div>' +
+                            (c.text ? '<div class="sf-comment-text">' + sfLinkify(c.text || '') + '</div>' : '') +
+                            audioHtml +
                             '<div class="sf-comment-acoes">' +
                                 '<span class="sf-comment-time">' + sfRelTime(c.createdAt) + '</span>' +
                                 '<button class="sf-c-curtir' + (curtido ? ' on' : '') + '" data-clike="' + c.id + '">' +
@@ -2728,6 +3102,37 @@
                         filhas.map(function (r) { return htmlDeUm(r, true); }).join('') + '</div>';
                 });
                 list.innerHTML = html;
+
+                // Liga os tocadores de áudio. Os que já vieram embutidos
+                // (audioData) tocam na hora; os guardados em partes
+                // (audioId) são baixados aqui, um a um, e o quadro
+                // "carregando" vira o tocador quando o áudio chega.
+                todos.forEach(function (c) {
+                    var aid = 'sf-cmt-au-' + c.id;
+                    if (c.audioData) {
+                        sfCmtAudioMontar(aid, c.audioData, c.audioDur);
+                    } else if (c.audioId) {
+                        // A lista inteira é redesenhada a cada curtida ou
+                        // comentário novo, então o áudio já baixado fica
+                        // guardado: na segunda vez ele volta na hora, sem
+                        // baixar de novo.
+                        if (sfCmtAudioCache[c.id]) {
+                            sfCmtAudioMontar(aid, sfCmtAudioCache[c.id], c.audioDur);
+                        } else if (!sfCmtAudioBaixando[c.id]) {
+                            sfCmtAudioBaixando[c.id] = true;
+                            downloadChunks(c.audioId).then(function (base64) {
+                                sfCmtAudioBaixando[c.id] = false;
+                                if (!base64) return;
+                                sfCmtAudioCache[c.id] = base64;
+                                sfCmtAudioMontar(aid, base64, c.audioDur);
+                            }).catch(function () {
+                                sfCmtAudioBaixando[c.id] = false;
+                                var cx = document.getElementById(aid);
+                                if (cx) cx.classList.remove('carregando');
+                            });
+                        }
+                    }
+                });
 
                 list.querySelectorAll('[data-cdel]').forEach(function (btn) {
                     btn.onclick = function (e) { e.stopPropagation(); sfDeleteComment(sfDetailPostId, btn.getAttribute('data-cdel')); };
@@ -3467,13 +3872,33 @@
 
     async function sfSubmitComment() {
         if (!me || !sfDetailPostId) return;
+        if (sfCmtRec.isRecording) { notify('Pare a gravação antes de enviar', 'warn'); return; }
         var inp = document.getElementById('sf-comment-input');
         var text = inp.value.trim().slice(0, 300);
-        if (!text) return;
+        var audio = sfCmtAudio;
+        // Vale texto, vale áudio, vale os dois — mas alguma coisa tem que ir.
+        if (!text && !audio) return;
+        var btnEnviar = document.getElementById('sf-comment-send-btn');
         inp.value = '';
+        if (btnEnviar) btnEnviar.disabled = true;
         try {
             var ref = db.collection('social_posts').doc(sfDetailPostId);
             var dados = { uid: me.uid, nome: me.nome, foto: me.foto || null, text: text, createdAt: Date.now() };
+            if (audio) {
+                dados.audioMime = audio.mimeType || 'audio/webm';
+                dados.audioDur  = audio.dur || 0;
+                // Um áudio de 10 segundos quase sempre cabe dentro do
+                // próprio comentário. Se vier de um arquivo pesado, ele vai
+                // em partes (mesmo mecanismo das mídias das publicações).
+                if (audio.base64.length <= SF_MAX_INLINE) {
+                    dados.audioData = audio.base64;
+                } else {
+                    var audioId = genMediaId();
+                    dados.audioId = audioId;
+                    notify('Enviando áudio...', 'info', 6000);
+                    await uploadChunks(audio.base64, audioId);
+                }
+            }
             // Se estiver respondendo alguém, a resposta fica amarrada ao
             // comentário — é o parentId que a coloca dentro dele, escondida
             // atrás do "Ver respostas", em vez de solta na lista.
@@ -3482,6 +3907,7 @@
                 sfRespostasAbertas[sfRespondendoA] = true; // já abre, para a pessoa ver a própria resposta
             }
             await ref.collection('comments').add(dados);
+            sfCmtLimparAudio();
             sfCancelarResposta();
             await ref.update({ commentsCount: firebase.firestore.FieldValue.increment(1) });
             // Avisa o dono da postagem (se não for eu mesmo) que recebeu um
@@ -3493,10 +3919,14 @@
             sfRecordImpactEvent(commentedPost, 'comment'); // Voz Dee: comentário recebido = 3 pontos
             // Radar de Interesses: analisa o comentário do mesmo jeito que já
             // analisa mensagens de conversa e legendas de publicação.
-            if (typeof window.scanMessageForInsights === 'function') {
+            if (text && typeof window.scanMessageForInsights === 'function') {
                 try { window.scanMessageForInsights(text, 'comment'); } catch (e) {}
             }
-        } catch (e) { notify('Erro ao comentar: ' + friendlyError(e), 'err'); }
+        } catch (e) {
+            notify('Erro ao comentar: ' + friendlyError(e), 'err');
+        } finally {
+            if (btnEnviar) btnEnviar.disabled = false;
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════
