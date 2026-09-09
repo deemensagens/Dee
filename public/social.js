@@ -136,28 +136,39 @@
 .sf-track{display:flex;height:100%;transition:transform .32s cubic-bezier(.16,1,.3,1);cursor:grab;touch-action:pan-y;}\
 .sf-track.dragging{transition:none;cursor:grabbing;}\
 .sf-card{flex:0 0 100%;width:100%;min-width:100%;height:100%;box-sizing:border-box;display:flex;flex-direction:column;padding:8px 12px 10px;overflow:hidden;}\
-.sf-perfil-card{max-width:520px;width:100%;padding:0;overflow:hidden;max-height:90vh;display:flex;flex-direction:column;}\
+/* Cartao do perfil com ALTURA FIXA: nao cresce nem encolhe conforme o conteudo (bio maior/menor, com ou sem @, mais ou menos publicacoes). Quem se ajusta e a grade de publicacoes la embaixo, que fica com o espaco que sobrar e rola por dentro. */\
+.sf-perfil-card{max-width:520px;width:100%;padding:0;overflow:hidden;height:88vh;height:min(88vh,720px);max-height:88vh;display:flex;flex-direction:column;}\
 .sf-perfil-capa{height:130px;background:linear-gradient(135deg,rgba(0,229,204,.25),rgba(0,136,255,.2));background-size:cover;background-position:center;position:relative;z-index:1;flex-shrink:0;}\
 .sf-perfil-capa.sem-capa{background:linear-gradient(135deg,rgba(0,229,204,.25),rgba(0,136,255,.2));}\
 .sf-perfil-voltar{position:absolute;top:12px;left:12px;width:34px;height:34px;border-radius:50%;border:none;background:rgba(0,0,0,.5);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}\
-.sf-perfil-topo{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:0 18px;margin-top:-34px;flex-shrink:0;position:relative;z-index:2;}\
+.sf-perfil-topo{display:flex;align-items:flex-end;justify-content:flex-start;gap:12px;padding:0 18px;margin-top:-34px;flex-shrink:0;position:relative;z-index:2;}\
 .sf-perfil-foto{width:76px;height:76px;border-radius:50%;overflow:hidden;border:3px solid var(--surface);background:var(--surface2);flex-shrink:0;}\
 .sf-perfil-foto img{width:100%;height:100%;object-fit:cover;}\
-.sf-perfil-acoes{display:flex;align-items:center;gap:8px;margin-bottom:6px;}\
-.sf-perfil-editar{background:rgba(0,229,204,.12);border:1px solid rgba(0,229,204,.3);color:var(--accent);border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;margin:0;}\
-.sf-perfil-postar{background:linear-gradient(135deg,var(--accent),#00b8a8);color:#000;border:none;border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;margin:0;}\
+/* Postar e Editar perfil ficam numa linha so deles, DEPOIS da foto, sempre abaixo da capa. Antes dividiam a linha com a foto e, em telas estreitas, o texto do botao quebrava em duas linhas: o botao crescia pra cima e cobria a capa. */\
+.sf-perfil-acoes{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:0 18px;margin-top:10px;flex-shrink:0;position:relative;z-index:2;}\
+.sf-perfil-editar{background:rgba(0,229,204,.12);border:1px solid rgba(0,229,204,.3);color:var(--accent);border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;margin:0;white-space:nowrap;flex-shrink:0;}\
+.sf-perfil-postar{background:linear-gradient(135deg,var(--accent),#00b8a8);color:#000;border:none;border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;margin:0;white-space:nowrap;flex-shrink:0;}\
 .sf-perfil-postar .icon{width:13px;height:13px;}\
-.sf-perfil-info{padding:12px 18px 4px;flex-shrink:0;}\
-.sf-perfil-nome{font-family:Syne,sans-serif;font-weight:800;font-size:18px;color:var(--text);}\
-.sf-perfil-arroba{font-size:13px;color:var(--accent);margin-top:1px;}\
-.sf-perfil-bio{font-size:13px;color:var(--muted);line-height:1.5;margin-top:8px;white-space:pre-wrap;}\
-.sf-perfil-numeros{font-size:12px;color:var(--muted);margin-top:10px;}\
+@media (max-width:340px){.sf-perfil-editar,.sf-perfil-postar{padding:7px 12px;font-size:11.5px;}}\
+.sf-perfil-info{padding:10px 18px 4px;flex-shrink:0;}\
+.sf-perfil-nome{font-family:Syne,sans-serif;font-weight:800;font-size:18px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\
+.sf-perfil-arroba{font-size:13px;color:var(--accent);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\
+/* A descricao tem no maximo 150 caracteres, mas ainda assim pode dar varias linhas (quebras de linha, emojis, link). Para de crescer em ~4 linhas e rola por dentro, pra nao mudar a altura do cartao. */\
+.sf-perfil-bio{font-size:13px;color:var(--muted);line-height:1.5;margin-top:8px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;max-height:78px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}\
+.sf-perfil-numeros{font-size:12px;color:var(--muted);margin-top:8px;}\
 .sf-perfil-numeros b{color:var(--text);font-family:Syne,sans-serif;font-weight:800;font-size:14px;}\
-.sf-perfil-posts{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:14px 4px 4px;overflow-y:auto;flex:1;min-height:0;}\
-.sf-perfil-tile{aspect-ratio:1;border:none;padding:0;background:var(--surface2);cursor:pointer;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;}\
-.sf-perfil-tile img{width:100%;height:100%;object-fit:cover;}\
-.sf-perfil-tile-txt{font-size:10.5px;color:var(--muted);padding:8px;line-height:1.35;text-align:left;overflow:hidden;}\
+/* Grade das publicacoes: 3 por fileira, todas do mesmo tamanho, e o que passa disso so aparece rolando aqui dentro. align-content:start impede que a fileira estique pra preencher a altura que sobra (era isso que fazia um quadradinho sair maior que o outro). */\
+.sf-perfil-posts{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:min-content;align-content:start;gap:3px;padding:12px 4px 8px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;flex:1 1 auto;min-height:0;}\
+/* Quadrado perfeito sem depender de aspect-ratio (que a WebView antiga do Android nao entende): altura 0 + padding-bottom:100% da propria largura. */\
+.sf-perfil-tile{position:relative;display:block;width:100%;height:0;padding:0 0 100%;border:none;background:var(--surface2);cursor:pointer;overflow:hidden;}\
+.sf-perfil-tile img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;}\
+.sf-perfil-tile-txt{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;font-size:10.5px;color:var(--muted);padding:8px;line-height:1.35;text-align:left;overflow:hidden;}\
 .sf-perfil-vazio{grid-column:1/-1;text-align:center;padding:34px 16px;color:var(--muted);font-size:13px;}\
+/* Os modais abertos DE DENTRO do perfil (nova postagem, live, editar perfil, recorte) vem antes dele no HTML, entao com o mesmo z-index do .overlay (1000) eram desenhados POR TRAS do cartao do perfil. Subindo o z-index deles, abrem sempre na frente. Continuam abaixo da camera (1100) e do confirm-modal (10050). */\
+#sf-new-post-modal,#sf-live-new-modal,#sf-perfil-editar-modal{z-index:1010;}\
+#sf-crop-modal{z-index:1020;}\
+.sf-edit-contador{font-size:11px;color:var(--muted2);text-align:right;margin-top:4px;}\
+.sf-edit-contador.cheio{color:var(--warn);}\
 .sf-edit-campo{margin-bottom:14px;}\
 .sf-edit-campo label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:5px;}\
 .sf-edit-campo input[type=text],.sf-edit-campo textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13.5px;font-family:inherit;}\
@@ -492,10 +503,11 @@
                     '</div>' +
                     '<div class="sf-perfil-topo">' +
                         '<div class="sf-perfil-foto" id="sf-perfil-foto"></div>' +
-                        '<div class="sf-perfil-acoes" id="sf-perfil-acoes" style="display:none;">' +
-                            '<button class="sf-perfil-postar" id="sf-perfil-postar" onclick="sfOpenNewPostModal()" title="Nova postagem"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Postar</span></button>' +
-                            '<button class="sf-perfil-editar" id="sf-perfil-editar" onclick="sfAbrirEdicaoPerfil()">Editar perfil</button>' +
-                        '</div>' +
+                    '</div>' +
+                    // Linha própria, logo abaixo da foto — nunca por cima da capa.
+                    '<div class="sf-perfil-acoes" id="sf-perfil-acoes" style="display:none;">' +
+                        '<button class="sf-perfil-postar" id="sf-perfil-postar" onclick="sfOpenNewPostModal()" title="Nova postagem"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Postar</span></button>' +
+                        '<button class="sf-perfil-editar" id="sf-perfil-editar" onclick="sfAbrirEdicaoPerfil()">Editar perfil</button>' +
                     '</div>' +
                     '<div class="sf-perfil-info">' +
                         '<div class="sf-perfil-nome" id="sf-perfil-nome">—</div>' +
@@ -538,7 +550,11 @@
                     '</div>' +
                     '<div class="sf-edit-campo">' +
                         '<label>Descrição</label>' +
-                        '<textarea id="sf-edit-bio" maxlength="160" rows="3" placeholder="Escreva algo sobre você..."></textarea>' +
+                        // O limite de verdade (150) é contado no JS, para que um
+                        // emoji conte como 1 caractere. O maxlength aqui é só uma
+                        // rede de segurança do navegador, que conta diferente.
+                        '<textarea id="sf-edit-bio" maxlength="600" rows="3" placeholder="Escreva algo sobre você..."></textarea>' +
+                        '<div class="sf-edit-contador" id="sf-edit-bio-contador">0/150</div>' +
                     '</div>' +
                     '<div class="sf-edit-msg" id="sf-edit-msg"></div>' +
                     '<div class="mbtns">' +
@@ -717,6 +733,16 @@
         if (fotoEscolherBtn) fotoEscolherBtn.onclick = function () { fotoEd.click(); };
         var capaEscolherBtn = document.getElementById('sf-edit-capa-escolher');
         if (capaEscolherBtn) capaEscolherBtn.onclick = function () { capaEd.click(); };
+
+        // Descrição: corta em 150 caracteres enquanto a pessoa digita e
+        // mostra a contagem embaixo do campo. O "paste" precisa do
+        // setTimeout porque o texto colado só existe no campo depois do
+        // evento.
+        var bioEd = document.getElementById('sf-edit-bio');
+        if (bioEd) {
+            bioEd.addEventListener('input', sfAtualizarContadorBio);
+            bioEd.addEventListener('paste', function () { setTimeout(sfAtualizarContadorBio, 0); });
+        }
 
         // Palco de recorte/zoom: arrastar (mouse/touch), beliscão de dois
         // dedos, roda do mouse e o controle deslizante todos levam ao
@@ -2876,6 +2902,55 @@
         } catch (e) { return {}; }
     }
 
+    // ── DESCRIÇÃO DO PERFIL: 150 CARACTERES ──
+    // Conta do jeito que a pessoa enxerga: espaço conta, quebra de linha
+    // conta e cada emoji conta como 1 — mesmo os que o navegador guarda
+    // como duas ou mais peças (👍🏽, 👨‍👩‍👧, bandeiras...). Quando o
+    // navegador tem Intl.Segmenter, usamos ele; senão, caímos em
+    // Array.from (que já resolve a maioria dos emojis); e, em último caso,
+    // no split simples.
+    var SF_BIO_MAX = 150;
+    var sfSegmentador = null;
+    try {
+        if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+            sfSegmentador = new Intl.Segmenter('pt-BR', { granularity: 'grapheme' });
+        }
+    } catch (e) { sfSegmentador = null; }
+
+    function sfCaracteres(texto) {
+        var str = String(texto == null ? '' : texto);
+        if (sfSegmentador) {
+            try {
+                var lista = [];
+                var partes = sfSegmentador.segment(str);
+                for (var parte of partes) lista.push(parte.segment);
+                return lista;
+            } catch (e) {}
+        }
+        try { return Array.from(str); } catch (e) { return str.split(''); }
+    }
+    function sfContarBio(texto)  { return sfCaracteres(texto).length; }
+    function sfLimitarBio(texto) {
+        var str = String(texto == null ? '' : texto);
+        var partes = sfCaracteres(str);
+        return partes.length <= SF_BIO_MAX ? str : partes.slice(0, SF_BIO_MAX).join('');
+    }
+    function sfAtualizarContadorBio() {
+        var campo = document.getElementById('sf-edit-bio');
+        if (!campo) return;
+        var cortado = sfLimitarBio(campo.value);
+        if (cortado !== campo.value) {
+            // Só mexe no campo quando realmente passou do limite, pra não
+            // jogar o cursor pro fim a cada tecla digitada.
+            campo.value = cortado;
+        }
+        var contador = document.getElementById('sf-edit-bio-contador');
+        if (!contador) return;
+        var usados = sfContarBio(campo.value);
+        contador.textContent = usados + '/' + SF_BIO_MAX;
+        contador.className = 'sf-edit-contador' + (usados >= SF_BIO_MAX ? ' cheio' : '');
+    }
+
     async function sfAbrirPerfil(uid) {
         if (!uid) return;
         sfPerfilAberto = uid;
@@ -2902,8 +2977,13 @@
         arrobaEl.textContent = perfil.username ? '@' + perfil.username : '';
         arrobaEl.style.display = perfil.username ? 'block' : 'none';
         var bioEl = document.getElementById('sf-perfil-bio');
-        bioEl.textContent = perfil.bio || '';
+        // sfLinkify escapa o texto, transforma links em links clicáveis e
+        // desenha os emojis — o mesmo tratamento das legendas das
+        // publicações. As quebras de linha continuam valendo por causa do
+        // white-space:pre-wrap no CSS.
+        bioEl.innerHTML = sfLinkify(perfil.bio || '');
         bioEl.style.display = perfil.bio ? 'block' : 'none';
+        bioEl.scrollTop = 0;
 
         // "Postar" e "Editar perfil" só existem no próprio perfil.
         var acoesEl = document.getElementById('sf-perfil-acoes');
@@ -2948,16 +3028,29 @@
 
         var qtdMostrada = 0;
 
+        // Quadradinho da grade. É uma <div role="button"> em vez de um
+        // <button> de verdade porque o <button> tem regras de layout
+        // próprias no navegador que atrapalham o truque do quadrado
+        // perfeito (altura 0 + padding-bottom:100%) — com a div, todos
+        // saem exatamente do mesmo tamanho.
         function tileHtml(p) {
             var capa = p.mediaData
                 ? '<img src="' + p.mediaData + '" alt="">'
                 : '<span class="sf-perfil-tile-txt">' + esc((p.text || '').slice(0, 60)) + '</span>';
-            return '<button class="sf-perfil-tile" data-pid="' + p.id + '">' + capa + '</button>';
+            return '<div class="sf-perfil-tile" role="button" tabindex="0" data-pid="' + p.id + '">' + capa + '</div>';
         }
 
         function ligarCliques() {
             caixa.querySelectorAll('[data-pid]').forEach(function (b) {
                 b.onclick = function () { sfOpenPostDetail(b.getAttribute('data-pid')); };
+                // Como o quadradinho agora é uma div, Enter/Espaço precisam
+                // ser tratados na mão para quem navega pelo teclado.
+                b.onkeydown = function (ev) {
+                    if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') {
+                        ev.preventDefault();
+                        sfOpenPostDetail(b.getAttribute('data-pid'));
+                    }
+                };
             });
         }
 
@@ -2969,12 +3062,40 @@
             ligarCliques();
         }
 
+        // Enche a grade até ela ficar realmente rolável.
+        //
+        // Antes só entravam 3 publicações e mais nada: como 3 quadradinhos
+        // cabiam de sobra na altura da grade, não havia rolagem nenhuma —
+        // e, sem rolagem, o listener abaixo nunca disparava. Resultado: as
+        // outras publicações não apareciam de jeito nenhum. Agora as
+        // fileiras de 3 entram até passar da altura visível; a partir daí
+        // a pessoa rola e as próximas vão entrando de 3 em 3, como
+        // planejado.
+        function completarAteRolar() {
+            var voltas = 0;
+            while (qtdMostrada < lista.length &&
+                   caixa.scrollHeight <= caixa.clientHeight + 4 &&
+                   voltas < 60) {
+                mostrarMais();
+                voltas++;
+            }
+        }
+
         mostrarMais(); // primeira fileira (3 publicações)
+        // O modal pode ter acabado de abrir; nesse instante a grade ainda
+        // não tem altura medida. Por isso a conferência roda de novo logo
+        // depois que o navegador desenha.
+        completarAteRolar();
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(completarAteRolar);
+        setTimeout(completarAteRolar, 180);
 
         // Perto do fim da rolagem da grade? Entra mais uma fileira de 3.
         sfPerfilPostsScrollFn = function () {
             if (caixa.scrollTop + caixa.clientHeight >= caixa.scrollHeight - 60) {
                 mostrarMais();
+                // Se a fileira nova ainda coube sem criar rolagem, segue
+                // enchendo — senão a rolagem "morreria" no meio da lista.
+                completarAteRolar();
             }
         };
         caixa.addEventListener('scroll', sfPerfilPostsScrollFn);
@@ -2986,7 +3107,8 @@
         var perfil = await sfCarregarPerfil(me.uid);
         document.getElementById('sf-edit-nome').value    = perfil.nome || me.nome || '';
         document.getElementById('sf-edit-usuario').value = perfil.username || '';
-        document.getElementById('sf-edit-bio').value     = perfil.bio || '';
+        document.getElementById('sf-edit-bio').value     = sfLimitarBio(perfil.bio || '');
+        sfAtualizarContadorBio();
         document.getElementById('sf-edit-msg').textContent = '';
         sfMinhaFotoNova = null; sfMinhaCapaNova = null;
         // Mostra a foto/capa atuais nas prévias (com o mesmo fallback da
@@ -3220,7 +3342,7 @@
         var perfil    = await sfCarregarPerfil(me.uid);
         var nomeNovo  = document.getElementById('sf-edit-nome').value.trim().slice(0, 40);
         var userNovo  = sfNormalizarUsuario(document.getElementById('sf-edit-usuario').value);
-        var bioNova   = document.getElementById('sf-edit-bio').value.trim().slice(0, 160);
+        var bioNova   = sfLimitarBio(document.getElementById('sf-edit-bio').value.trim());
 
         var nomeAntes = perfil.nome || '';
         var userAntes = perfil.username || '';
