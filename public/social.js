@@ -1016,7 +1016,7 @@
             lastIndex = match.index + match[0].length;
         }
         result += esc(str.slice(lastIndex));
-        return result;
+        return window.DeeEmoji ? window.DeeEmoji.render(result) : result;
     }
 
     function sfCardHtml(p) {

@@ -1,4 +1,4 @@
-const CACHE = 'dee-v4.7.4';
+const CACHE = 'dee-v4.7.5';
 
 
 const ASSETS = [
