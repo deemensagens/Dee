@@ -1,9 +1,9 @@
-const CACHE = 'dee-v4.7.8';
+const CACHE = 'dee-v4.8.0';
 
 
 const ASSETS = [
   './',
-  './index.html',
+  './index.html', 
   './manifest.json',
   './icon-192.png',
   './icon-512.png',

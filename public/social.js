@@ -144,12 +144,15 @@
 .sf-perfil-topo{display:flex;align-items:flex-end;justify-content:flex-start;gap:12px;padding:0 18px;margin-top:-34px;flex-shrink:0;position:relative;z-index:2;}\
 .sf-perfil-foto{width:76px;height:76px;border-radius:50%;overflow:hidden;border:3px solid var(--surface);background:var(--surface2);flex-shrink:0;}\
 .sf-perfil-foto img{width:100%;height:100%;object-fit:cover;}\
-/* Postar e Editar perfil ficam numa linha so deles, DEPOIS da foto, sempre abaixo da capa. Antes dividiam a linha com a foto e, em telas estreitas, o texto do botao quebrava em duas linhas: o botao crescia pra cima e cobria a capa. */\
+/* Postar, Live e Editar perfil ficam numa linha so deles, DEPOIS da foto, sempre abaixo da capa. Antes dividiam a linha com a foto e, em telas estreitas, o texto do botao quebrava em duas linhas: o botao crescia pra cima e cobria a capa. Com flex-wrap, se nao couberem os 3 lado a lado numa tela bem estreita, o ultimo desce pra uma segunda linha em vez de vazar da tela. */\
 .sf-perfil-acoes{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:0 18px;margin-top:10px;flex-shrink:0;position:relative;z-index:2;}\
 .sf-perfil-editar{background:rgba(0,229,204,.12);border:1px solid rgba(0,229,204,.3);color:var(--accent);border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;margin:0;white-space:nowrap;flex-shrink:0;}\
 .sf-perfil-postar{background:linear-gradient(135deg,var(--accent),#00b8a8);color:#000;border:none;border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;margin:0;white-space:nowrap;flex-shrink:0;}\
 .sf-perfil-postar .icon{width:13px;height:13px;}\
-@media (max-width:340px){.sf-perfil-editar,.sf-perfil-postar{padding:7px 12px;font-size:11.5px;}}\
+.sf-perfil-live{background:rgba(255,77,77,.12);border:1px solid rgba(255,77,77,.32);color:#ff5c5c;border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;margin:0;white-space:nowrap;flex-shrink:0;transition:background .2s;}\
+.sf-perfil-live:hover{background:rgba(255,77,77,.22);}\
+.sf-perfil-live .icon{width:13px;height:13px;}\
+@media (max-width:340px){.sf-perfil-editar,.sf-perfil-postar,.sf-perfil-live{padding:7px 12px;font-size:11.5px;}}\
 .sf-perfil-info{padding:10px 18px 4px;flex-shrink:0;}\
 .sf-perfil-nome{font-family:Syne,sans-serif;font-weight:800;font-size:18px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\
 .sf-perfil-arroba{font-size:13px;color:var(--accent);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\
@@ -459,8 +462,6 @@
                     '<button class="sf-hbtn sf-tab" id="sf-mine-toggle" title="Meu perfil na Comunidade"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="sf-hbtn-label">Meu perfil</span><span class="tab-badge" id="sf-mine-badge" style="display:none;">0</span></button>' +
                     '<button class="sf-hbtn sf-hbtn-icon-only" id="sf-rank-btn" title="Ranking da Comunidade" aria-label="Ranking da Comunidade"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg><span class="unread-badge sf-rank-badge" id="sf-rank-badge" style="display:none;">0</span></button>' +
                     '<button class="sf-hbtn sf-hbtn-icon-only" id="sf-blocked-btn" title="Usuários bloqueados" aria-label="Usuários bloqueados"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>' +
-                    '<button class="sf-hbtn new" id="sf-new-btn" title="Nova postagem"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span class="sf-hbtn-label">Postar</span></button>' +
-                    '<button class="sf-hbtn sf-live-btn" id="sf-live-btn" title="Iniciar uma live"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg><span class="sf-hbtn-label">Live</span></button>' +
                 '</div>' +
             '</div>' +
             '<div class="sf-spotlight-banner" id="sf-spotlight-banner" style="display:none;"></div>' +
@@ -538,6 +539,7 @@
                     // Linha própria, logo abaixo da foto — nunca por cima da capa.
                     '<div class="sf-perfil-acoes" id="sf-perfil-acoes" style="display:none;">' +
                         '<button class="sf-perfil-postar" id="sf-perfil-postar" onclick="sfOpenNewPostModal()" title="Nova postagem"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Postar</span></button>' +
+                        '<button class="sf-perfil-live" id="sf-perfil-live" onclick="sfOpenLiveNewModal()" title="Iniciar uma live"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg><span>Live</span></button>' +
                         '<button class="sf-perfil-editar" id="sf-perfil-editar" onclick="sfAbrirEdicaoPerfil()">Editar perfil</button>' +
                     '</div>' +
                     '<div class="sf-perfil-info">' +
@@ -817,7 +819,6 @@
         document.getElementById('sf-rank-close').onclick = function () { closeModal('sf-rank-modal'); };
         document.getElementById('sf-recog-cancel').onclick = function () { closeModal('sf-recog-modal'); sfRecogTarget = null; };
         document.getElementById('sf-recog-confirm').onclick = sfConfirmRecognize;
-        document.getElementById('sf-new-btn').onclick = sfOpenNewPostModal;
         document.getElementById('sf-new-cancel').onclick = function () { closeModal('sf-new-post-modal'); };
         document.getElementById('sf-new-submit').onclick = sfSubmitPost;
         document.getElementById('sf-pick-photo-btn').onclick = function () { document.getElementById('sf-new-file-input').click(); };
@@ -833,7 +834,6 @@
         document.getElementById('sf-new-rec-stop').onclick = sfStopRecordAudio;
         document.getElementById('sf-new-rm-audio').onclick = function (e) { e.stopPropagation(); sfPendingAudio = null; sfUpdateNewAudioPreview(); };
 
-        document.getElementById('sf-live-btn').onclick = sfOpenLiveNewModal;
         document.getElementById('sf-live-new-cancel').onclick = function () { closeModal('sf-live-new-modal'); };
         document.getElementById('sf-live-new-start').onclick = sfConfirmStartLive;
         document.getElementById('sf-live-new-rm-audio').onclick = function (e) { e.stopPropagation(); sfLivePendingAudio = null; sfUpdateLiveAudioPreview(); };
@@ -3440,7 +3440,7 @@
         bioEl.style.display = perfil.bio ? 'block' : 'none';
         bioEl.scrollTop = 0;
 
-        // "Postar" e "Editar perfil" só existem no próprio perfil.
+        // "Postar", "Live" e "Editar perfil" só existem no próprio perfil.
         var acoesEl = document.getElementById('sf-perfil-acoes');
         if (acoesEl) acoesEl.style.display = (me && uid === me.uid) ? 'flex' : 'none';
 
