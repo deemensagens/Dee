@@ -340,6 +340,10 @@
 /* Com carrossel (2+ fotos), a caixa vira altura FIXA — cada foto pode ter uma proporção diferente, e uma caixa de tamanho variável faria o post pular de tamanho a cada foto trocada. Sem carrossel (a maioria dos posts, 1 foto só), nada aqui se aplica e o comportamento é o de sempre. */\
 .sf-detail-media.sf-has-carousel{height:340px;max-height:340px;}\
 .sf-detail-media .sf-img-slide img{width:100%;height:100%;object-fit:contain;display:block;}\
+/* Dentro do modal de detalhe não há o arraste que troca de POSTAGEM, então ali o carrossel de fotos também passa arrastando para o lado (ver sfInitDetailImgDrag). pan-y mantém a rolagem vertical do modal e pinch-zoom mantém o beliscão de zoom. */\
+.sf-detail-media .sf-img-carousel{touch-action:pan-y pinch-zoom;}\
+.sf-detail-media .sf-img-track{cursor:grab;}\
+.sf-detail-media .sf-img-track.dragging{transition:none;cursor:grabbing;}\
 .sf-detail-text{padding:14px 16px;font-size:14px;line-height:1.55;color:var(--text);word-break:break-word;}\
 .sf-detail-actions{display:flex;gap:8px;padding:4px 16px 12px;flex-shrink:0;}\
 .sf-comments-title{padding:10px 16px 4px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);flex-shrink:0;}\
@@ -974,6 +978,7 @@
         });
 
         sfInitDrag();
+        sfInitDetailImgDrag();
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -1527,6 +1532,116 @@
         wrap.addEventListener('mousedown', function (e) { if (e.target.closest('.sf-arrow') || e.target.closest('.sf-img-arrow')) return; e.preventDefault(); down(e.clientX); });
         window.addEventListener('mousemove', function (e) { if (dragging) move(e.clientX); });
         window.addEventListener('mouseup',   function () { if (dragging) up(); });
+    }
+
+    // ── ARRASTE NO CARROSSEL DE FOTOS DO MODAL DE DETALHE ──
+    // No cartão do feed as fotos de um post só trocam pelas setinhas (lá o
+    // arraste horizontal é de quem troca de POSTAGEM). Dentro do modal de
+    // detalhe esse conflito não existe, então ali as fotos também passam
+    // arrastando para o lado com o dedo (ou com o mouse), no mesmo padrão
+    // do arraste do feed (sfInitDrag). Os eventos ficam presos no
+    // #sf-detail-media-wrap, que é fixo: o carrossel lá dentro é recriado
+    // a cada sfRenderDetail, e assim o arraste continua valendo sem
+    // precisar religar nada. A troca de foto em si reaproveita
+    // sfImgCarouselNav (a mesma das setinhas), então pontinhos, contador,
+    // setinhas e o download sob demanda da foto seguem iguais.
+    function sfInitDetailImgDrag() {
+        var mediaWrap = document.getElementById('sf-detail-media-wrap');
+        if (!mediaWrap) return;
+        var drag = null;             // arraste em andamento, ou null
+        var ignoreNextClick = false; // engole o "click" que o navegador dispara ao soltar o mouse depois de um arraste
+
+        function down(target, x, y) {
+            drag = null;
+            if (!target || target.closest('.sf-img-arrow')) return;
+            var carousel = target.closest('.sf-img-carousel');
+            if (!carousel || !mediaWrap.contains(carousel)) return;
+            var track = carousel.querySelector('.sf-img-track');
+            if (!track) return;
+            var total = parseInt(carousel.getAttribute('data-img-total'), 10) || 1;
+            if (total <= 1) return;
+            drag = {
+                carousel: carousel,
+                track: track,
+                idx: parseInt(carousel.getAttribute('data-img-index'), 10) || 0,
+                total: total,
+                startX: x, startY: y, currentX: x,
+                widthPx: carousel.getBoundingClientRect().width || 1,
+                axis: null // decidido no primeiro movimento: 'x' = passando foto · 'y' = rolando o modal
+            };
+        }
+        function move(x, y) {
+            if (!drag) return;
+            if (!drag.carousel.isConnected) { drag = null; return; } // o detalhe foi redesenhado no meio do arraste
+            var dx = x - drag.startX, dy = y - drag.startY;
+            if (!drag.axis) {
+                if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+                drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+                if (drag.axis === 'y') { drag = null; return; } // gesto vertical: deixa o modal rolar normalmente
+                drag.track.classList.add('dragging');
+            }
+            drag.currentX = x;
+            // Antes da 1ª foto / depois da última o arraste fica "pesado", já que não há para onde ir.
+            if ((drag.idx === 0 && dx > 0) || (drag.idx === drag.total - 1 && dx < 0)) dx = dx * 0.3;
+            drag.track.style.transform = 'translateX(' + (-drag.idx * drag.widthPx + dx) + 'px)';
+        }
+        function up() {
+            if (!drag) return;
+            var d = drag;
+            drag = null;
+            if (d.axis !== 'x') return; // foi só um toque, sem arrastar
+            d.track.classList.remove('dragging');
+            if (!d.carousel.isConnected) return;
+            var delta = d.currentX - d.startX;
+            var threshold = d.widthPx * 0.18;
+            if (delta < -threshold && d.idx < d.total - 1) window.sfImgCarouselNav(d.carousel, 1);
+            else if (delta > threshold && d.idx > 0) window.sfImgCarouselNav(d.carousel, -1);
+            else d.track.style.transform = 'translateX(-' + (d.idx * 100) + '%)';
+        }
+        function cancel() {
+            if (!drag) return;
+            var d = drag;
+            drag = null;
+            if (d.axis !== 'x') return;
+            d.track.classList.remove('dragging');
+            d.track.style.transform = 'translateX(-' + (d.idx * 100) + '%)';
+        }
+
+        mediaWrap.addEventListener('touchstart', function (e) {
+            if (e.touches.length > 1) { cancel(); return; } // segundo dedo (beliscão): desiste do arraste
+            down(e.target, e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        mediaWrap.addEventListener('touchmove', function (e) {
+            if (!drag) return;
+            if (e.touches.length > 1) { cancel(); return; }
+            move(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        mediaWrap.addEventListener('touchend',    function () { up(); });
+        mediaWrap.addEventListener('touchcancel', function () { cancel(); });
+
+        mediaWrap.addEventListener('mousedown', function (e) {
+            if (e.button !== 0) return;
+            if (!e.target.closest('.sf-img-carousel') || e.target.closest('.sf-img-arrow')) return;
+            e.preventDefault(); // não deixa o navegador "arrastar a imagem" nem selecionar texto
+            down(e.target, e.clientX, e.clientY);
+        });
+        window.addEventListener('mousemove', function (e) { if (drag) move(e.clientX, e.clientY); });
+        window.addEventListener('mouseup', function () {
+            if (!drag) return;
+            if (drag.axis === 'x') {
+                // Soltar o mouse fora da foto (ex.: no fundo escuro do modal)
+                // geraria um click ali — não pode fechar nem acionar nada.
+                ignoreNextClick = true;
+                setTimeout(function () { ignoreNextClick = false; }, 0);
+            }
+            up();
+        });
+        window.addEventListener('click', function (e) {
+            if (!ignoreNextClick) return;
+            ignoreNextClick = false;
+            e.stopPropagation();
+            e.preventDefault();
+        }, true);
     }
 
     // ══════════════════════════════════════════════════════════════════
