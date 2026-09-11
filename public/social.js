@@ -6,13 +6,17 @@
     var sfPostsUnsub    = null;
     var sfMode          = 'all';  // 'all' | 'mine'
     var sfIndex         = 0;      // índice do post visível no carrossel
-    var sfPendingImage   = null;  // { base64, mimeType } da foto escolhida no modal de nova postagem
+    var sfPendingImages  = [];    // lista de { base64, mimeType } das fotos escolhidas no modal de nova postagem — até SF_MAX_IMAGES, publicadas juntas em carrossel
     var sfPendingAudio   = null;  // { base64, mimeType } do áudio gravado/escolhido no modal de nova postagem
     var sfCommentsUnsub  = null;  // listener dos comentários do post aberto no detalhe
     var sfDetailPostId   = null;  // post atualmente aberto no modal de detalhe
     var sfDetailPostOwnerUid = null; // dono do post aberto no detalhe (pode excluir qualquer comentário nele)
-    var sfLoadedImages   = {};    // postId -> true, controla quais mediaId já foram baixados/decodificados
+    var sfLoadedImages   = {};    // postId -> true, controla quais mediaId já foram baixados/decodificados (postagens antigas, com 1 imagem só)
     var sfLoadedAudios   = {};    // postId -> true, controla quais audioId já foram baixados/decodificados
+    // ── Carrossel de fotos (até SF_MAX_IMAGES por postagem) ──
+    var sfCarouselDataByPost   = {}; // postId -> lista normalizada de imagens (sfPostImageList), preenchido sempre que um carrossel é desenhado na tela
+    var sfCarouselImgCache     = {}; // "postId_slot" -> base64 já baixado nesta sessão (evita rebaixar se o mesmo post aparece no feed E no modal de detalhe)
+    var sfCarouselLoadingSlots = {}; // "postId_slot" -> true enquanto um downloadChunks daquela foto está em andamento
     // ── Gravação de áudio para novas postagens (independente da gravação do chat) ──
     var sfAudioRec = { isRecording: false, stream: null, recorder: null, chunks: [], startTime: 0, timer: null, timeoutId: null };
     var sfShareTargetPost = null; // post selecionado para compartilhar
@@ -69,6 +73,14 @@
     var sfLoadedCovers        = {};    // postId -> true, controla quais coverId (capa em partes) já foram baixados/decodificados
 
     var SF_MAX_INLINE = 700 * 1024; // mesmo limite usado no restante do app p/ decidir inline vs chunks
+    var SF_MAX_IMAGES = 20;         // máximo de fotos por publicação (carrossel)
+    // Orçamento TOTAL de bytes embutidos (mediaData) num único post de carrossel.
+    // Cada foto sozinha ainda respeita SF_MAX_INLINE, mas com até 20 fotos não dá
+    // pra deixar todas embutidas: um documento do Firestore tem um teto de 1MB, e
+    // várias fotos "pequenas" somadas passariam disso fácil. Por isso, a partir
+    // daqui as fotos seguintes de um mesmo post vão em partes (chunks) mesmo que
+    // cada uma, sozinha, coubesse embutida.
+    var SF_MAX_TOTAL_INLINE = 900 * 1024;
 
     // ── "Voz Dee" — Pontuação de Impacto / Reconhecimento / Selo / Spotlight ──
     // Ver bloco de funções mais abaixo ("VOZ DEE") pra explicação completa.
@@ -166,6 +178,8 @@
 .sf-perfil-tile{position:relative;display:block;width:100%;height:0;padding:0 0 100%;border:none;background:var(--surface2);cursor:pointer;overflow:hidden;}\
 .sf-perfil-tile img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;}\
 .sf-perfil-tile-txt{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;font-size:10.5px;color:var(--muted);padding:8px;line-height:1.35;text-align:left;overflow:hidden;}\
+.sf-perfil-tile-multi{position:absolute;top:4px;right:4px;color:#fff;filter:drop-shadow(0 0 2px rgba(0,0,0,.85));}\
+.sf-perfil-tile-multi .icon{width:14px;height:14px;}\
 .sf-perfil-vazio{grid-column:1/-1;text-align:center;padding:34px 16px;color:var(--muted);font-size:13px;}\
 /* Os modais abertos DE DENTRO do perfil (nova postagem, live, editar perfil, recorte) vem antes dele no HTML, entao com o mesmo z-index do .overlay (1000) eram desenhados POR TRAS do cartao do perfil. Subindo o z-index deles, abrem sempre na frente. Continuam abaixo da camera (1100) e do confirm-modal (10050). */\
 #sf-new-post-modal,#sf-live-new-modal,#sf-perfil-editar-modal{z-index:1010;}\
@@ -246,6 +260,21 @@
 .sf-card-media{flex:1;min-height:0;background:#05070a;display:flex;align-items:center;justify-content:center;overflow:hidden;}\
 .sf-card-media img{width:100%;height:100%;object-fit:cover;display:block;}\
 .sf-media-loading{color:var(--muted);font-size:11px;}\
+/* Carrossel de fotos DENTRO de um post (até SF_MAX_IMAGES): setinhas e pontinhos por cima da imagem — sem arraste, de propósito, pra não conflitar com o arraste que troca de POSTAGEM no mesmo eixo. */\
+.sf-img-carousel{position:relative;width:100%;height:100%;overflow:hidden;}\
+.sf-img-track{display:flex;width:100%;height:100%;transition:transform .28s cubic-bezier(.16,1,.3,1);}\
+.sf-img-slide{flex:0 0 100%;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;}\
+.sf-card-media .sf-img-slide img{width:100%;height:100%;object-fit:cover;display:block;}\
+.sf-img-carousel:after{content:\'\';position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(to top,rgba(0,0,0,.45),transparent);pointer-events:none;z-index:2;}\
+.sf-img-arrow{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:rgba(10,14,22,.55);border:1px solid rgba(255,255,255,.16);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3;padding:0;}\
+.sf-img-arrow .icon{width:15px;height:15px;}\
+.sf-img-arrow.prev{left:6px;}\
+.sf-img-arrow.next{right:6px;}\
+.sf-img-arrow.hide{display:none;}\
+.sf-img-dots{position:absolute;left:0;right:0;bottom:6px;display:flex;justify-content:center;gap:4px;z-index:3;}\
+.sf-img-dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.45);transition:background .2s,width .2s;}\
+.sf-img-dot.on{background:#fff;width:11px;border-radius:3px;}\
+.sf-img-counter{position:absolute;top:8px;right:8px;background:rgba(10,14,22,.6);color:#fff;font-family:"DM Sans",sans-serif;font-weight:700;font-size:10.5px;padding:2px 7px;border-radius:10px;z-index:3;}\
 .sf-card-text{padding:14px;font-size:13px;line-height:1.5;color:var(--text);overflow-y:auto;flex:1;word-break:break-word;}\
 .sf-card-text.sf-textonly{display:flex;align-items:center;justify-content:center;text-align:center;font-family:"Syne",sans-serif;font-weight:700;font-size:15px;background:linear-gradient(135deg,rgba(0,229,204,.08),rgba(0,136,255,.08));}\
 .sf-card-caption{padding:8px 4px 0;font-size:12px;color:var(--text);line-height:1.4;word-break:break-word;max-height:52px;overflow-y:auto;flex-shrink:0;}\
@@ -268,6 +297,15 @@
 .sf-new-preview.show{display:block;}\
 .sf-new-preview img{width:100%;max-height:220px;object-fit:contain;display:block;}\
 .sf-new-preview .sf-rm-img{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px;}\
+/* Tira de miniaturas do carrossel de fotos da NOVA POSTAGEM (até SF_MAX_IMAGES) — cada uma removível e numerada na ordem em que entram no carrossel publicado. Independente do sf-new-preview acima, que continua servindo só a capa (1 foto só) da Live. */\
+.sf-new-preview-list{display:none;gap:8px;overflow-x:auto;margin-top:12px;padding:2px 2px 4px;-webkit-overflow-scrolling:touch;}\
+.sf-new-preview-list.show{display:flex;}\
+.sf-new-preview-item{position:relative;flex:0 0 auto;width:76px;height:76px;border-radius:10px;overflow:hidden;background:#000;}\
+.sf-new-preview-item img{width:100%;height:100%;object-fit:cover;display:block;}\
+.sf-new-preview-item .sf-rm-img{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.65);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}\
+.sf-new-preview-item .sf-rm-img .icon{width:11px;height:11px;}\
+.sf-new-preview-num{position:absolute;bottom:3px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:8px;font-family:"DM Sans",sans-serif;}\
+.sf-new-preview-counter{font-size:11px;color:var(--muted);margin-top:6px;}\
 .sf-pick-photo-btn{display:flex;align-items:center;gap:8px;padding:11px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;cursor:pointer;color:var(--text);font-size:13px;transition:border-color .15s;}\
 .sf-pick-photo-btn:hover{border-color:var(--accent);}\
 .sf-new-media-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}\
@@ -299,6 +337,9 @@
 .sf-detail-body{overflow-y:auto;flex-shrink:1;}\
 .sf-detail-media{width:100%;max-height:340px;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;}\
 .sf-detail-media img{width:100%;max-height:340px;object-fit:contain;}\
+/* Com carrossel (2+ fotos), a caixa vira altura FIXA — cada foto pode ter uma proporção diferente, e uma caixa de tamanho variável faria o post pular de tamanho a cada foto trocada. Sem carrossel (a maioria dos posts, 1 foto só), nada aqui se aplica e o comportamento é o de sempre. */\
+.sf-detail-media.sf-has-carousel{height:340px;max-height:340px;}\
+.sf-detail-media .sf-img-slide img{width:100%;height:100%;object-fit:contain;display:block;}\
 .sf-detail-text{padding:14px 16px;font-size:14px;line-height:1.55;color:var(--text);word-break:break-word;}\
 .sf-detail-actions{display:flex;gap:8px;padding:4px 16px 12px;flex-shrink:0;}\
 .sf-comments-title{padding:10px 16px 4px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);flex-shrink:0;}\
@@ -483,7 +524,8 @@
                 '<div class="mcard">' +
                     '<h2 style="margin-bottom:12px;"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nova Postagem</h2>' +
                     '<textarea id="sf-new-text" maxlength="500" placeholder="Escreva algo para a comunidade..."></textarea>' +
-                    '<div class="sf-new-preview" id="sf-new-preview"><button class="sf-rm-img" id="sf-new-rm-img"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button><img id="sf-new-preview-img" src="" alt=""></div>' +
+                    '<div class="sf-new-preview-list" id="sf-new-preview-list"></div>' +
+                    '<div class="sf-new-preview-counter" id="sf-new-preview-counter" style="display:none;"></div>' +
                     '<div class="sf-new-audio-preview" id="sf-new-audio-preview"><audio id="sf-new-audio-player" controls></audio><button class="sf-rm-audio" id="sf-new-rm-audio"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>' +
                     '<div class="sf-new-rec-bar" id="sf-new-rec-bar"><span class="sf-rdot"></span> Gravando áudio... <span class="sf-new-rec-time" id="sf-new-rec-time">00:00</span><button class="sf-new-rec-stop" id="sf-new-rec-stop">Parar</button></div>' +
                     '<div class="sf-new-media-btns">' +
@@ -498,7 +540,7 @@
                     '</div>' +
                 '</div>' +
             '</div>' +
-            '<input type="file" id="sf-new-file-input" hidden accept="image/*">' +
+            '<input type="file" id="sf-new-file-input" hidden accept="image/*" multiple>' +
             '<input type="file" id="sf-new-audio-file-input" hidden accept="audio/*">' +
             // Iniciar Live (legenda + áudio opcional, igual à nova postagem)
             '<div id="sf-live-new-modal" class="overlay">' +
@@ -823,7 +865,6 @@
         document.getElementById('sf-new-submit').onclick = sfSubmitPost;
         document.getElementById('sf-pick-photo-btn').onclick = function () { document.getElementById('sf-new-file-input').click(); };
         document.getElementById('sf-new-file-input').onchange = sfHandleNewPhoto;
-        document.getElementById('sf-new-rm-img').onclick = function (e) { e.stopPropagation(); sfPendingImage = null; sfUpdateNewPreview(); };
         document.getElementById('sf-cam-photo-btn').onclick = function () {
             if (typeof openCamera === 'function') openCamera('photo', 'social');
             else notify('Câmera não disponível neste dispositivo', 'warn');
@@ -1042,11 +1083,119 @@
         return new Date(ts).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
     }
 
+    // ── CARROSSEL DE FOTOS DENTRO DE UM POST (até SF_MAX_IMAGES por
+    //    publicação) — não confundir com o carrossel acima, que troca de
+    //    POSTAGEM. Este aqui vive dentro do card/detalhe de UMA publicação
+    //    e deixa passear entre as fotos dela pelas setinhas (sem arraste,
+    //    de propósito: um arraste aqui dentro entraria em conflito com o
+    //    arraste que troca de postagem, que usa o mesmo eixo horizontal).
+    //
+    // Normaliza os dados de imagem de um post, aceitando tanto o formato
+    // antigo (uma imagem só, em p.mediaData/p.mediaId) quanto o novo, em
+    // carrossel (várias em p.images, cada uma inline ou em chunks) — assim
+    // todo o resto do código só lida com UM formato: uma lista de 1 a
+    // SF_MAX_IMAGES itens { mediaData } ou { mediaId }.
+    function sfPostImageList(p) {
+        if (p && Array.isArray(p.images) && p.images.length) return p.images;
+        if (p && p.mediaData) return [{ mediaData: p.mediaData }];
+        if (p && p.mediaId) return [{ mediaId: p.mediaId }];
+        return [];
+    }
+
+    // Gera o carrossel de fotos de UM post. Reaproveitado tanto no cartão do
+    // feed quanto no modal de detalhe — "wrapClass" é quem já existia em
+    // cada um deles (sf-card-media / sf-detail-media), preservando o
+    // tamanho/recorte de cada contexto.
+    function sfImageCarouselHtml(imgs, postId, wrapClass) {
+        sfCarouselDataByPost[postId] = imgs;
+        var slidesHtml = imgs.map(function (img, i) {
+            if (img.mediaData) return '<div class="sf-img-slide"><img src="' + img.mediaData + '" alt=""></div>';
+            return '<div class="sf-img-slide" data-carousel-post="' + esc(postId) + '" data-carousel-slot="' + i + '"><div class="sf-media-loading">Carregando...</div></div>';
+        }).join('');
+        var dotsHtml = '<div class="sf-img-dots">' + imgs.map(function (_, i) {
+            return '<div class="sf-img-dot' + (i === 0 ? ' on' : '') + '"></div>';
+        }).join('') + '</div>';
+        var counterHtml = '<div class="sf-img-counter"><span class="sf-img-counter-cur">1</span>/' + imgs.length + '</div>';
+        return (
+            '<div class="' + wrapClass + ' sf-has-carousel">' +
+                '<div class="sf-img-carousel" data-carousel-post-id="' + esc(postId) + '" data-img-index="0" data-img-total="' + imgs.length + '">' +
+                    '<div class="sf-img-track">' + slidesHtml + '</div>' +
+                    '<button class="sf-img-arrow prev hide" title="Foto anterior" aria-label="Foto anterior" onclick="event.stopPropagation();sfImgCarouselNav(this,-1)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></button>' +
+                    '<button class="sf-img-arrow next" title="Próxima foto" aria-label="Próxima foto" onclick="event.stopPropagation();sfImgCarouselNav(this,1)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg></button>' +
+                    dotsHtml + counterHtml +
+                '</div>' +
+            '</div>'
+        );
+    }
+
+    // Botão ◂ ▸ dentro do carrossel de UMA publicação: troca de foto sem
+    // trocar de postagem (por isso o stopPropagation no onclick inline).
+    window.sfImgCarouselNav = function (btn, dir) {
+        var wrap = btn.closest('.sf-img-carousel');
+        if (!wrap) return;
+        var total = parseInt(wrap.getAttribute('data-img-total'), 10) || 1;
+        var idx = parseInt(wrap.getAttribute('data-img-index'), 10) || 0;
+        var next = idx + dir;
+        if (next < 0 || next >= total) return;
+        wrap.setAttribute('data-img-index', String(next));
+        var track = wrap.querySelector('.sf-img-track');
+        if (track) track.style.transform = 'translateX(-' + (next * 100) + '%)';
+        wrap.querySelectorAll('.sf-img-dot').forEach(function (d, i) { d.classList.toggle('on', i === next); });
+        var counterEl = wrap.querySelector('.sf-img-counter-cur');
+        if (counterEl) counterEl.textContent = String(next + 1);
+        var prevBtn = wrap.querySelector('.sf-img-arrow.prev');
+        var nextBtn = wrap.querySelector('.sf-img-arrow.next');
+        if (prevBtn) prevBtn.classList.toggle('hide', next <= 0);
+        if (nextBtn) nextBtn.classList.toggle('hide', next >= total - 1);
+        var postId = wrap.getAttribute('data-carousel-post-id');
+        var imgs = sfCarouselDataByPost[postId];
+        if (imgs) sfLoadCarouselSlide(postId, imgs, next);
+    };
+
+    // Baixa (via chunks) UMA foto específica do carrossel de um post, se
+    // ainda não tiver sido baixada nesta sessão. Só carrega sob demanda —
+    // ao montar o carrossel (foto 1) e ao navegar pra uma foto ainda não
+    // vista — pra não gastar banda baixando as 20 de uma vez.
+    function sfLoadCarouselSlide(postId, imgs, slotIndex) {
+        if (!imgs || slotIndex < 0 || slotIndex >= imgs.length) return;
+        var img = imgs[slotIndex];
+        if (!img || !img.mediaId) return; // já é inline (mediaData), ou não existe
+        var key = postId + '_' + slotIndex;
+        if (sfCarouselImgCache[key]) { sfPaintCarouselSlide(postId, slotIndex, sfCarouselImgCache[key]); return; }
+        if (sfCarouselLoadingSlots[key]) return; // já tem um download em andamento
+        sfCarouselLoadingSlots[key] = true;
+        downloadChunks(img.mediaId).then(function (base64) {
+            sfCarouselLoadingSlots[key] = false;
+            sfCarouselImgCache[key] = base64;
+            sfPaintCarouselSlide(postId, slotIndex, base64);
+        }).catch(function () {
+            sfCarouselLoadingSlots[key] = false;
+            sfPaintCarouselSlideError(postId, slotIndex);
+        });
+    }
+    // Pinta o resultado em TODOS os lugares onde esse slide está desenhado
+    // agora (o mesmo post pode estar no cartão do feed E aberto no modal de
+    // detalhe ao mesmo tempo).
+    function sfPaintCarouselSlide(postId, slotIndex, base64) {
+        document.querySelectorAll('.sf-img-slide[data-carousel-post="' + postId + '"][data-carousel-slot="' + slotIndex + '"]').forEach(function (el) {
+            el.innerHTML = '<img src="' + base64 + '" alt="">';
+        });
+    }
+    function sfPaintCarouselSlideError(postId, slotIndex) {
+        document.querySelectorAll('.sf-img-slide[data-carousel-post="' + postId + '"][data-carousel-slot="' + slotIndex + '"]').forEach(function (el) {
+            el.innerHTML = '<div class="sf-media-loading"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Erro ao carregar</div>';
+        });
+    }
+
     function sfCardMediaHtml(p) {
         if (p.type !== 'image' && p.type !== 'image_audio') return '';
-        if (p.mediaData) return '<div class="sf-card-media"><img src="' + p.mediaData + '" alt=""></div>';
-        if (p.mediaId) return '<div class="sf-card-media" data-media-id="' + p.mediaId + '" data-post-id="' + p.id + '"><div class="sf-media-loading">Carregando...</div></div>';
-        return '';
+        var imgs = sfPostImageList(p);
+        if (!imgs.length) return '';
+        if (imgs.length > 1) return sfImageCarouselHtml(imgs, p.id, 'sf-card-media');
+        // 1 imagem só: mantém exatamente o markup de sempre (sem carrossel).
+        var only = imgs[0];
+        if (only.mediaData) return '<div class="sf-card-media"><img src="' + only.mediaData + '" alt=""></div>';
+        return '<div class="sf-card-media" data-media-id="' + only.mediaId + '" data-post-id="' + p.id + '"><div class="sf-media-loading">Carregando...</div></div>';
     }
     // ── Miniatura do card de uma LIVE: capa escolhida pelo anfitrião (foto
     //    tirada na hora ou da galeria) OU, se ele não escolheu nenhuma, a
@@ -1281,16 +1430,22 @@
             var p = list[i];
             var isImgType = (p.type === 'image' || p.type === 'image_audio');
             var isAudType = (p.type === 'audio' || p.type === 'image_audio');
-            if (isImgType && !p.mediaData && p.mediaId && !sfLoadedImages[p.id]) {
-                sfLoadedImages[p.id] = true;
-                downloadChunks(p.mediaId).then(function (base64) {
-                    var mediaEl = document.querySelector('.sf-card-media[data-post-id="' + p.id + '"]');
-                    if (mediaEl) mediaEl.innerHTML = '<img src="' + base64 + '" alt="">';
-                }).catch(function () {
-                    sfLoadedImages[p.id] = false;
-                    var mediaEl = document.querySelector('.sf-card-media[data-post-id="' + p.id + '"]');
-                    if (mediaEl) mediaEl.innerHTML = '<div class="sf-media-loading"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Erro ao carregar</div>';
-                });
+            if (isImgType) {
+                var imgs = sfPostImageList(p);
+                if (imgs.length > 1) {
+                    sfLoadCarouselSlide(p.id, imgs, 0); // carrossel: só a 1ª foto por enquanto, as demais entram sob demanda ao navegar
+                } else if (!p.mediaData && p.mediaId && !sfLoadedImages[p.id]) {
+                    // 1 imagem só (formato antigo) — comportamento inalterado
+                    sfLoadedImages[p.id] = true;
+                    downloadChunks(p.mediaId).then(function (base64) {
+                        var mediaEl = document.querySelector('.sf-card-media[data-post-id="' + p.id + '"]');
+                        if (mediaEl) mediaEl.innerHTML = '<img src="' + base64 + '" alt="">';
+                    }).catch(function () {
+                        sfLoadedImages[p.id] = false;
+                        var mediaEl = document.querySelector('.sf-card-media[data-post-id="' + p.id + '"]');
+                        if (mediaEl) mediaEl.innerHTML = '<div class="sf-media-loading"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Erro ao carregar</div>';
+                    });
+                }
             }
             if (p.type === 'live' && !p.coverData && p.coverId && !sfLoadedCovers[p.id]) {
                 sfLoadedCovers[p.id] = true;
@@ -1361,10 +1516,15 @@
             else sfGoTo(sfIndex);
         }
 
-        wrap.addEventListener('touchstart', function (e) { if (e.target.closest('.sf-arrow')) return; down(e.touches[0].clientX); }, { passive: true });
+        // ".sf-img-arrow" são as setinhas do carrossel de FOTOS dentro de
+        // uma publicação (ver sfImgCarouselNav) — ficam no mesmo eixo
+        // horizontal deste arraste que troca de POSTAGEM, então também
+        // precisam ser ignoradas aqui, senão tocar nelas iniciaria (sem
+        // necessidade) um arraste de postagem por baixo.
+        wrap.addEventListener('touchstart', function (e) { if (e.target.closest('.sf-arrow') || e.target.closest('.sf-img-arrow')) return; down(e.touches[0].clientX); }, { passive: true });
         wrap.addEventListener('touchmove',  function (e) { move(e.touches[0].clientX); }, { passive: true });
         wrap.addEventListener('touchend',   function () { up(); });
-        wrap.addEventListener('mousedown', function (e) { if (e.target.closest('.sf-arrow')) return; e.preventDefault(); down(e.clientX); });
+        wrap.addEventListener('mousedown', function (e) { if (e.target.closest('.sf-arrow') || e.target.closest('.sf-img-arrow')) return; e.preventDefault(); down(e.clientX); });
         window.addEventListener('mousemove', function (e) { if (dragging) move(e.clientX); });
         window.addEventListener('mouseup',   function () { if (dragging) up(); });
     }
@@ -1374,40 +1534,91 @@
     // ══════════════════════════════════════════════════════════════════
     function sfOpenNewPostModal() {
         document.getElementById('sf-new-text').value = '';
-        sfPendingImage = null;
+        sfPendingImages = [];
         sfPendingAudio = null;
         if (sfAudioRec.isRecording) sfStopRecordAudio();
         sfUpdateNewPreview();
         sfUpdateNewAudioPreview();
         openModal('sf-new-post-modal');
     }
+    // Redesenha a tira de miniaturas das fotos escolhidas (0 a SF_MAX_IMAGES),
+    // cada uma com seu próprio botão de remover e um numerozinho mostrando a
+    // ordem em que vão aparecer no carrossel.
     function sfUpdateNewPreview() {
-        var wrap = document.getElementById('sf-new-preview');
-        var img  = document.getElementById('sf-new-preview-img');
-        if (sfPendingImage) { img.src = sfPendingImage.base64; wrap.classList.add('show'); }
-        else { img.src = ''; wrap.classList.remove('show'); }
+        var wrap = document.getElementById('sf-new-preview-list');
+        var counter = document.getElementById('sf-new-preview-counter');
+        if (!wrap) return;
+        if (!sfPendingImages.length) {
+            wrap.classList.remove('show');
+            wrap.innerHTML = '';
+            if (counter) counter.style.display = 'none';
+            return;
+        }
+        wrap.classList.add('show');
+        wrap.innerHTML = sfPendingImages.map(function (img, i) {
+            return '<div class="sf-new-preview-item">' +
+                '<img src="' + img.base64 + '" alt="">' +
+                '<span class="sf-new-preview-num">' + (i + 1) + '</span>' +
+                '<button type="button" class="sf-rm-img" data-rm-idx="' + i + '" title="Remover"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+            '</div>';
+        }).join('');
+        wrap.querySelectorAll('[data-rm-idx]').forEach(function (btn) {
+            btn.onclick = function (e) {
+                e.stopPropagation();
+                sfPendingImages.splice(parseInt(btn.getAttribute('data-rm-idx'), 10), 1);
+                sfUpdateNewPreview();
+            };
+        });
+        if (counter) {
+            counter.style.display = 'block';
+            counter.textContent = sfPendingImages.length + '/' + SF_MAX_IMAGES + ' fotos';
+        }
     }
+    function sfReadFileAsDataURL(file) {
+        return new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function (ev) { resolve(ev.target.result); };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+    // Galeria: aceita escolher várias fotos de uma vez (input multiple).
+    // Processa em ordem (uma de cada vez) pra garantir que elas entrem no
+    // carrossel na mesma ordem em que foram selecionadas.
     function sfHandleNewPhoto(e) {
-        var file = e.target.files[0]; e.target.value = '';
-        if (!file) return;
-        if (!file.type.startsWith('image/')) { notify('Escolha uma imagem', 'warn'); return; }
-        var reader = new FileReader();
-        reader.onload = async function (ev) {
-            var resized = await resizeImageBase64(ev.target.result, 1080, 0.78);
-            sfPendingImage = { base64: resized, mimeType: 'image/jpeg' };
-            sfUpdateNewPreview();
-        };
-        reader.readAsDataURL(file);
+        var files = Array.prototype.slice.call(e.target.files || []);
+        e.target.value = '';
+        if (!files.length) return;
+        var imgFiles = files.filter(function (f) { return f.type && f.type.startsWith('image/'); });
+        if (!imgFiles.length) { notify('Escolha uma imagem', 'warn'); return; }
+        var espaco = SF_MAX_IMAGES - sfPendingImages.length;
+        if (espaco <= 0) { notify('Você já atingiu o limite de ' + SF_MAX_IMAGES + ' fotos por publicação', 'warn'); return; }
+        if (imgFiles.length > espaco) {
+            notify('Só cabem mais ' + espaco + ' foto' + (espaco === 1 ? '' : 's') + ' nesta publicação (máx. ' + SF_MAX_IMAGES + ') — as demais foram ignoradas', 'warn', 5000);
+            imgFiles = imgFiles.slice(0, espaco);
+        }
+        (async function () {
+            for (var i = 0; i < imgFiles.length; i++) {
+                try {
+                    var raw = await sfReadFileAsDataURL(imgFiles[i]);
+                    var resized = await resizeImageBase64(raw, 1080, 0.78);
+                    sfPendingImages.push({ base64: resized, mimeType: 'image/jpeg' });
+                    sfUpdateNewPreview(); // vai aparecendo foto por foto, sem esperar todas processarem
+                } catch (err) { notify('Erro ao processar uma das fotos', 'err'); }
+            }
+        })();
     }
 
     // ── Foto tirada na hora, usando a MESMA câmera do app (index.html) ──
     // openCamera('photo','social') abre o #cam-modal por cima do modal de
     // nova postagem; ao capturar, index.html chama window.sfOnPhotoCaptured
-    // em vez de tratar a foto como anexo de chat/status/perfil.
+    // em vez de tratar a foto como anexo de chat/status/perfil. Cada foto
+    // tirada é ADICIONADA ao carrossel (não substitui a anterior).
     window.sfOnPhotoCaptured = async function (base64) {
         try {
+            if (sfPendingImages.length >= SF_MAX_IMAGES) { notify('Você já atingiu o limite de ' + SF_MAX_IMAGES + ' fotos por publicação', 'warn'); return; }
             var resized = (typeof resizeImageBase64 === 'function') ? await resizeImageBase64(base64, 1080, 0.78) : base64;
-            sfPendingImage = { base64: resized, mimeType: 'image/jpeg' };
+            sfPendingImages.push({ base64: resized, mimeType: 'image/jpeg' });
             sfUpdateNewPreview();
             if (!document.getElementById('sf-new-post-modal').classList.contains('open')) openModal('sf-new-post-modal');
         } catch (e) { notify('Erro ao processar a foto', 'err'); }
@@ -2081,7 +2292,7 @@
         if (!me) return;
         if (sfAudioRec.isRecording) { notify('Termine ou pare a gravação antes de publicar', 'warn'); return; }
         var text = document.getElementById('sf-new-text').value.trim().slice(0, 500);
-        var hasImage = !!sfPendingImage;
+        var hasImage = sfPendingImages.length > 0;
         var hasAudio = !!sfPendingAudio;
         if (!text && !hasImage && !hasAudio) { notify('Escreva algo, adicione uma foto ou um áudio', 'warn'); return; }
         var type = hasImage && hasAudio ? 'image_audio' : hasImage ? 'image' : hasAudio ? 'audio' : 'text';
@@ -2095,15 +2306,28 @@
                 createdAt: Date.now()
             };
             if (hasImage) {
-                var b64 = sfPendingImage.base64;
-                if (b64.length <= SF_MAX_INLINE) {
-                    payload.mediaData = b64;
-                } else {
-                    var mediaId = genMediaId();
-                    payload.mediaId = mediaId;
-                    notify('Publicando foto em partes...', 'info', 8000);
-                    await uploadChunks(b64, mediaId);
+                // Cada foto do carrossel entra embutida (mediaData) enquanto
+                // ainda houver orçamento, ou em partes (mediaId + coleção
+                // "chunks", igual já acontecia com 1 imagem só) quando
+                // estourar. O orçamento é do POST inteiro, não por foto —
+                // senão, várias fotos "pequenas" somadas ainda passariam do
+                // limite de ~1MB de um documento do Firestore.
+                var images = [];
+                var orcamento = SF_MAX_TOTAL_INLINE;
+                if (sfPendingImages.length > 1) notify('Publicando ' + sfPendingImages.length + ' fotos...', 'info', 6000);
+                for (var pi = 0; pi < sfPendingImages.length; pi++) {
+                    var pb64 = sfPendingImages[pi].base64;
+                    if (pb64.length <= SF_MAX_INLINE && pb64.length <= orcamento) {
+                        images.push({ mediaData: pb64 });
+                        orcamento -= pb64.length;
+                    } else {
+                        var pMediaId = genMediaId();
+                        if (sfPendingImages.length === 1) notify('Publicando foto em partes...', 'info', 8000);
+                        await uploadChunks(pb64, pMediaId);
+                        images.push({ mediaId: pMediaId });
+                    }
                 }
+                payload.images = images;
             }
             if (hasAudio) {
                 var ab64 = sfPendingAudio.base64;
@@ -2126,7 +2350,7 @@
             }
             notify('Postagem publicada!', 'ok');
             closeModal('sf-new-post-modal');
-            sfPendingImage = null;
+            sfPendingImages = [];
             sfPendingAudio = null;
             sfMode = 'all';
             document.getElementById('sf-mine-toggle').classList.remove('on');
@@ -2174,6 +2398,23 @@
     // ══════════════════════════════════════════════════════════════════
     //  EXCLUIR POSTAGEM
     // ══════════════════════════════════════════════════════════════════
+    // Apaga um mídia em partes (chunks/{mediaId} + sua subcoleção /parts) do
+    // Firestore e do cache local. Reaproveitado sempre que uma postagem (ou
+    // qualquer uma das fotos do carrossel dela) com mídia em partes precisa
+    // ser excluída — tanto ao apagar 1 postagem quanto ao apagar a conta
+    // inteira.
+    async function sfDeleteChunkedMedia(mediaId) {
+        if (!mediaId) return;
+        localforage.removeItem(mediaId).catch(function () {});
+        var meta = await db.collection('chunks').doc(mediaId).get();
+        if (!meta.exists) return;
+        var total = meta.data().total;
+        var b = db.batch();
+        for (var i = 0; i < total; i++) b.delete(db.collection('chunks').doc(mediaId).collection('parts').doc(String(i)));
+        b.delete(db.collection('chunks').doc(mediaId));
+        await b.commit();
+    }
+
     async function sfDeletePost(postId, fromDetail) {
         var p = sfPosts.find(function (x) { return x.id === postId; });
         if (!me || (p && p.uid !== me.uid)) return;
@@ -2197,18 +2438,14 @@
                     var b2 = db.batch(); ps.forEach(function (pDoc) { b2.delete(pDoc.ref); }); return b2.commit();
                 }).catch(function () {});
             }
-            if (p && p.mediaId) {
-                localforage.removeItem(p.mediaId).catch(function () {});
-                try {
-                    var meta = await db.collection('chunks').doc(p.mediaId).get();
-                    if (meta.exists) {
-                        var total = meta.data().total;
-                        var b2 = db.batch();
-                        for (var i = 0; i < total; i++) b2.delete(db.collection('chunks').doc(p.mediaId).collection('parts').doc(String(i)));
-                        b2.delete(db.collection('chunks').doc(p.mediaId));
-                        await b2.commit();
-                    }
-                } catch (e2) {}
+            if (p) {
+                // sfPostImageList já cobre os dois formatos: postagem antiga
+                // (1 foto em p.mediaId) e carrossel novo (várias em p.images)
+                // — cada foto em partes tem seu próprio mediaId pra apagar.
+                var imgsToClean = sfPostImageList(p).filter(function (im) { return im.mediaId; });
+                for (var ci = 0; ci < imgsToClean.length; ci++) {
+                    try { await sfDeleteChunkedMedia(imgsToClean[ci].mediaId); } catch (e2) {}
+                }
             }
             // Apaga também os avisos que esta postagem gerou nos amigos
             // (o "começou uma live", a curtida, o comentário). Sem isso,
@@ -2280,16 +2517,11 @@
                     commentsSnap.forEach(function (c) { pb.delete(c.ref); });
                     pb.delete(postDoc.ref);
                     await pb.commit();
-                    var mediaId = postDoc.data().mediaId;
-                    if (mediaId) {
-                        var meta = await db.collection('chunks').doc(mediaId).get();
-                        if (meta.exists) {
-                            var total = meta.data().total;
-                            var mb = db.batch();
-                            for (var t = 0; t < total; t++) mb.delete(db.collection('chunks').doc(mediaId).collection('parts').doc(String(t)));
-                            mb.delete(db.collection('chunks').doc(mediaId));
-                            await mb.commit();
-                        }
+                    // sfPostImageList cobre tanto a postagem antiga (1 foto
+                    // em mediaId) quanto o carrossel novo (várias em images).
+                    var imgsToClean = sfPostImageList(postDoc.data()).filter(function (im) { return im.mediaId; });
+                    for (var ci = 0; ci < imgsToClean.length; ci++) {
+                        try { await sfDeleteChunkedMedia(imgsToClean[ci].mediaId); } catch (e4) {}
                     }
                 } catch (e2) { console.warn('Falha ao limpar postagem:', e2); }
             }
@@ -2983,10 +3215,13 @@
             // WebRTC (o que o espectador recebe) continuando 100% normal.
             var mediaHtml = '';
             if (p.type === 'live') mediaHtml += sfLiveDetailAreaHtml(p);
-            if (hasImg) {
-                if (p.mediaData) {
-                    mediaHtml += '<div class="sf-detail-media"><img src="' + p.mediaData + '" alt=""></div>';
-                } else if (p.mediaId) {
+            var imgs = hasImg ? sfPostImageList(p) : [];
+            if (hasImg && imgs.length > 1) {
+                mediaHtml += sfImageCarouselHtml(imgs, p.id, 'sf-detail-media');
+            } else if (hasImg && imgs.length === 1) {
+                if (imgs[0].mediaData) {
+                    mediaHtml += '<div class="sf-detail-media"><img src="' + imgs[0].mediaData + '" alt=""></div>';
+                } else if (imgs[0].mediaId) {
                     mediaHtml += '<div class="sf-detail-media" id="sf-detail-media-img"><div class="sf-media-loading">Carregando...</div></div>';
                 }
             }
@@ -3009,8 +3244,10 @@
                 if (isLiveActive) sfLiveMountDetailArea(p);
                 else if (sfLiveActivePostId === p.id) sfLiveTeardown(); // a live que eu via/hospedava acabou de encerrar
             }
-            if (hasImg && p.mediaId) {
-                downloadChunks(p.mediaId).then(function (base64) {
+            if (hasImg && imgs.length > 1) {
+                sfLoadCarouselSlide(p.id, imgs, 0); // carrossel: só a 1ª foto por enquanto, as demais entram sob demanda ao navegar
+            } else if (hasImg && imgs.length === 1 && imgs[0].mediaId) {
+                downloadChunks(imgs[0].mediaId).then(function (base64) {
                     var el = document.getElementById('sf-detail-media-img');
                     if (el) el.innerHTML = '<img src="' + base64 + '" alt="">';
                 }).catch(function () {
@@ -3489,10 +3726,15 @@
         // perfeito (altura 0 + padding-bottom:100%) — com a div, todos
         // saem exatamente do mesmo tamanho.
         function tileHtml(p) {
-            var capa = p.mediaData
-                ? '<img src="' + p.mediaData + '" alt="">'
+            var imgs = sfPostImageList(p);
+            var first = imgs[0];
+            var capa = (first && first.mediaData)
+                ? '<img src="' + first.mediaData + '" alt="">'
                 : '<span class="sf-perfil-tile-txt">' + esc((p.text || '').slice(0, 60)) + '</span>';
-            return '<div class="sf-perfil-tile" role="button" tabindex="0" data-pid="' + p.id + '">' + capa + '</div>';
+            var multiBadge = imgs.length > 1
+                ? '<span class="sf-perfil-tile-multi" title="Várias fotos"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="13" height="13" rx="2"/><path d="M21 8v10a2 2 0 0 1-2 2H8"/></svg></span>'
+                : '';
+            return '<div class="sf-perfil-tile" role="button" tabindex="0" data-pid="' + p.id + '">' + capa + multiBadge + '</div>';
         }
 
         function ligarCliques() {
@@ -3990,8 +4232,9 @@
     function sfOpenShareModal(p) {
         sfShareTargetPost = p;
         var prev = document.getElementById('sf-share-preview');
-        var hasImg = (p.type === 'image' || p.type === 'image_audio') && p.mediaData;
-        var mediaHtml = hasImg ? '<img src="' + p.mediaData + '" alt="">' : '<div class="sf-share-preview-ic">' + sfTypeIcon(p.type) + '</div>';
+        var firstImg = sfPostImageList(p)[0];
+        var hasImg = (p.type === 'image' || p.type === 'image_audio') && firstImg && firstImg.mediaData;
+        var mediaHtml = hasImg ? '<img src="' + firstImg.mediaData + '" alt="">' : '<div class="sf-share-preview-ic">' + sfTypeIcon(p.type) + '</div>';
         prev.innerHTML = mediaHtml + '<div class="sf-share-preview-title">' + esc((p.nome || 'Usuário') + (p.text ? ' — ' + p.text.slice(0, 40) : '')) + '</div>';
 
         var list = document.getElementById('sf-share-list');
@@ -4038,6 +4281,7 @@
         var checked = Array.prototype.slice.call(document.querySelectorAll('#sf-share-list input:checked')).map(function (i) { return i.value; });
         if (!checked.length) { notify('Selecione ao menos um amigo ou grupo', 'warn'); return; }
 
+        var shareFirstImg = sfPostImageList(p)[0];
         var payload = {
             senderId: me.uid, senderName: me.nome, text: '', type: 'social_share', time: Date.now(),
             postId: p.id,
@@ -4045,7 +4289,7 @@
             postAuthorFoto: p.foto || null,
             postType: p.type,
             postText: (p.text || '').slice(0, 140),
-            postMediaPreview: ((p.type === 'image' || p.type === 'image_audio') && p.mediaData) ? p.mediaData : null
+            postMediaPreview: ((p.type === 'image' || p.type === 'image_audio') && shareFirstImg && shareFirstImg.mediaData) ? shareFirstImg.mediaData : null
         };
 
         var ok = 0, fail = 0;
@@ -4152,6 +4396,7 @@
     async function sfNotifyPostOwner(post, type) {
         if (!me || !post || !post.uid || post.uid === me.uid) return;
         try {
+            var notifyFirstImg = sfPostImageList(post)[0];
             await db.collection('social_notifications').add({
                 toUid: post.uid,
                 fromUid: me.uid,
@@ -4161,7 +4406,7 @@
                 postId: post.id,
                 postType: post.type || null,
                 postText: (post.text || '').slice(0, 80),
-                postMediaPreview: ((post.type === 'image' || post.type === 'image_audio') && post.mediaData) ? post.mediaData : null,
+                postMediaPreview: ((post.type === 'image' || post.type === 'image_audio') && notifyFirstImg && notifyFirstImg.mediaData) ? notifyFirstImg.mediaData : null,
                 read: false,
                 createdAt: Date.now()
             });

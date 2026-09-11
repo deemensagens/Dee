@@ -570,30 +570,92 @@
         .reply-bar-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 2px 4px; border-radius: 6px; transition: color .15s; flex-shrink: 0; }
         .reply-bar-close:hover { color: var(--danger); }
 
-        /* ── REACTIONS ── */
-        .reactions-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: -8px; margin-bottom: 8px; padding: 0 8px; z-index: 10; position: relative; }
-        .mwrap.me .reactions-row { justify-content: flex-end; }
-        .mwrap.them .reactions-row { justify-content: flex-start; }
-        .reaction-chip { display: flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 2px 8px; font-size: 13px; cursor: pointer; transition: all 0.2s; user-select: none; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
-        .reaction-chip:hover { transform: scale(1.15); border-color: var(--accent); }
-        .reaction-chip.mine { background: var(--me); border-color: var(--accent); }
-        .reaction-chip .rc-count { font-size: 11px; font-weight: 800; color: var(--accent); font-family: 'Syne', sans-serif; }
+        /* ── REAÇÕES NA MENSAGEM ──
+           Substituem a antiga curtida (que era só um coração). São três peças:
+             · .reac-linha / .reac-chip — as reações já dadas, encostadas logo
+               abaixo da bolha: uma pílula por emoji, com a contagem quando
+               mais de uma pessoa escolheu o mesmo.
+             · #reac-barra — a barrinha que abre ao tocar em "Reagir", com os
+               4 emojis mais usados/recentes deste aparelho e o botão +.
+             · #reac-seletor — a lista completa de emojis, aberta pelo +. No
+               celular ela sobe de baixo, como uma folha; no computador abre
+               junto da mensagem.
+           Curtidas antigas (campo likedBy) continuam aparecendo, como ❤️. */
+        .reac-linha { display: flex; flex-wrap: wrap; gap: 4px; margin-top: -7px; padding: 0 8px; position: relative; z-index: 1; max-width: 100%; }
+        .mwrap.me   .reac-linha { justify-content: flex-end; }
+        .mwrap.them .reac-linha { justify-content: flex-start; }
+        .reac-chip { display: inline-flex; align-items: center; gap: 3px; min-height: 24px; padding: 2px 7px; background: var(--surface2); border: 1px solid var(--border); border-radius: 999px; box-shadow: 0 2px 6px rgba(0,0,0,.35); font-family: inherit; font-size: 14px; line-height: 1; color: var(--text); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: transform .15s, border-color .15s, background .15s; }
+        .reac-chip:hover { border-color: var(--accent); }
+        .reac-chip:active { transform: scale(.92); }
+        .reac-chip.minha { background: rgba(0,229,204,.12); border-color: rgba(0,229,204,.55); }
+        .reac-chip .dee-emoji { width: 18px; height: 18px; vertical-align: middle; }
+        .reac-chip .rc-num { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 11px; color: var(--accent); }
+        .reac-chip.nova { animation: reacChipPop .32s cubic-bezier(.18,.89,.32,1.28); }
+        @keyframes reacChipPop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
 
-        /* ── CURTIDA NA MENSAGEM ──
-           Estas três classes são criadas pelo JavaScript (ver renderLikes),
-           mas nunca tiveram regra nenhuma aqui: a folha de estilo só tinha
-           as regras antigas de "reactions", de uma versão anterior. Sem
-           estilo, o <button> da curtida era desenhado pelo próprio Android
-           com a aparência crua dele — um retângulo cinza/escuro sem forma,
-           que aparecia solto dentro da conversa como se a tela estivesse
-           falhando. */
-        .likes-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; padding: 0 4px; position: relative; }
-        .mwrap.me   .likes-row { justify-content: flex-end; }
-        .mwrap.them .likes-row { justify-content: flex-start; }
-        .like-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 3px 9px; font-size: 12px; font-family: inherit; color: var(--text); cursor: pointer; user-select: none; line-height: 1.3; transition: transform .15s, border-color .15s; }
-        .like-chip:hover { transform: scale(1.06); border-color: var(--accent); }
-        .like-chip.mine { background: var(--me); border-color: var(--accent); }
-        .like-chip .lc-count { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 11px; color: var(--accent); }
+        /* Botão "Reagir" da barra de ações: fica aceso enquanto a barrinha
+           está aberta, e as ações não somem ao tirar o mouse de cima. */
+        .mact-btn.mact-reagir.aberto { color: var(--accent); background: rgba(0,229,204,.08); }
+        .mwrap.reagindo .msg-actions { opacity: 1; pointer-events: auto; }
+
+        /* Barrinha com os 4 emojis + botão de mais */
+        #reac-barra { position: fixed; top: 0; left: 0; z-index: 950; display: none; align-items: center; gap: 2px; padding: 5px; background: var(--surface2); border: 1px solid var(--border); border-radius: 999px; box-shadow: 0 14px 36px rgba(0,0,0,.6); }
+        #reac-barra.aberta { display: flex; animation: reacSurge .18s cubic-bezier(.16,1,.3,1); }
+        @keyframes reacSurge { from { opacity: 0; transform: scale(.75); } to { opacity: 1; transform: none; } }
+        .reac-op { width: 42px; height: 42px; padding: 0; border: none; border-radius: 50%; background: none; display: flex; align-items: center; justify-content: center; font-size: 25px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .14s cubic-bezier(.34,1.56,.64,1), background .14s; }
+        .reac-op .dee-emoji { width: 28px; height: 28px; vertical-align: middle; }
+        .reac-op:hover { transform: translateY(-3px) scale(1.16); background: var(--surface3); }
+        .reac-op:active { transform: scale(.9); }
+        .reac-op.atual { background: rgba(0,229,204,.14); box-shadow: inset 0 0 0 1.5px rgba(0,229,204,.6); }
+        #reac-barra.aberta .reac-op { animation: reacOpSurge .22s cubic-bezier(.16,1,.3,1) backwards; }
+        #reac-barra.aberta .reac-op:nth-child(2) { animation-delay: .03s; }
+        #reac-barra.aberta .reac-op:nth-child(3) { animation-delay: .06s; }
+        #reac-barra.aberta .reac-op:nth-child(4) { animation-delay: .09s; }
+        @keyframes reacOpSurge { from { opacity: 0; transform: translateY(6px) scale(.6); } to { opacity: 1; transform: none; } }
+        .reac-sep { width: 1px; height: 24px; margin: 0 3px; background: var(--border); flex-shrink: 0; }
+        .reac-mais { width: 36px; height: 36px; margin-right: 3px; padding: 0; border: none; border-radius: 50%; background: var(--surface3); color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .14s, color .14s; }
+        .reac-mais .icon { width: 18px; height: 18px; margin: 0; }
+        .reac-mais:hover { background: rgba(0,229,204,.14); color: var(--accent); }
+
+        /* Lista completa (aberta pelo +) */
+        #reac-fundo { position: fixed; inset: 0; z-index: 945; background: rgba(0,0,0,.45); display: none; }
+        #reac-seletor { position: fixed; top: 0; left: 0; z-index: 950; width: 344px; max-width: calc(100vw - 16px); display: none; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 18px 48px rgba(0,0,0,.7); overflow: hidden; }
+        #reac-seletor.aberto { display: flex; animation: reacSurge .18s cubic-bezier(.16,1,.3,1); }
+        .rs-alca { display: none; }
+        .rs-topo { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 2px 16px; }
+        .rs-titulo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 14px; color: var(--text); }
+        .rs-fechar { width: 34px; height: 34px; padding: 0; border: none; border-radius: 50%; background: none; color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .rs-fechar .icon { width: 18px; height: 18px; margin: 0; }
+        .rs-fechar:hover { background: var(--surface2); color: var(--text); }
+        .rs-cats { display: flex; gap: 2px; padding: 4px 10px 8px; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+        .rs-cats::-webkit-scrollbar { display: none; }
+        .rs-cat { flex: 1 1 0; min-width: 30px; height: 36px; padding: 0; border: none; border-radius: 10px; background: none; color: var(--muted); font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .rs-cat .dee-emoji { width: 20px; height: 20px; vertical-align: middle; }
+        .rs-cat .icon { width: 18px; height: 18px; margin: 0; }
+        .rs-cat:hover { background: var(--surface2); }
+        .rs-cat.on { background: var(--surface2); color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+        .rs-grade { display: grid; grid-template-columns: repeat(8, 1fr); align-content: start; gap: 2px; padding: 8px 10px 12px; height: 248px; overflow-y: auto; overscroll-behavior: contain; }
+        .rs-em { aspect-ratio: 1 / 1; min-width: 0; padding: 0; border: none; border-radius: 10px; background: none; font-size: 23px; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .12s, transform .12s; }
+        .rs-em .dee-emoji { width: 26px; height: 26px; vertical-align: middle; }
+        .rs-em:hover { background: var(--surface2); transform: scale(1.12); }
+        .rs-em:active { transform: scale(.92); }
+        .rs-em.atual { background: rgba(0,229,204,.14); box-shadow: inset 0 0 0 1.5px rgba(0,229,204,.6); }
+        .reac-chip:focus-visible, .reac-op:focus-visible, .reac-mais:focus-visible,
+        .rs-fechar:focus-visible, .rs-cat:focus-visible, .rs-em:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+        @media (max-width: 680px) {
+            #reac-fundo.aberto { display: block; animation: reacFundoSurge .2s ease; }
+            #reac-seletor { top: auto !important; left: 0 !important; right: 0; bottom: 0; width: auto; max-width: none; border-radius: 20px 20px 0 0; border-bottom: none; padding-bottom: var(--safe-bottom); }
+            #reac-seletor.aberto { animation: reacFolhaSobe .26s cubic-bezier(.16,1,.3,1); }
+            .rs-alca { display: block; width: 38px; height: 4px; margin: 8px auto 0; border-radius: 4px; background: rgba(255,255,255,.14); }
+            .rs-topo { padding-top: 2px; }
+            .rs-grade { height: 44vh; }
+        }
+        @keyframes reacFundoSurge { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes reacFolhaSobe { from { transform: translateY(100%); } to { transform: none; } }
+        @media (prefers-reduced-motion: reduce) {
+            #reac-barra.aberta, #reac-barra.aberta .reac-op, #reac-seletor.aberto, #reac-fundo.aberto, .reac-chip.nova { animation: none; }
+            .reac-op:hover, .rs-em:hover { transform: none; }
+        }
 
         /* ── "TOQUE PARA CARREGAR" (mídia guardada em partes) e barra de
            progresso de envio/download. Mesma história das classes acima:
@@ -5097,7 +5159,7 @@ document.addEventListener('click', function(e) {
     //    no navegador/desktop). Tocar em outro lugar fecha os que estavam
     //    abertos. Tocar em cima dos próprios botões não fecha (deixa o
     //    onclick de cada botão agir normalmente). ──
-    if (!e.target.closest('.msg-actions')) {
+    if (!e.target.closest('.msg-actions') && !e.target.closest('.reac-linha')) {
         var tappedWrap = e.target.closest('.mwrap');
         document.querySelectorAll('.mwrap.show-actions').forEach(function(w) {
             if (w !== tappedWrap) w.classList.remove('show-actions');
@@ -5311,6 +5373,7 @@ function closeTopUIIfAny() {
     if (callScreen && callScreen.classList.contains('open')) return true;
 
     // 2) pequenos menus/popups abertos por cima do chat
+    if (reacaoAberta) { fecharReacoes(); return true; }
     var emoji = document.getElementById('emoji-picker');
     if (emoji && emoji.classList.contains('open')) { emoji.classList.remove('open'); return true; }
     var moreMenu = document.getElementById('more-actions-menu');
@@ -8962,22 +9025,392 @@ function scrollToMsg(docId) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  LIKE
+//  REAÇÕES NAS MENSAGENS
 // ══════════════════════════════════════════════════════════
-async function toggleLike(docId) {
-    if (!chatUid && !chatGid) return;
-    try {
-        var ref  = getMsgsRef().doc(docId);
-        var snap = await ref.get();
-        if (!snap.exists) return;
-        var data    = snap.data();
-        var likes   = data.likes   || 0;
-        var likedBy = data.likedBy || [];
-        if (likedBy.includes(me.uid)) { likedBy = likedBy.filter(function(u) { return u !== me.uid; }); likes = Math.max(0, likes - 1); }
-        else { likedBy.push(me.uid); likes++; }
-        await ref.update({ likes: likes, likedBy: likedBy });
-    } catch(e) {}
+//  Antes a mensagem só podia ser curtida (um coração). Agora cada pessoa
+//  escolhe UM emoji para reagir — tocar no mesmo emoji de novo tira a
+//  reação, tocar em outro troca.
+//
+//  Onde fica guardado: no próprio documento da mensagem, no campo
+//  "reactions", um mapa { uid: emoji }. Cada pessoa grava só a própria
+//  chave ("reactions.<uid>"), então duas pessoas reagindo ao mesmo tempo
+//  não apagam a reação uma da outra (a curtida antiga lia a lista inteira
+//  e regravava tudo, e aí uma podia sobrescrever a outra).
+//
+//  Curtidas antigas: quem curtiu antes (campo "likedBy") continua
+//  aparecendo como ❤️. Quando essa pessoa reage de novo, a curtida antiga
+//  sai da lista e passa a valer só a reação nova — ninguém conta duas vezes.
+//
+//  Os 4 emojis da barrinha são os mais usados/recentes NESTE aparelho
+//  (guardado em localStorage). Cada uso soma 1 ponto ao emoji e os pontos
+//  dos outros vão diminuindo um pouco — assim um emoji usado agora sobe na
+//  frente, mas quem é usado sempre continua lá. Sem histórico, aparecem os
+//  4 padrão abaixo.
+var REACOES_PADRAO    = ['❤️', '😂', '👍', '🙏'];
+var REACOES_CHAVE_USO = 'dee_reacoes_uso';
+var REACOES_NOMES_CAT = { '😊': 'Carinhas', '👋': 'Gestos', '❤️': 'Amor e festa', '🐶': 'Animais', '🍕': 'Comidas', '⚽': 'Esportes e jogos', '🌍': 'Lugares', '✨': 'Natureza' };
+var reacaoAberta      = null; // { docId, botao, wrap } da mensagem com a barrinha/lista aberta
+
+// "❤" e "❤️" são o mesmo emoji (um vem com o seletor de variação U+FE0F,
+// outro sem, dependendo do teclado). Para agrupar e comparar, ignora isso.
+function chaveReacao(em) { return String(em || '').replace(/\uFE0F/g, ''); }
+function reacaoValida(em) { return typeof em === 'string' && em.length > 0 && em.length <= 32; }
+function visualDaReacao(em) {
+    return (window.DeeEmoji && window.DeeEmoji.iconFor(em)) || esc(em);
 }
+
+// { uid: emoji } juntando as reações novas e as curtidas antigas (como ❤️).
+function mapaDeReacoes(m) {
+    var porUid = {};
+    var r = m && m.reactions;
+    if (r && typeof r === 'object') {
+        Object.keys(r).forEach(function (uid) { if (reacaoValida(r[uid])) porUid[uid] = r[uid]; });
+    }
+    var antigas = (m && Array.isArray(m.likedBy)) ? m.likedBy : [];
+    antigas.forEach(function (uid) { if (typeof uid === 'string' && !porUid[uid]) porUid[uid] = '❤️'; });
+    return porUid;
+}
+function minhaReacao(m) { return (me && m) ? (mapaDeReacoes(m)[me.uid] || null) : null; }
+
+function nomeDeQuemReagiu(uid) {
+    if (me && uid === me.uid) return 'Você';
+    var u = (allUsers || []).find(function (x) { return x.uid === uid; });
+    if (u && u.nome) return u.nome;
+    if (!chatIsGroup && uid === chatUid && chatName) return chatName;
+    return 'Alguém';
+}
+
+// ── Mais usados / recentes (só neste aparelho) ──
+function lerUsoReacoes() {
+    try {
+        var o = JSON.parse(localStorage.getItem(REACOES_CHAVE_USO) || '{}');
+        return (o && typeof o === 'object') ? o : {};
+    } catch (e) { return {}; }
+}
+function registrarUsoReacao(em) {
+    var uso = lerUsoReacoes();
+    Object.keys(uso).forEach(function (k) {
+        uso[k] = (+uso[k] || 0) * 0.9;
+        if (uso[k] < 0.05) delete uso[k];
+    });
+    uso[em] = (uso[em] || 0) + 1;
+    try { localStorage.setItem(REACOES_CHAVE_USO, JSON.stringify(uso)); } catch (e) {}
+}
+function reacoesMaisUsadas(limite) {
+    var uso = lerUsoReacoes();
+    return Object.keys(uso).filter(reacaoValida)
+        .sort(function (a, b) { return (+uso[b] || 0) - (+uso[a] || 0); })
+        .slice(0, limite);
+}
+// Os 4 da barrinha. Se a minha reação atual nessa mensagem não estiver
+// entre eles, ela entra no lugar do último — assim dá para ver qual foi
+// escolhida e tirar com um toque.
+function reacoesRapidas(atual) {
+    var lista = [];
+    function incluir(em) {
+        if (lista.length >= 4) return;
+        var k = chaveReacao(em);
+        if (!lista.some(function (x) { return chaveReacao(x) === k; })) lista.push(em);
+    }
+    reacoesMaisUsadas(4).forEach(incluir);
+    REACOES_PADRAO.forEach(incluir);
+    if (atual && !lista.some(function (x) { return chaveReacao(x) === chaveReacao(atual); })) {
+        lista[lista.length - 1] = atual;
+    }
+    return lista;
+}
+
+// ── Gravar a reação ──
+async function reagirMensagem(docId, emoji) {
+    if (!me || (!chatUid && !chatGid) || !docId || !reacaoValida(emoji)) return;
+    var wrap  = document.querySelector('.mwrap[data-mid="' + docId + '"]');
+    var ref   = getMsgsRef().doc(docId);
+    var dados = wrap && wrap.__dados;
+    if (!dados) {
+        try { var snap = await ref.get(); if (!snap.exists) return; dados = snap.data(); }
+        catch (e) { return; }
+    }
+    var atual   = minhaReacao(dados);
+    var remover = !!atual && chaveReacao(atual) === chaveReacao(emoji);
+
+    var FV  = firebase.firestore.FieldValue;
+    var upd = {};
+    upd['reactions.' + me.uid] = remover ? FV.delete() : emoji;
+    var curtiram = Array.isArray(dados.likedBy) ? dados.likedBy : [];
+    if (curtiram.indexOf(me.uid) !== -1) {
+        upd.likedBy = FV.arrayRemove(me.uid);
+        upd.likes   = Math.max(0, curtiram.length - 1);
+    }
+
+    // Mostra na hora, sem esperar o servidor. Serve também para mensagens
+    // antigas carregadas ao rolar para cima, que não ficam "escutando"
+    // mudanças (ver carregarMensagensAntigas).
+    var novos = Object.assign({}, dados);
+    novos.reactions = Object.assign({}, (dados.reactions && typeof dados.reactions === 'object') ? dados.reactions : {});
+    if (remover) delete novos.reactions[me.uid]; else novos.reactions[me.uid] = emoji;
+    if (upd.likedBy) novos.likedBy = curtiram.filter(function (u) { return u !== me.uid; });
+    if (wrap) { wrap.__dados = novos; renderReacoes(novos, wrap); }
+    if (!remover) registrarUsoReacao(emoji);
+
+    try {
+        await ref.update(upd);
+    } catch (e) {
+        if (wrap && wrap.__dados === novos) { wrap.__dados = dados; renderReacoes(dados, wrap); }
+        notify('Não foi possível reagir', 'err', 1800);
+    }
+}
+
+// ── Pílulas embaixo da bolha ──
+// "inicial" = desenho ao abrir a conversa (sem animação). Nas
+// atualizações, só a pílula de um emoji que acabou de aparecer anima.
+function renderReacoes(m, wrap, inicial) {
+    if (!wrap) return;
+    var antiga  = wrap.querySelector('.reac-linha');
+    var jaTinha = {};
+    if (antiga) {
+        (antiga.dataset.chaves || '').split('|').forEach(function (k) { if (k) jaTinha[k] = true; });
+        antiga.remove();
+    }
+    var porUid = mapaDeReacoes(m);
+    var grupos = [], indice = {};
+    Object.keys(porUid).forEach(function (uid) {
+        var em = porUid[uid], k = chaveReacao(em);
+        if (indice[k] === undefined) { indice[k] = grupos.length; grupos.push({ em: em, chave: k, uids: [] }); }
+        grupos[indice[k]].uids.push(uid);
+    });
+    if (!grupos.length) return;
+    grupos.sort(function (a, b) { return b.uids.length - a.uids.length; });
+
+    var minha = (me && porUid[me.uid]) ? chaveReacao(porUid[me.uid]) : null;
+    var linha = document.createElement('div');
+    linha.className = 'reac-linha';
+    linha.dataset.chaves = grupos.map(function (g) { return g.chave; }).join('|');
+    grupos.forEach(function (g) {
+        // "Você" sempre primeiro na lista de nomes
+        g.uids.sort(function (a, b) { return (b === (me && me.uid)) - (a === (me && me.uid)); });
+        var nomes = g.uids.map(nomeDeQuemReagiu).join(', ');
+        var chip  = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'reac-chip' + (g.chave === minha ? ' minha' : '') + (!inicial && !jaTinha[g.chave] ? ' nova' : '');
+        chip.title = nomes;
+        chip.setAttribute('aria-label', 'Reação ' + g.em + ': ' + nomes);
+        chip.innerHTML = visualDaReacao(g.em) + (g.uids.length > 1 ? '<span class="rc-num">' + g.uids.length + '</span>' : '');
+        chip.onclick = function () { reagirMensagem(wrap.dataset.mid, g.em); };
+        linha.appendChild(chip);
+    });
+    var meta = wrap.querySelector('.mmeta');
+    if (meta) wrap.insertBefore(linha, meta); else wrap.appendChild(linha);
+}
+
+// ── Barrinha (4 emojis + botão de mais) e lista completa ──
+function reacoesNoCelular() { return window.matchMedia('(max-width: 680px)').matches; }
+
+function garantirElementosReacao() {
+    if (document.getElementById('reac-barra')) return;
+    var barra = document.createElement('div');
+    barra.id = 'reac-barra';
+    barra.setAttribute('role', 'dialog');
+    barra.setAttribute('aria-label', 'Reagir');
+    document.body.appendChild(barra);
+
+    var fundo = document.createElement('div');
+    fundo.id = 'reac-fundo';
+    document.body.appendChild(fundo);
+
+    var seletor = document.createElement('div');
+    seletor.id = 'reac-seletor';
+    seletor.setAttribute('role', 'dialog');
+    seletor.setAttribute('aria-label', 'Escolher emoji para reagir');
+    seletor.innerHTML =
+        '<div class="rs-alca" aria-hidden="true"></div>' +
+        '<div class="rs-topo"><span class="rs-titulo">Reagir</span>' +
+        '<button type="button" class="rs-fechar" aria-label="Fechar"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>' +
+        '<div class="rs-cats" role="tablist"></div>' +
+        '<div class="rs-grade"></div>';
+    seletor.querySelector('.rs-fechar').onclick = function () { fecharReacoes(true); };
+    document.body.appendChild(seletor);
+
+    // Acompanha a mensagem se a conversa rolar ou a tela mudar de tamanho
+    // (no celular o teclado fechando muda o tamanho — por isso reposiciona
+    // em vez de fechar).
+    var msgs = document.getElementById('msgs');
+    if (msgs) msgs.addEventListener('scroll', acompanharReacoes, { passive: true });
+    window.addEventListener('resize', acompanharReacoes);
+}
+
+// Coloca "el" acima do botão (ou abaixo, se não couber), sem sair da tela.
+function posicionarReacaoJunto(el, botao, folga) {
+    var r    = botao.getBoundingClientRect();
+    var msgs = document.getElementById('msgs');
+    var topoArea = msgs ? msgs.getBoundingClientRect().top : 0;
+    var w = el.offsetWidth, h = el.offsetHeight;
+    var vw = window.innerWidth, vh = window.innerHeight, margem = 8;
+    var acima = (r.top - h - folga) >= Math.max(margem, topoArea);
+    var top   = acima ? r.top - h - folga : r.bottom + folga;
+    top = Math.max(margem, Math.min(top, vh - h - margem));
+    var cx   = r.left + r.width / 2;
+    var left = Math.max(margem, Math.min(cx - w / 2, vw - w - margem));
+    el.style.left = Math.round(left) + 'px';
+    el.style.top  = Math.round(top) + 'px';
+    el.style.transformOrigin = Math.round(cx - left) + 'px ' + (acima ? '100%' : '0%');
+}
+
+function acompanharReacoes() {
+    if (!reacaoAberta) return;
+    var botao = reacaoAberta.botao;
+    if (!botao || !document.body.contains(botao)) { fecharReacoes(); return; }
+    var barra   = document.getElementById('reac-barra');
+    var seletor = document.getElementById('reac-seletor');
+    var flutuando = barra.classList.contains('aberta') || (seletor.classList.contains('aberto') && !reacoesNoCelular());
+    if (!flutuando) return;
+    var msgs = document.getElementById('msgs');
+    if (msgs) {
+        var area = msgs.getBoundingClientRect(), r = botao.getBoundingClientRect();
+        if (r.bottom < area.top || r.top > area.bottom) { fecharReacoes(); return; }
+    }
+    if (barra.classList.contains('aberta')) posicionarReacaoJunto(barra, botao, 8);
+    else posicionarReacaoJunto(seletor, botao, 10);
+}
+
+function marcarReacaoAberta(docId, botao, wrap) {
+    reacaoAberta = { docId: docId, botao: botao, wrap: wrap };
+    if (wrap)  wrap.classList.add('reagindo');
+    if (botao) { botao.classList.add('aberto'); botao.setAttribute('aria-expanded', 'true'); }
+}
+
+function fecharReacoes(devolverFoco) {
+    var barra   = document.getElementById('reac-barra');
+    var seletor = document.getElementById('reac-seletor');
+    var fundo   = document.getElementById('reac-fundo');
+    if (barra)   barra.classList.remove('aberta');
+    if (seletor) seletor.classList.remove('aberto');
+    if (fundo)   fundo.classList.remove('aberto');
+    var alvo = reacaoAberta;
+    reacaoAberta = null;
+    if (!alvo) return;
+    if (alvo.wrap) alvo.wrap.classList.remove('reagindo');
+    if (alvo.botao) {
+        alvo.botao.classList.remove('aberto');
+        alvo.botao.setAttribute('aria-expanded', 'false');
+        if (devolverFoco && document.body.contains(alvo.botao)) { try { alvo.botao.focus({ preventScroll: true }); } catch (e) {} }
+    }
+}
+
+// porTeclado: aberto com Enter/Espaço — aí o foco já vai para o 1º emoji.
+function abrirBarraReacoes(docId, botao, porTeclado) {
+    garantirElementosReacao();
+    var barra = document.getElementById('reac-barra');
+    if (reacaoAberta && reacaoAberta.docId === docId && barra.classList.contains('aberta')) { fecharReacoes(); return; }
+    fecharReacoes();
+
+    var wrap  = botao.closest('.mwrap');
+    var atual = wrap ? minhaReacao(wrap.__dados) : null;
+    barra.innerHTML = '';
+    reacoesRapidas(atual).forEach(function (em) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'reac-op' + (atual && chaveReacao(atual) === chaveReacao(em) ? ' atual' : '');
+        b.setAttribute('aria-label', (atual && chaveReacao(atual) === chaveReacao(em) ? 'Tirar reação ' : 'Reagir com ') + em);
+        b.innerHTML = visualDaReacao(em);
+        b.onclick = function () { fecharReacoes(); reagirMensagem(docId, em); };
+        barra.appendChild(b);
+    });
+    var sep = document.createElement('span');
+    sep.className = 'reac-sep';
+    barra.appendChild(sep);
+    var mais = document.createElement('button');
+    mais.type = 'button';
+    mais.className = 'reac-mais';
+    mais.title = 'Mais emojis';
+    mais.setAttribute('aria-label', 'Mais emojis');
+    mais.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    mais.onclick = function () {
+        var alvo = reacaoAberta;
+        fecharReacoes();
+        if (alvo) abrirSeletorReacoes(alvo.docId, alvo.botao, alvo.wrap, porTeclado);
+    };
+    barra.appendChild(mais);
+
+    marcarReacaoAberta(docId, botao, wrap);
+    barra.classList.add('aberta');
+    posicionarReacaoJunto(barra, botao, 8);
+    if (porTeclado) { var primeiro = barra.querySelector('button'); if (primeiro) primeiro.focus({ preventScroll: true }); }
+}
+
+function abrirSeletorReacoes(docId, botao, wrap, porTeclado) {
+    garantirElementosReacao();
+    var seletor = document.getElementById('reac-seletor');
+    var fundo   = document.getElementById('reac-fundo');
+    var cats    = seletor.querySelector('.rs-cats');
+    var grade   = seletor.querySelector('.rs-grade');
+    var atual   = wrap ? minhaReacao(wrap.__dados) : null;
+
+    // A aba "Recentes" só aparece quando há mais emojis usados do que os 4
+    // que já estão na barrinha — senão ela repetiria o que a pessoa acabou
+    // de ver. A lista sempre abre nas carinhas, que é o que se procura ao
+    // tocar no +.
+    var abas = [];
+    var recentes = reacoesMaisUsadas(24);
+    var abaInicial = 0;
+    if (recentes.length > 4) {
+        abaInicial = 1;
+        abas.push({ nome: 'Recentes', lista: recentes,
+            rotulo: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' });
+    }
+    Object.keys(emojiData).forEach(function (k) {
+        abas.push({ nome: REACOES_NOMES_CAT[k] || k, lista: emojiData[k], rotulo: visualDaReacao(k) });
+    });
+
+    function mostrarAba(i) {
+        Array.prototype.forEach.call(cats.children, function (b, j) {
+            b.classList.toggle('on', j === i);
+            b.setAttribute('aria-selected', j === i ? 'true' : 'false');
+        });
+        grade.innerHTML = '';
+        abas[i].lista.forEach(function (em) {
+            var escolhido = atual && chaveReacao(atual) === chaveReacao(em);
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'rs-em' + (escolhido ? ' atual' : '');
+            b.setAttribute('aria-label', (escolhido ? 'Tirar reação ' : 'Reagir com ') + em);
+            b.innerHTML = visualDaReacao(em);
+            b.onclick = function () { fecharReacoes(); reagirMensagem(docId, em); };
+            grade.appendChild(b);
+        });
+        grade.scrollTop = 0;
+    }
+    cats.innerHTML = '';
+    abas.forEach(function (aba, i) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'rs-cat';
+        b.title = aba.nome;
+        b.setAttribute('role', 'tab');
+        b.setAttribute('aria-label', aba.nome);
+        b.innerHTML = aba.rotulo;
+        b.onclick = function () { mostrarAba(i); };
+        cats.appendChild(b);
+    });
+    mostrarAba(abaInicial);
+
+    marcarReacaoAberta(docId, botao, wrap);
+    fundo.classList.add('aberto');
+    seletor.classList.add('aberto');
+    if (!reacoesNoCelular()) posicionarReacaoJunto(seletor, botao, 10);
+    if (porTeclado) { var primeiro = grade.querySelector('button'); if (primeiro) primeiro.focus({ preventScroll: true }); }
+}
+
+// Tocar/clicar fora fecha. Roda na fase de captura, antes de qualquer
+// outro clique da tela. O próprio botão "Reagir" fica de fora porque ele
+// mesmo abre/fecha a barrinha.
+document.addEventListener('click', function (e) {
+    if (!reacaoAberta) return;
+    if (e.target && e.target.closest && e.target.closest('#reac-barra, #reac-seletor, .mact-reagir')) return;
+    fecharReacoes();
+}, true);
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && reacaoAberta) { e.preventDefault(); fecharReacoes(true); }
+});
 // ══════════════════════════════════════════════════════════
 //  ENTREGUE E VISUALIZADO
 // ══════════════════════════════════════════════════════════
@@ -9029,19 +9462,6 @@ function marcarComoLida(ref, docs) {
         lote.update(d.ref, { readAt: Date.now(), deliveredAt: d.data().deliveredAt || Date.now() });
     });
     lote.commit().catch(function () {});
-}
-
-function renderLikes(likes, likedBy, wrap) {
-    var old = wrap.querySelector('.likes-row');
-    if (old) old.remove();
-    if (!likes || likes === 0) return;
-    var row  = document.createElement('div'); row.className = 'likes-row';
-    var isMine = likedBy && likedBy.includes(me.uid);
-    var chip = document.createElement('button');
-    chip.className = 'like-chip' + (isMine ? ' mine' : '');
-    chip.innerHTML = '<svg class="icon icon-fill icon-like-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> <span class="lc-count">' + likes + '</span>';
-    chip.onclick   = function() { toggleLike(wrap.dataset.mid); };
-    row.appendChild(chip); wrap.appendChild(row);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -12336,6 +12756,7 @@ function getClearsRef() {
 //  LISTEN MESSAGES
 // ══════════════════════════════════════════════════════════
 async function startListening() {
+    fecharReacoes();
     if (msgUnsub) { msgUnsub(); msgUnsub = null; }
     stopMyLiveLocationIfAny(); // localização em tempo real pertence à conversa atual; trocar de conversa a encerra
     closeCinemaRoom(); // a sessão de cinema pertence à conversa atual; trocar de conversa a encerra
@@ -12457,7 +12878,8 @@ async function startListening() {
                 var el = document.querySelector('[data-mid="' + change.doc.id + '"]');
                 if (el) {
                     var d = change.doc.data();
-                    renderLikes(d.likes, d.likedBy, el);
+                    el.__dados = d;
+                    renderReacoes(d, el);
                     // A outra pessoa recebeu ou leu: a marca muda na hora,
                     // sem precisar recarregar a conversa.
                     var sitEl = document.getElementById('sit-' + change.doc.id);
@@ -12492,7 +12914,14 @@ async function startListening() {
         if (!document.hidden) marcarComoLida(getMsgsRef(), snap.docs);
         else                  marcarComoEntregue(getMsgsRef(), snap.docs);
 
-        var f = document.getElementById('msgs'); f.scrollTop = f.scrollHeight;
+        // Só desce até o fim quando chegou mensagem (ou ainda está abrindo a
+        // conversa). Se o que mudou foi só algo DENTRO de uma mensagem —
+        // uma reação, "entregue/visualizada", placar de jogo — a tela fica
+        // onde a pessoa está. Antes, reagir a uma mensagem mais acima
+        // jogava a conversa inteira lá para baixo.
+        var soAlteracoes = snap.docChanges().length > 0 && snap.docChanges().every(function (c) { return c.type === 'modified'; });
+        var f = document.getElementById('msgs');
+        if (!settled || !soAlteracoes) f.scrollTop = f.scrollHeight;
         // O Firestore costuma entregar o histórico em duas etapas: primeiro
         // uma leitura rápida do cache local (fromCache: true, podendo estar
         // incompleta) e, em seguida, a confirmação vinda do servidor
@@ -12976,6 +13405,7 @@ function renderMsg(doc, isHistorical) {
     var wrap = document.createElement('div');
     wrap.className   = 'mwrap ' + (isMe ? 'me' : 'them');
     wrap.dataset.mid = doc.id;
+    wrap.__dados     = m; // últimos dados conhecidos — as reações partem daqui
 
     if (m.replyTo) {
         var rq = document.createElement('div'); rq.className = 'reply-quote';
@@ -13014,10 +13444,16 @@ function renderMsg(doc, isHistorical) {
     replyBtn.className = 'mact-btn'; replyBtn.title = 'Responder'; replyBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>';
     replyBtn.onclick = (function(docId, sName, txt, typ) { return function() { startReply(docId, sName, txt, typ); }; })(doc.id, m.senderName || me.nome, m.text || '', m.type);
     actions.appendChild(replyBtn);
-    var likeBtn = document.createElement('button');
-    likeBtn.className = 'mact-btn'; likeBtn.title = 'Curtir'; likeBtn.innerHTML = '<svg class="icon icon-fill icon-like-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
-    likeBtn.onclick = (function(docId) { return function(e) { e.stopPropagation(); toggleLike(docId); }; })(doc.id);
-    actions.appendChild(likeBtn);
+    // Reagir (antes era "Curtir"): abre a barrinha com 4 emojis e o + (ver REAÇÕES NAS MENSAGENS)
+    var reactBtn = document.createElement('button');
+    reactBtn.type = 'button';
+    reactBtn.className = 'mact-btn mact-reagir'; reactBtn.title = 'Reagir';
+    reactBtn.setAttribute('aria-label', 'Reagir');
+    reactBtn.setAttribute('aria-haspopup', 'dialog');
+    reactBtn.setAttribute('aria-expanded', 'false');
+    reactBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.56"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/><line x1="19" y1="2" x2="19" y2="8"/><line x1="16" y1="5" x2="22" y2="5"/></svg>';
+    reactBtn.onclick = (function(docId) { return function(e) { abrirBarraReacoes(docId, e.currentTarget, e.detail === 0); }; })(doc.id);
+    actions.appendChild(reactBtn);
     var del = document.createElement('button');
     del.className = 'mact-btn del'; del.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>';
     if (isMe) {
@@ -13052,7 +13488,7 @@ function renderMsg(doc, isHistorical) {
     }
     wrap.appendChild(meta);
     insertMsgWrap(flow, wrap, m.time, day);
-    renderLikes(m.likes, m.likedBy, wrap);
+    renderReacoes(m, wrap, true);
 
     if (m.type === 'text') { bub.innerHTML = linkify(m.text); return; }
     if (m.type === 'call') { renderCallLog(bub, m, isMe); return; }
