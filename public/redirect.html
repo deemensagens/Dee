@@ -6,6 +6,10 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#00e5cc">
 <title>Redirecionando… — Dee</title>
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
     :root {
@@ -32,6 +36,17 @@
         padding: calc(var(--safe-top) + 20px) 16px calc(var(--safe-bottom) + 20px);
     }
     .wrap { width: 100%; max-width: 520px; display: flex; flex-direction: column; align-items: center; flex: 1; }
+
+    .icon {
+        width: 1.05em; height: 1.05em;
+        display: inline-block; vertical-align: -0.18em;
+        flex-shrink: 0;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
 
     .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 22px; }
     .brand-logo {
@@ -68,6 +83,65 @@
         transition: width 0.3s ease;
     }
 
+    /* ══════════════════════════════════════════════════════════
+       ANÚNCIOS — os mesmos do carrossel do app (coleção "ads",
+       gerenciada no painel do admin), só que em tamanho grande.
+       ══════════════════════════════════════════════════════════ */
+    .ads-section { width: 100%; margin-bottom: 18px; display: none; }
+    .ads-section.on { display: block; }
+    .ad-carousel {
+        position: relative; width: 100%; overflow: hidden;
+        border-radius: 18px; border: 1px solid var(--border); background: var(--surface2);
+    }
+    .ad-carousel-track { display: flex; transition: transform .45s cubic-bezier(.16,1,.3,1); cursor: grab; touch-action: pan-y; }
+    .ad-carousel-track.dragging { transition: none; cursor: grabbing; }
+    .ad-slide {
+        flex: 0 0 100%; width: 100%; min-width: 100%;
+        display: flex; flex-direction: column;
+        text-decoration: none; color: var(--text);
+        position: relative; cursor: pointer;
+    }
+    /* Caixa da mídia: altura proporcional à largura (truque do padding,
+       que funciona até nas WebViews antigas do Android). */
+    .ad-media { position: relative; width: 100%; height: 0; padding-bottom: 62.5%; background: #000; overflow: hidden; }
+    .ad-media-bg, .ad-media-main, .ad-slide-link-icon {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    }
+    .ad-media-bg { object-fit: cover; filter: blur(18px) brightness(.5); transform: scale(1.15); }
+    .ad-media-main { object-fit: contain; }
+    .ad-slide img, .ad-slide video { pointer-events: none; -webkit-user-drag: none; user-select: none; -webkit-user-select: none; }
+    .ad-slide-link-icon {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+        background: linear-gradient(135deg, #10202a, var(--surface2)); color: var(--accent); pointer-events: none;
+    }
+    .ad-slide-link-icon .icon { width: 54px; height: 54px; stroke-width: 1.8; margin: 0; }
+    .ad-slide-link-host { font-size: 13px; color: var(--muted); font-weight: 700; max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ad-play-badge {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+        width: 64px; height: 64px; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff;
+        display: flex; align-items: center; justify-content: center; pointer-events: none;
+    }
+    .ad-play-badge .icon { width: 26px; height: 26px; margin: 0 0 0 4px; fill: currentColor; }
+    .ad-slide-info { padding: 14px 16px 26px; min-width: 0; }
+    .ad-slide-title {
+        font-size: 17px; font-weight: 700; font-family: 'Syne', sans-serif; color: var(--accent);
+        line-height: 1.3; overflow: hidden; text-overflow: ellipsis;
+        display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .ad-slide-tag { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-top: 5px; }
+    .ad-share-btn, .ad-audio-btn {
+        position: absolute; top: 10px; width: 38px; height: 38px; border-radius: 50%; border: none;
+        background: rgba(0,0,0,.6); color: #fff; display: flex; align-items: center; justify-content: center;
+        cursor: pointer; z-index: 2; padding: 0;
+    }
+    .ad-share-btn { right: 10px; }
+    .ad-audio-btn { left: 10px; }
+    .ad-share-btn .icon, .ad-audio-btn .icon { width: 18px; height: 18px; margin: 0; }
+    .ad-share-btn:active, .ad-audio-btn:active { transform: scale(.9); }
+    .ad-carousel-dots { position: absolute; bottom: 10px; left: 0; right: 0; display: flex; justify-content: center; gap: 5px; pointer-events: none; }
+    .ad-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.18); transition: background .2s; }
+    .ad-dot.on { background: var(--accent); }
+
     .info-card {
         width: 100%; background: var(--surface); border: 1px solid var(--border);
         border-radius: 18px; padding: 20px; margin-bottom: 18px;
@@ -77,7 +151,7 @@
     .info-text:last-child { margin-bottom: 0; }
 
     .continue-btn {
-        width: 100%; padding: 15px; border-radius: 14px; border: none;
+        width: 100%; padding: 15px; border-radius: 14px; border: none; margin-bottom: 18px;
         background: var(--surface2); color: var(--muted);
         font-family: inherit; font-weight: 700; font-size: 15px;
         display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -90,23 +164,15 @@
     .continue-btn.ready:active { transform: scale(.98); }
     .continue-btn .cd { font-variant-numeric: tabular-nums; }
 
-    .foot-note { margin-top: 14px; font-size: 11.5px; color: var(--muted); text-align: center; line-height: 1.5; }
-    
-    .btn-seguranca {
-        display: inline-block;
-        margin-top: 8px;
-        padding: 10px 16px;
-        border-radius: 10px;
-        background: rgba(0, 229, 204, 0.1);
-        border: 1px solid var(--accent);
-        color: var(--accent);
-        font-weight: 700;
-        text-decoration: none;
-        transition: background 0.2s;
+    .foot-note { font-size: 11.5px; color: var(--muted); text-align: center; line-height: 1.5; }
+
+    .toast {
+        position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 22px); transform: translate(-50%, 20px);
+        background: var(--surface); border: 1px solid var(--accent); color: var(--text);
+        padding: 10px 16px; border-radius: 12px; font-size: 13px; opacity: 0; pointer-events: none;
+        transition: opacity .25s, transform .25s; z-index: 10;
     }
-    .btn-seguranca:hover {
-        background: rgba(0, 229, 204, 0.2);
-    }
+    .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
     .error-box { text-align: center; padding: 40px 16px; }
     .error-box h1 { font-size: 18px; margin-bottom: 8px; }
@@ -119,6 +185,7 @@
     @media (prefers-reduced-motion: reduce) {
         .spinner { animation: none; border-top-color: var(--accent); }
         .progress-fill { transition: none; }
+        .ad-carousel-track { transition: none; }
     }
 </style>
 </head>
@@ -137,26 +204,39 @@
         <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
     </div>
 
-    <div class="foot-note">
-        Este link foi verificado pelo Dee antes de te enviar ao destino final.<br>
-        Por segurança, acesse a Central antes de prosseguir:<br>
-        <a id="link-seguranca" class="btn-seguranca" href="central-seguranca.html">Acessar Central de Segurança</a>
-    </div>
-
-    <div class="info-card" style="margin-top: 18px;">
-        <div class="info-title">🛡️ Por que esse passo existe</div>
-        <p class="info-text">
-            Links compartilhados em conversas e publicações podem levar a páginas fora do nosso controle — incluindo sites de phishing que imitam bancos, redes sociais ou serviços conhecidos para roubar senhas e dados. Por isso, antes de sair do Dee, mostramos exatamente para onde você vai e esperamos alguns segundos antes de liberar o botão, dando tempo de conferir o endereço acima.
-        </p>
+    <!-- Anúncios do painel do admin (aparecem só se houver algum ativo) -->
+    <div class="ads-section" id="ads-section">
+        <div class="ad-carousel" id="ad-carousel">
+            <div class="ad-carousel-track" id="ad-carousel-track"></div>
+            <div class="ad-carousel-dots" id="ad-carousel-dots"></div>
+        </div>
     </div>
 
     <button class="continue-btn" id="continue-btn" disabled>
         <span id="continue-label">Aguarde</span>
         <span class="cd" id="continue-cd"></span>
     </button>
+
+    <div class="info-card">
+        <div class="info-title">🛡️ Por que esse passo existe</div>
+        <p class="info-text">
+            Links compartilhados em conversas e publicações podem levar a páginas fora do nosso controle — incluindo sites de phishing que imitam bancos, redes sociais ou serviços conhecidos para roubar senhas e dados. Por isso, antes de sair do Dee, mostramos exatamente para onde você vai e esperamos alguns segundos antes de liberar o botão, dando tempo de conferir o endereço acima.
+        </p>
+    </div>
+
+    <div class="foot-note">
+        Este link foi verificado pelo Dee antes de te enviar ao destino final.
+    </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
+// ══════════════════════════════════════════════════════════
+//  REDIRECIONAMENTO
+//  Conta os segundos e libera o botão "Continuar" nesta mesma
+//  página — não depende de visitar nenhuma outra página antes.
+// ══════════════════════════════════════════════════════════
 (function () {
     'use strict';
 
@@ -183,40 +263,32 @@
         return;
     }
 
-    // Repassa os parâmetros da URL para o link da Central de Segurança
-    var linkSeguranca = document.getElementById('link-seguranca');
-    if (linkSeguranca && window.location.search) {
-        linkSeguranca.href = 'central-seguranca.html' + window.location.search;
-    }
-
     // Tempo mínimo de espera (?t=), entre 3s e 60s
     var minSeconds = parseInt(params.get('t'), 10);
     if (!minSeconds || isNaN(minSeconds)) minSeconds = 5;
     minSeconds = Math.max(3, Math.min(60, minSeconds));
 
-    // Chave única para o sessionStorage baseada na URL de destino
-    var storageKey = 'dee_gate_' + btoa(target).slice(0, 32);
+    // Chave do sessionStorage baseada no destino: recarregar a página não
+    // reinicia a contagem. (Hash simples em vez de btoa, que falha com
+    // acentos e outros caracteres fora do latim básico.)
+    function hashTexto(txt) {
+        var h = 0;
+        for (var i = 0; i < txt.length; i++) { h = ((h << 5) - h + txt.charCodeAt(i)) | 0; }
+        return (h >>> 0).toString(36);
+    }
+    var storageKey = 'dee_gate_' + hashTexto(target);
 
-    // Recupera o estado salvo ou inicializa um novo
     var savedState = {};
     try {
         savedState = JSON.parse(sessionStorage.getItem(storageKey)) || {};
     } catch (e) { savedState = {}; }
 
     var now = Date.now();
-    var endTime = savedState.endTime || (now + minSeconds * 1000);
-    var clickedSecurity = !!savedState.clickedSecurity;
+    var endTime = savedState.endTime;
+    // Estado salvo inválido (ou de uma espera maior que a pedida agora): recomeça.
+    if (!endTime || isNaN(endTime) || endTime - now > minSeconds * 1000) endTime = now + minSeconds * 1000;
 
-    function saveState() {
-        try {
-            sessionStorage.setItem(storageKey, JSON.stringify({
-                endTime: endTime,
-                clickedSecurity: clickedSecurity
-            }));
-        } catch (e) {}
-    }
-
-    saveState();
+    try { sessionStorage.setItem(storageKey, JSON.stringify({ endTime: endTime })); } catch (e) {}
 
     var statusTitle  = document.getElementById('status-title');
     var statusSub    = document.getElementById('status-sub');
@@ -232,37 +304,18 @@
     var ready = false;
     var timerId = null;
 
-    function checkRequirements(timeDone) {
-        if (timeDone && clickedSecurity) {
-            ready = true;
-            spinner.classList.add('done');
-            progressFill.style.width = '100%';
-            btn.disabled = false;
-            btn.classList.add('ready');
-            btnLabel.textContent = 'Continuar';
-            btnCd.textContent = '';
-            statusTitle.textContent = 'Pronto!';
-            statusSub.textContent = hostname
-                ? ('Toque em Continuar para ir até ' + hostname)
-                : 'Toque em Continuar para prosseguir';
-        } else if (timeDone && !clickedSecurity) {
-            spinner.classList.add('done');
-            progressFill.style.width = '100%';
-            btnLabel.textContent = 'Continuar';
-            btnCd.textContent = '';
-            statusTitle.textContent = 'Ação necessária';
-            statusSub.textContent = 'Clique no botão da Central de Segurança acima para liberar o acesso.';
-        }
-    }
-
-    // Marca a flag e salva o estado ao clicar no link da Central
-    if (linkSeguranca) {
-        linkSeguranca.addEventListener('click', function() {
-            clickedSecurity = true;
-            saveState();
-            var remainingSec = Math.ceil((endTime - Date.now()) / 1000);
-            checkRequirements(remainingSec <= 0);
-        });
+    function liberar() {
+        ready = true;
+        spinner.classList.add('done');
+        progressFill.style.width = '100%';
+        btn.disabled = false;
+        btn.classList.add('ready');
+        btnLabel.textContent = 'Continuar';
+        btnCd.textContent = '';
+        statusTitle.textContent = 'Pronto!';
+        statusSub.textContent = hostname
+            ? ('Toque em Continuar para ir até ' + hostname)
+            : 'Toque em Continuar para prosseguir';
     }
 
     function tick() {
@@ -270,27 +323,360 @@
         var remainingSec = Math.ceil((endTime - currentNow) / 1000);
 
         if (remainingSec <= 0) {
-            checkRequirements(true);
-            if (timerId) clearInterval(timerId);
+            if (timerId) { clearInterval(timerId); timerId = null; }
+            liberar();
             return;
         }
 
         var elapsedMs = (minSeconds * 1000) - (endTime - currentNow);
         var pct = Math.min(100, Math.max(0, Math.round((elapsedMs / (minSeconds * 1000)) * 100)));
-        
+
         progressFill.style.width = pct + '%';
+        btnLabel.textContent = 'Aguarde';
         btnCd.textContent = remainingSec + 's';
-        
+
         statusTitle.textContent = 'Redirecionando…';
         statusSub.textContent = hostname ? ('Destino: ' + hostname) : 'Preparando seu link';
     }
 
     tick();
-    timerId = setInterval(tick, 250);
+    if (!ready) timerId = setInterval(tick, 250);
 
     btn.addEventListener('click', function () {
         if (!ready) return;
         window.location.href = target;
+    });
+})();
+</script>
+
+<!-- Firebase: só para ler os anúncios do painel (e registrar os cliques) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  ANÚNCIOS
+//  Os mesmos anúncios do carrossel do app, lidos em tempo real da
+//  coleção "ads" do Firestore — a mesma que o admin gerencia no
+//  painel. Adicionar, editar, pausar ou excluir lá muda aqui na hora.
+//  Mesma ordem ("ordem"), mesmo filtro (ativo), mesma duração por
+//  anúncio ("duracao"), arraste com o dedo, áudio dos vídeos e
+//  registro de cliques em "adClicks". A diferença é o tamanho.
+//  Se o Firebase não carregar, a página continua funcionando
+//  normalmente, só sem os anúncios.
+// ══════════════════════════════════════════════════════════
+(function () {
+    'use strict';
+
+    var section = document.getElementById('ads-section');
+    var wrap    = document.getElementById('ad-carousel');
+    var track   = document.getElementById('ad-carousel-track');
+    var dots    = document.getElementById('ad-carousel-dots');
+    if (!section || !wrap || !track || !dots) return; // link inválido: a página virou a tela de erro
+    if (typeof firebase === 'undefined' || !firebase.initializeApp) return;
+
+    var firebaseConfig = {
+        apiKey: "AIzaSyCf9UBLUNObJTzgOT6Wv6GRoWWYq0pUj68",
+        authDomain: "dee-mensagens.firebaseapp.com",
+        projectId: "dee-mensagens",
+        storageBucket: "dee-mensagens.firebasestorage.app",
+        messagingSenderId: "898078042067",
+        appId: "1:898078042067:web:6f4c2ef7554d2a6a81f126"
+    };
+
+    var db = null, auth = null;
+    try {
+        if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        auth = firebase.auth ? firebase.auth() : null;
+    } catch (e) { return; }
+
+    var adsList = [];
+    var adCarouselActive = [];
+    var adCarouselIdx = 0;
+    var adCarouselTimer = null;
+
+    // Quem está logado neste navegador (para o registro de clique, igual
+    // ao app). Sem login o clique abre normalmente, só não é registrado.
+    var usuario = null, usuarioNome = null;
+    if (auth && auth.onAuthStateChanged) {
+        auth.onAuthStateChanged(function (u) {
+            usuario = u || null;
+            usuarioNome = null;
+            if (!u) return;
+            db.collection('usuarios').doc(u.uid).get().then(function (s) {
+                if (s && s.exists) usuarioNome = (s.data() || {}).nome || null;
+            }).catch(function () {});
+        });
+    }
+
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    var ICON_MUDO = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+    var ICON_SOM  = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+    var ICON_LINK = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+    var ICON_SHARE = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>';
+    var ICON_PLAY = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+
+    // Mesma detecção de tipo do app, para anúncios do tipo "link genérico".
+    function adDetectMediaKind(url) {
+        if (/\.(mp4|webm|mov|m4v|ogg)(\?|#|$)/i.test(url || '')) return 'video';
+        if (/\.(jpe?g|png|gif|webp|avif|svg)(\?|#|$)/i.test(url || '')) return 'image';
+        return 'link';
+    }
+    function adYoutubeId(url) {
+        if (!url) return null;
+        var m = String(url).match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        return m ? m[1] : null;
+    }
+    function adHostname(url) {
+        try { return new URL(url).hostname.replace(/^www\./, ''); }
+        catch (e) { return 'Link'; }
+    }
+    function adKind(ad) {
+        return ad.type === 'video' ? 'video' : (ad.type === 'image' ? 'image' : adDetectMediaKind(ad.mediaUrl));
+    }
+
+    function linkIconHtml(ad) {
+        return '<div class="ad-slide-link-icon">' + ICON_LINK +
+            '<span class="ad-slide-link-host">' + esc(adHostname(ad.link || ad.mediaUrl)) + '</span></div>';
+    }
+
+    // Mídia de um slide: imagem, vídeo (com botão de áudio), miniatura do
+    // YouTube (com selo de play) ou cartão de link — igual ao app, em grande.
+    function adSlideMediaHtml(ad) {
+        var kind = adKind(ad);
+        var src = esc(ad.mediaUrl);
+        if (kind === 'video') {
+            return '<div class="ad-media">' +
+                '<video class="ad-media-main" src="' + src + '" muted loop autoplay playsinline webkit-playsinline data-falha-midia></video>' +
+                '</div>' +
+                '<button class="ad-audio-btn" type="button" title="Ativar/desativar áudio" data-audio>' + ICON_MUDO + '</button>';
+        }
+        if (kind === 'image') {
+            return '<div class="ad-media">' +
+                '<img class="ad-media-bg" src="' + src + '" alt="" aria-hidden="true">' +
+                '<img class="ad-media-main" src="' + src + '" alt="" data-falha-midia>' +
+                '</div>';
+        }
+        var ytId = adYoutubeId(ad.mediaUrl || ad.link);
+        if (ytId) {
+            var thumb = 'https://img.youtube.com/vi/' + ytId + '/hqdefault.jpg';
+            return '<div class="ad-media">' +
+                '<img class="ad-media-bg" src="' + thumb + '" alt="" aria-hidden="true">' +
+                '<img class="ad-media-main" src="' + thumb + '" alt="" data-yt="' + ytId + '">' +
+                '<span class="ad-play-badge">' + ICON_PLAY + '</span>' +
+                '</div>';
+        }
+        return '<div class="ad-media">' + linkIconHtml(ad) + '</div>';
+    }
+
+    function renderAdCarousel() {
+        var active = adsList.filter(function (a) { return a.ativo !== false; });
+        if (adCarouselTimer) { clearTimeout(adCarouselTimer); adCarouselTimer = null; }
+        adCarouselActive = active;
+        if (!active.length) {
+            section.classList.remove('on');
+            track.innerHTML = ''; dots.innerHTML = '';
+            return;
+        }
+        section.classList.add('on');
+        track.innerHTML = active.map(function (ad) {
+            var kind = adKind(ad);
+            var tag = kind === 'link' ? adHostname(ad.mediaUrl || ad.link) : 'Patrocinado';
+            return '<a class="ad-slide" href="' + esc(ad.link) + '" target="_blank" rel="noopener noreferrer" data-ad-id="' + esc(ad.id) + '">' +
+                adSlideMediaHtml(ad) +
+                '<div class="ad-slide-info"><div class="ad-slide-title">' + esc(ad.titulo || 'Anúncio') + '</div>' +
+                '<div class="ad-slide-tag">' + esc(tag) + '</div></div>' +
+                '<button class="ad-share-btn" type="button" title="Compartilhar" data-share="' + esc(ad.id) + '">' + ICON_SHARE + '</button>' +
+                '</a>';
+        }).join('');
+        dots.innerHTML = active.map(function (_, i) { return '<div class="ad-dot' + (i === 0 ? ' on' : '') + '"></div>'; }).join('');
+
+        // Mídia que não carrega vira o cartão de link (sem sumir com o slide,
+        // o que desalinharia o carrossel).
+        track.querySelectorAll('[data-falha-midia]').forEach(function (el) {
+            el.addEventListener('error', function () {
+                var slide = el.closest('.ad-slide');
+                var media = slide ? slide.querySelector('.ad-media') : null;
+                var ad = slide ? adsList.find(function (a) { return a.id === slide.getAttribute('data-ad-id'); }) : null;
+                if (media && ad) media.innerHTML = linkIconHtml(ad);
+                var audio = slide ? slide.querySelector('.ad-audio-btn') : null;
+                if (audio) audio.remove();
+            });
+        });
+        track.querySelectorAll('img[data-yt]').forEach(function (img) {
+            img.addEventListener('error', function () {
+                var alt = 'https://img.youtube.com/vi/' + img.getAttribute('data-yt') + '/mqdefault.jpg';
+                if (img.src !== alt) { img.src = alt; var bg = img.parentNode.querySelector('.ad-media-bg'); if (bg) bg.src = alt; }
+            });
+        });
+
+        adCarouselIdx = 0;
+        track.style.transform = 'translateX(0%)';
+        scheduleAdCarouselNext();
+    }
+
+    function marcarDots() {
+        dots.querySelectorAll('.ad-dot').forEach(function (d, i) { d.classList.toggle('on', i === adCarouselIdx); });
+    }
+
+    // ── Áudio dos anúncios em vídeo (começam mudos, como no app) ──
+    function muteAllAdVideos() {
+        track.querySelectorAll('video').forEach(function (v) { v.muted = true; });
+        track.querySelectorAll('.ad-audio-btn').forEach(function (b) { b.innerHTML = ICON_MUDO; });
+    }
+    function toggleAdAudio(btn) {
+        var slide = btn.closest('.ad-slide');
+        var vid = slide ? slide.querySelector('video') : null;
+        if (!vid) return;
+        var willUnmute = vid.muted;
+        muteAllAdVideos();
+        if (willUnmute) {
+            vid.muted = false;
+            vid.play().catch(function () {});
+            btn.innerHTML = ICON_SOM;
+        }
+    }
+
+    // ── Troca automática: cada anúncio usa a própria duração do painel ──
+    function scheduleAdCarouselNext() {
+        if (adCarouselTimer) { clearTimeout(adCarouselTimer); adCarouselTimer = null; }
+        var total = adCarouselActive.length;
+        if (total <= 1) return;
+        var current = adCarouselActive[adCarouselIdx];
+        var dur = current && current.duracao ? Number(current.duracao) : 4.5;
+        if (!dur || isNaN(dur) || dur <= 0) dur = 4.5;
+        adCarouselTimer = setTimeout(function () {
+            adCarouselIdx = (adCarouselIdx + 1) % total;
+            track.style.transform = 'translateX(-' + (adCarouselIdx * 100) + '%)';
+            marcarDots();
+            muteAllAdVideos();
+            scheduleAdCarouselNext();
+        }, dur * 1000);
+    }
+
+    // ── Arrastar com o dedo (e com o mouse) ──
+    (function initAdCarouselDrag() {
+        var dragging = false, startX = 0, currentX = 0, startTranslate = 0, widthPx = 0;
+
+        function down(x) {
+            if (adCarouselActive.length <= 1) return;
+            dragging = true; startX = x; currentX = x;
+            widthPx = wrap.getBoundingClientRect().width || 1;
+            startTranslate = -adCarouselIdx * widthPx;
+            track.classList.add('dragging');
+            if (adCarouselTimer) { clearTimeout(adCarouselTimer); adCarouselTimer = null; }
+        }
+        function move(x) {
+            if (!dragging) return;
+            currentX = x;
+            track.style.transform = 'translateX(' + (startTranslate + (currentX - startX)) + 'px)';
+        }
+        function up() {
+            if (!dragging) return;
+            dragging = false;
+            track.classList.remove('dragging');
+            var delta = currentX - startX;
+            var total = adCarouselActive.length;
+            var threshold = widthPx * 0.18;
+            var prevIdx = adCarouselIdx;
+            if (delta < -threshold && adCarouselIdx < total - 1) adCarouselIdx++;
+            else if (delta > threshold && adCarouselIdx > 0) adCarouselIdx--;
+            track.style.transform = 'translateX(-' + (adCarouselIdx * 100) + '%)';
+            marcarDots();
+            if (Math.abs(delta) > 10) track._suppressClick = true;
+            if (prevIdx !== adCarouselIdx) muteAllAdVideos();
+            scheduleAdCarouselNext();
+        }
+
+        track.addEventListener('touchstart', function (e) { down(e.touches[0].clientX); }, { passive: true });
+        track.addEventListener('touchmove',  function (e) { move(e.touches[0].clientX); }, { passive: true });
+        track.addEventListener('touchend',   function () { up(); });
+        track.addEventListener('touchcancel', function () { up(); });
+
+        track.addEventListener('mousedown', function (e) { e.preventDefault(); down(e.clientX); });
+        window.addEventListener('mousemove', function (e) { if (dragging) move(e.clientX); });
+        window.addEventListener('mouseup',   function () { if (dragging) up(); });
+    })();
+
+    // ── Compartilhar: folha de compartilhamento do aparelho (ou copia o link) ──
+    function mostrarToast(texto) {
+        var t = document.getElementById('toast');
+        if (!t) return;
+        t.textContent = texto;
+        t.classList.add('on');
+        clearTimeout(t._timer);
+        t._timer = setTimeout(function () { t.classList.remove('on'); }, 2200);
+    }
+    function compartilharAnuncio(adId) {
+        var ad = adsList.find(function (a) { return a.id === adId; });
+        if (!ad || !ad.link) return;
+        var titulo = ad.titulo || 'Anúncio';
+        if (navigator.share) {
+            navigator.share({ title: titulo, text: titulo, url: ad.link }).catch(function () {});
+            return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(ad.link).then(function () { mostrarToast('Link do anúncio copiado'); })
+                .catch(function () { mostrarToast(ad.link); });
+            return;
+        }
+        mostrarToast(ad.link);
+    }
+
+    // ── Clique no anúncio: registra em "adClicks" e abre o link ──
+    // A aba nova abre na hora (ainda dentro do toque) para não ser
+    // bloqueada; o link entra nela depois do registro, como no app.
+    function handleAdClick(el) {
+        var adId = el.getAttribute('data-ad-id');
+        var link = el.getAttribute('href');
+        if (!link) return;
+        var ad = adsList.find(function (a) { return a.id === adId; }) || {};
+
+        var newTab = null;
+        try { newTab = window.open('', '_blank'); } catch (e) { newTab = null; }
+        function abrir() {
+            if (newTab) { try { newTab.location = link; return; } catch (e) {} }
+            window.open(link, '_blank');
+        }
+
+        if (!usuario) { abrir(); return; }
+        db.collection('adClicks').add({
+            adId:      adId,
+            titulo:    ad.titulo || '',
+            link:      link,
+            uid:       usuario.uid,
+            email:     usuario.email || null,
+            nome:      usuarioNome || usuario.displayName || null,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(function (err) {
+            console.error('Erro ao registrar clique do anúncio:', err);
+        }).finally(abrir);
+    }
+
+    track.addEventListener('click', function (e) {
+        var alvo = e.target.closest ? e.target.closest('[data-audio], [data-share], .ad-slide') : null;
+        if (!alvo) return;
+        e.preventDefault();
+        if (alvo.hasAttribute('data-audio')) { e.stopPropagation(); toggleAdAudio(alvo); return; }
+        if (alvo.hasAttribute('data-share')) { e.stopPropagation(); compartilharAnuncio(alvo.getAttribute('data-share')); return; }
+        if (track._suppressClick) { track._suppressClick = false; return; }
+        handleAdClick(alvo);
+    });
+
+    // ── Tempo real com o painel do admin ──
+    db.collection('ads').orderBy('ordem', 'asc').onSnapshot(function (snap) {
+        adsList = [];
+        snap.forEach(function (d) { adsList.push(Object.assign({ id: d.id }, d.data())); });
+        renderAdCarousel();
+    }, function (err) {
+        console.error('Erro ao carregar anúncios:', err);
     });
 })();
 </script>

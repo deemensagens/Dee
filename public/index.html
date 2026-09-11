@@ -868,6 +868,7 @@
         #cam-modal.open { display: flex; }
         .cam-viewport { flex: 1; position: relative; overflow: hidden; background: #000; }
         #cam-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+        #cam-video.mirror { transform: scaleX(-1); } /* câmera frontal espelhada, como num espelho */
         #cam-canvas { display: none; }
         .cam-controls { background: rgba(0,0,0,.75); backdrop-filter: blur(16px); padding: 16px 20px; padding-bottom: calc(var(--safe-bottom) + 16px); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .cam-ctrl-side { display: flex; align-items: center; gap: 8px; flex: 1; }
@@ -1180,6 +1181,18 @@
         .profile-bio-edit textarea { width: 100%; background: #0a0c12; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; resize: none; }
         .profile-bio-edit textarea:focus { outline: none; border-color: var(--accent); }
         .profile-bio-counter { font-size: 11px; color: var(--muted); text-align: right; margin-top: 4px; }
+
+        /* ── MEU PERFIL: EDITAR NOME (e-mail só leitura) ── */
+        .profile-name-edit input { width: 100%; background: #0a0c12; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; }
+        .profile-name-edit input:focus { outline: none; border-color: var(--accent); }
+        .profile-name-edit input:disabled { opacity: .6; cursor: not-allowed; }
+        .profile-name-info { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-top: 4px; }
+        .profile-name-info .profile-bio-counter { margin-top: 0; flex-shrink: 0; }
+        .profile-name-hint { font-size: 11px; color: var(--muted); line-height: 1.45; text-align: left; }
+        .profile-name-hint.erro { color: var(--danger); }
+        .profile-email-fixo { font-size: 13px; color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; word-break: break-all; text-align: left; }
+        .profile-email-nota { font-size: 11px; color: var(--muted); margin-top: 4px; text-align: left; }
+        #my-profile-name-save:disabled { opacity: .45; cursor: not-allowed; }
 
         /* ── MODERAÇÃO: MENU DA CONVERSA (Bloquear / Denunciar) — Exigência Google Play / Apple ── */
         .status-opt-btn.danger-opt { color: var(--danger); }
@@ -1522,7 +1535,8 @@
         #live-floating-window.minimized .cfw-local-row { display: none; }
         .lfw-body { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; flex-shrink: 0; overflow: hidden; }
         .lfw-body video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
-        #lfw-host-preview { display: none; transform: scaleX(-1); } /* espelhado, como qualquer câmera frontal */
+        #lfw-host-preview { display: none; }
+        #lfw-host-preview.mirror { transform: scaleX(-1); } /* espelhado com a câmera frontal; a traseira aparece normal */
         #lfw-remote-video { display: none; }
         #live-floating-window[data-role="host"] #lfw-host-preview { display: block; }
         #live-floating-window[data-role="viewer"] #lfw-remote-video { display: block; }
@@ -2279,6 +2293,19 @@
             <button class="status-opt-btn" onclick="document.getElementById('finput-avatar').click();"><span class="status-opt-ic"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>Escolher da galeria</button>
             <button class="status-opt-btn" id="my-profile-remove-btn" onclick="removeMyProfilePhoto()" style="display:none;"><span class="status-opt-ic"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></span>Remover foto</button>
         </div>
+        <!-- ════ NOME (editável a cada 30 dias) E E-MAIL (definitivo) ════ -->
+        <div class="profile-bio-edit profile-name-edit">
+            <label class="profile-bio-label" for="my-profile-name-input">Nome</label>
+            <input type="text" id="my-profile-name-input" maxlength="200" placeholder="Seu nome" autocomplete="name" autocapitalize="words" autocorrect="off" spellcheck="false" lang="pt-BR" oninput="updateNameEditState(true)">
+            <div class="profile-name-info">
+                <span class="profile-name-hint" id="my-profile-name-hint"></span>
+                <span class="profile-bio-counter" id="my-profile-name-counter">0/35</span>
+            </div>
+            <button class="mbtn pri" id="my-profile-name-save" style="width:100%;margin-top:6px;" onclick="saveMyName()">Salvar nome</button>
+            <label class="profile-bio-label" style="margin-top:14px;">E-mail</label>
+            <div class="profile-email-fixo" id="my-profile-email-fixo"></div>
+            <div class="profile-email-nota">O e-mail da conta é definitivo e não pode ser alterado.</div>
+        </div>
         <div class="profile-bio-edit">
             <label class="profile-bio-label" for="my-profile-bio-input">Descrição (visível para outros usuários)</label>
             <textarea id="my-profile-bio-input" maxlength="139" rows="3" placeholder="Escreva algo sobre você..." autocorrect="on" autocapitalize="sentences" spellcheck="true" lang="pt-BR" oninput="updateBioCounter()"></textarea>
@@ -2303,7 +2330,7 @@
 <div id="about-dee-modal" class="overlay">
     <div class="mcard about-dee-card">
         <h2 style="margin-bottom:14px;"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Sobre o Dee</h2>
-        <p class="about-dee-desc">Dee é o seu app de mensagens: conversas em tempo real, chamadas, grupos, status, compartilhamento de localização ao vivo e o Cinema Coletivo — pra assistir vídeos e navegar sites juntos, na mesma conversa. Tudo em um só lugar, feito pra ficar perto de quem importa.</p>
+        <p class="about-dee-desc">Dee é o seu app de mensagens: conversas em tempo real, chamadas, grupos, status, compartilhamento de localização ao vivo e o Cinema Coletivo — pra assistir vídeos juntos, na mesma conversa. Tudo em um só lugar, feito pra ficar perto de quem importa.</p>
         <div class="about-dee-version-row">
             <span>Versão instalada</span>
             <strong id="about-dee-version">Verificando...</strong>
@@ -2562,7 +2589,7 @@
             <button class="status-opt-btn" onclick="document.getElementById('chat-bg-file-input').click();"><span class="status-opt-ic"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>Escolher foto de fundo desta conversa</button>
             <button class="status-opt-btn" id="chat-custom-remove-img-btn" onclick="removeChatImage()" style="display:none;"><span class="status-opt-ic"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></span>Remover imagem desta conversa</button>
         </div>
-        <div class="chat-custom-note" id="chat-custom-no-chat-hint" style="display:none;margin-bottom:0;">Abra uma conversa para poder definir uma imagem de fundo só para ela.</div>
+        <div class="chat-custom-note" id="chat-custom-no-chat-hint" style="display:none;margin-bottom:0;">Ao definir um tema ele será aplicado a todo o app</div>
         <div id="chat-custom-remove-box" style="display:none;margin-top:10px;">
             <button class="mbtn danger-btn" style="width:100%;" onclick="removerPersonalizacao()">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
@@ -5096,12 +5123,207 @@ function openMyProfile() {
     document.getElementById('my-profile-remove-btn').style.display = me.foto ? 'flex' : 'none';
     document.getElementById('my-profile-bio-input').value = me.bio || '';
     updateBioCounter();
+    document.getElementById('my-profile-name-input').value = me.nome || '';
+    document.getElementById('my-profile-email-fixo').textContent = me.email || (auth.currentUser && auth.currentUser.email) || '';
+    updateNameEditState(false);
     openModal('my-profile-modal');
 }
 function updateBioCounter() {
     var inp = document.getElementById('my-profile-bio-input');
     document.getElementById('my-profile-bio-counter').textContent = inp.value.length + '/139';
 }
+// ══════════════════════════════════════════════════════════
+//  MEU NOME — editável a cada 30 dias (o e-mail não muda nunca)
+// ══════════════════════════════════════════════════════════
+//  Regras do nome:
+//   • de 3 a 35 caracteres (contados como a pessoa vê: cada emoji e
+//     cada letra acentuada contam 1; espaço também conta);
+//   • só letras, números, pontos, sublinhados, espaços e emojis;
+//   • letra maiúscula só no início de cada palavra, e toda palavra que
+//     começa com letra começa com maiúscula: "Joao Paulo" pode;
+//     "JOAO PAULO" e "joao paulo" não podem.
+//  Depois de trocar, só dá para trocar de novo 30 dias depois (a data
+//  da última troca fica em usuarios/{uid}.nomeAlteradoEm).
+var NOME_MIN = 3;
+var NOME_MAX = 35;
+var NOME_TROCA_INTERVALO_MS = 30 * 24 * 60 * 60 * 1000;
+
+// Pedaços que valem 1 caractere cada: emoji (inclusive os compostos,
+// bandeiras, tons de pele e teclas como 1️⃣), letra latina com ou sem
+// acento, número, ponto, sublinhado, espaço — ou "outro" (não permitido).
+var NOME_RE_PEDACO = new RegExp(
+    '([#*0-9]\\uFE0F?\\u20E3' +                                   // tecla: 1️⃣ #️⃣
+    '|[\\u{1F1E6}-\\u{1F1FF}]{2}' +                                 // bandeira
+    '|(?:[\\u00A9\\u00AE\\u203C\\u2049\\u2122\\u2139\\u2190-\\u21FF\\u2300-\\u23FF\\u24C2\\u25A0-\\u25FF\\u2600-\\u27BF\\u2900-\\u297F\\u2B00-\\u2BFF\\u3030\\u303D\\u3297\\u3299\\u{1F000}-\\u{1FAFF}])' +
+        '(?:\\uFE0F|[\\u{1F3FB}-\\u{1F3FF}])*' +
+        '(?:\\u200D(?:[\\u2600-\\u27BF\\u2B00-\\u2BFF\\u{1F000}-\\u{1FAFF}])(?:\\uFE0F|[\\u{1F3FB}-\\u{1F3FF}])*)*' +
+        '[\\u{E0020}-\\u{E007F}]*' +                                  // bandeiras com etiqueta (ex.: Inglaterra)
+    ')' +
+    '|([A-Za-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u024F\\u1E00-\\u1EFF][\\u0300-\\u036F]*)' + // letra
+    '|([0-9])|([._])|( )' +
+    '|([\\s\\S])', 'gu');
+
+function nomeNormalizar(txt) {
+    var s = String(txt == null ? '' : txt);
+    try { s = s.normalize('NFC'); } catch (e) {}
+    return s.replace(/\s+/g, ' ').trim();
+}
+
+// Quebra o nome nos pedaços acima: [{ txt, tipo }], tipo = emoji|letra|numero|sinal|espaco|outro
+function nomePedacos(txt) {
+    var lista = [], m;
+    NOME_RE_PEDACO.lastIndex = 0;
+    while ((m = NOME_RE_PEDACO.exec(txt)) !== null) {
+        var tipo = m[1] ? 'emoji' : m[2] ? 'letra' : m[3] ? 'numero' : m[4] ? 'sinal' : m[5] ? 'espaco' : 'outro';
+        lista.push({ txt: m[0], tipo: tipo });
+        if (m[0] === '') NOME_RE_PEDACO.lastIndex++;
+    }
+    return lista;
+}
+
+// Devolve a mensagem do problema, ou '' se o nome estiver certo.
+function nomeValidar(nome) {
+    var pedacos = nomePedacos(nome);
+    for (var i = 0; i < pedacos.length; i++) {
+        if (pedacos[i].tipo === 'outro') {
+            var c = pedacos[i].txt;
+            return (c === '\t' || c === '\n') ? 'Use só letras, números, pontos, sublinhados, espaços e emojis.'
+                : 'O caractere "' + c + '" não é permitido. Use só letras, números, pontos, sublinhados, espaços e emojis.';
+        }
+    }
+    if (pedacos.length < NOME_MIN) return 'O nome precisa ter pelo menos ' + NOME_MIN + ' caracteres.';
+    if (pedacos.length > NOME_MAX) return 'O nome pode ter no máximo ' + NOME_MAX + ' caracteres.';
+    var inicioPalavra = true;
+    for (var j = 0; j < pedacos.length; j++) {
+        var p = pedacos[j];
+        if (p.tipo === 'espaco') { inicioPalavra = true; continue; }
+        if (p.tipo === 'letra') {
+            var base = p.txt.charAt(0);
+            var minuscula = base !== base.toUpperCase();
+            var maiuscula = base !== base.toLowerCase();
+            if (inicioPalavra && minuscula) return 'Cada palavra deve começar com letra maiúscula (ex.: "Joao Paulo").';
+            if (!inicioPalavra && maiuscula) return 'Use letra maiúscula só no início de cada palavra (ex.: "Joao Paulo", não "JOAO PAULO").';
+        }
+        inicioPalavra = false;
+    }
+    return '';
+}
+
+function nomeDataBR(ts) {
+    try { return new Date(ts).toLocaleDateString('pt-BR'); } catch (e) { return ''; }
+}
+
+// Quando o nome pode ser trocado de novo (0 = já pode).
+function nomeLiberadoEm() {
+    var ultimo = Number(me && me.nomeAlteradoEm) || 0;
+    if (!ultimo) return 0;
+    var libera = ultimo + NOME_TROCA_INTERVALO_MS;
+    return Date.now() < libera ? libera : 0;
+}
+
+// Atualiza campo, contador, aviso e botão. digitando=true corta o que
+// passar de 35 caracteres enquanto a pessoa escreve.
+function updateNameEditState(digitando) {
+    var inp   = document.getElementById('my-profile-name-input');
+    var hint  = document.getElementById('my-profile-name-hint');
+    var cont  = document.getElementById('my-profile-name-counter');
+    var btn   = document.getElementById('my-profile-name-save');
+    if (!inp || !hint || !cont || !btn || !me) return;
+
+    var libera = nomeLiberadoEm();
+    if (libera) {
+        inp.value = me.nome || '';
+        inp.disabled = true;
+        btn.disabled = true;
+        cont.textContent = nomePedacos(nomeNormalizar(inp.value)).length + '/' + NOME_MAX;
+        var dias = Math.max(1, Math.ceil((libera - Date.now()) / (24 * 60 * 60 * 1000)));
+        hint.className = 'profile-name-hint';
+        hint.textContent = 'Você mudou seu nome em ' + nomeDataBR(me.nomeAlteradoEm) + '. Poderá mudar de novo em ' +
+            dias + (dias === 1 ? ' dia' : ' dias') + ' (' + nomeDataBR(libera) + ').';
+        return;
+    }
+
+    inp.disabled = false;
+    if (digitando) {
+        var pedacosDigitados = nomePedacos(inp.value);
+        if (pedacosDigitados.length > NOME_MAX) {
+            inp.value = pedacosDigitados.slice(0, NOME_MAX).map(function(p) { return p.txt; }).join('');
+        }
+    }
+    var nome = nomeNormalizar(inp.value);
+    cont.textContent = nomePedacos(nome).length + '/' + NOME_MAX;
+
+    if (nome === (me.nome || '')) {
+        btn.disabled = true;
+        hint.className = 'profile-name-hint';
+        hint.textContent = 'De 3 a 35 caracteres. Cada palavra começa com letra maiúscula. Pode ser trocado a cada 30 dias.';
+        return;
+    }
+    var erro = nomeValidar(nome);
+    btn.disabled = !!erro;
+    hint.className = 'profile-name-hint' + (erro ? ' erro' : '');
+    hint.textContent = erro || 'Depois de salvar, você só poderá mudar o nome de novo daqui a 30 dias.';
+}
+
+// Atualiza na hora o que mostra o meu nome nesta tela (barra de baixo e Meu Perfil).
+function nomeAplicarNaTela() {
+    var nm = document.getElementById('me-nm');
+    if (nm) nm.textContent = me.nome;
+    var av = document.getElementById('me-av');
+    if (av) av.innerHTML = avInner(me.nome, me.foto);
+    var titulo = document.getElementById('my-profile-name');
+    if (titulo) titulo.innerHTML = esc(me.nome) + (typeof window.sfBadgeHtml === 'function' ? window.sfBadgeHtml(me.uid) : '');
+    var letra = document.querySelector('#my-profile-photo-wrap .profile-photo-big-letter');
+    if (letra) letra.textContent = (me.nome || '?').charAt(0).toUpperCase();
+}
+
+var salvandoNome = false;
+async function saveMyName() {
+    if (!me || salvandoNome) return;
+    var inp  = document.getElementById('my-profile-name-input');
+    var btn  = document.getElementById('my-profile-name-save');
+    var nome = nomeNormalizar(inp.value);
+
+    if (nomeLiberadoEm()) { updateNameEditState(false); return; }
+    if (nome === (me.nome || '')) { notify('Esse já é o seu nome', 'info'); return; }
+    var erro = nomeValidar(nome);
+    if (erro) { notify(erro, 'warn', 5000); updateNameEditState(false); return; }
+
+    var ok = await customConfirm('Mudar nome',
+        'Seu nome vai passar a ser "' + nome + '". Depois disso, você só poderá mudar o nome de novo daqui a 30 dias.',
+        'Salvar nome', 'pri');
+    if (!ok) return;
+
+    salvandoNome = true;
+    btn.disabled = true; btn.textContent = 'Salvando...';
+    try {
+        // Confere no servidor a data da última troca (pode ter sido feita
+        // em outro aparelho) antes de gravar.
+        var snap = await db.collection('usuarios').doc(me.uid).get();
+        var ultimo = snap.exists ? (Number((snap.data() || {}).nomeAlteradoEm) || 0) : 0;
+        if (ultimo && Date.now() < ultimo + NOME_TROCA_INTERVALO_MS) {
+            me.nomeAlteradoEm = ultimo;
+            me.nome = (snap.data() || {}).nome || me.nome;
+            nomeAplicarNaTela();
+            notify('Você só poderá mudar o nome de novo em ' + nomeDataBR(ultimo + NOME_TROCA_INTERVALO_MS), 'warn', 6000);
+            return;
+        }
+        var agora = Date.now();
+        await db.collection('usuarios').doc(me.uid).update({ nome: nome, nomeAlteradoEm: agora });
+        me.nome = nome;
+        me.nomeAlteradoEm = agora;
+        nomeAplicarNaTela();
+        notify('Nome atualizado!', 'ok');
+    } catch (e) {
+        notify('Erro ao salvar nome: ' + friendlyError(e), 'err');
+    } finally {
+        salvandoNome = false;
+        btn.textContent = 'Salvar nome';
+        inp.value = me.nome || '';
+        updateNameEditState(false);
+    }
+}
+
 async function saveMyBio() {
     var bio = document.getElementById('my-profile-bio-input').value.trim().slice(0, 139);
     try {
@@ -5369,8 +5591,18 @@ function disarmBackTrap() {
 function closeTopUIIfAny() {
     // 1) chamada em andamento: o botão voltar nunca desliga a chamada por
     //    engano — simplesmente não faz nada enquanto ela estiver na tela.
+    //    Só sai da chamada quem encerra; o voltar apenas avisa isso.
     var callScreen = document.getElementById('call-screen');
-    if (callScreen && callScreen.classList.contains('open')) return true;
+    if (callScreen && callScreen.classList.contains('open')) {
+        var agoraAviso = Date.now();
+        if (agoraAviso - (window.deeUltimoAvisoSairChamada || 0) > 2500) {
+            window.deeUltimoAvisoSairChamada = agoraAviso;
+            notify(callState === 'ringing-in' ? 'Atenda ou recuse a chamada'
+                : (callState === 'ringing-out' ? 'Para sair, cancele a chamada' : 'Para sair, encerre a chamada'),
+                'info', 2500);
+        }
+        return true;
+    }
 
     // 2) pequenos menus/popups abertos por cima do chat
     if (reacaoAberta) { fecharReacoes(); return true; }
@@ -5415,9 +5647,35 @@ function closeTopUIIfAny() {
     // segundo toque fechava a publicação, caindo direto na Comunidade em
     // vez de voltar para o perfil de onde a pessoa realmente veio. Agora
     // pegamos o ÚLTIMO ".overlay.open", que é o que está de fato visível.
-    var overlaysOpen = document.querySelectorAll('.overlay.open');
-    var overlay = overlaysOpen.length ? overlaysOpen[overlaysOpen.length - 1] : null;
+    //
+    // Só que o último no HTML nem sempre é o da frente: "Postar" e
+    // "Iniciar Live" ficam ANTES do perfil no HTML, mas com z-index maior
+    // (aparecem por cima dele). Pegando só o último, o voltar fechava o
+    // perfil escondido atrás delas. Por isso a escolha é pelo z-index e,
+    // em caso de empate, vale o último no HTML (a regra acima). Assim
+    // publicação, Postar, Live, Editar perfil e recorte fecham e a pessoa
+    // volta para o perfil de onde veio.
+    var overlaysOpen = Array.prototype.slice.call(document.querySelectorAll('.overlay.open'));
+    var overlay = overlaysOpen.length ? overlaysOpen.reduce(function (topo, el) {
+        var zTopo = parseInt(getComputedStyle(topo).zIndex, 10) || 0;
+        var zEl   = parseInt(getComputedStyle(el).zIndex, 10) || 0;
+        return zEl >= zTopo ? el : topo; // empate: o último no HTML fica por cima
+    }) : null;
     if (overlay) {
+        // Publicação/Live aberta: fecha pelo mesmo caminho do X (para o
+        // áudio, solta o microfone do comentário e sai da live de quem
+        // só estava assistindo).
+        if (overlay.id === 'sf-detail-modal') {
+            // Minha live no ar: só sai pelo "Encerrar live" (a Comunidade avisa).
+            if (typeof window.sfLiveSaidaBloqueada === 'function' && window.sfLiveSaidaBloqueada()) return true;
+            var xDetalhe = document.getElementById('sf-detail-close-btn');
+            if (xDetalhe) { xDetalhe.click(); return true; }
+        }
+        // Recorte de foto (perfil, capa ou postagem): fecha pelo "Cancelar" dele.
+        if (overlay.id === 'sf-crop-modal') {
+            var cancelarRecorte = document.getElementById('sf-crop-cancelar');
+            if (cancelarRecorte) { cancelarRecorte.click(); return true; }
+        }
         // ── O ÁUDIO DA PUBLICAÇÃO PRECISA PARAR AQUI ──
         // Fechar pelo X chamava a rotina da Comunidade, que silenciava o
         // áudio. Já o botão voltar do celular caía direto neste trecho,
@@ -5427,6 +5685,7 @@ function closeTopUIIfAny() {
         //
         // Agora, se o que está fechando é a publicação, avisamos a
         // Comunidade antes, exatamente como o X faz.
+        if (overlay.id === 'sf-detail-modal' && typeof window.sfLiveSaidaBloqueada === 'function' && window.sfLiveSaidaBloqueada()) return true;
         if (overlay.id === 'sf-detail-modal' && typeof window.sfPararTudoAoSair === 'function') {
             try { window.sfPararTudoAoSair(); } catch (e) {}
         }
@@ -11802,10 +12061,11 @@ async function trocarCameraDaLive() {
     if (oldTrack) liveLocalStream.removeTrack(oldTrack);
     liveLocalStream.addTrack(newTrack);
 
-    var localEl = document.getElementById('lfw-local-video') || document.getElementById('lfw-video');
+    var localEl = document.getElementById('lfw-host-preview') || document.getElementById('lfw-local-video') || document.getElementById('lfw-video');
     if (localEl) {
         localEl.srcObject = liveLocalStream;
-        localEl.classList.toggle('mirror', liveCamFacing === 'user');
+        localEl.classList.toggle('mirror', deeCameraEhFrontal(liveLocalStream, liveCamFacing));
+        if (localEl.play) localEl.play().catch(function(){});
     }
 }
 
@@ -11910,6 +12170,7 @@ function openLiveWindowHost() {
     document.getElementById('lfw-close-btn').style.display = 'none';
     var preview = document.getElementById('lfw-host-preview');
     preview.srcObject = liveLocalStream;
+    preview.classList.toggle('mirror', deeCameraEhFrontal(liveLocalStream, liveCamFacing));
     preview.play().catch(function(){});
     updateLiveHostControlsUI();
     updateLiveViewersBadge();
@@ -11993,6 +12254,7 @@ async function restoreLiveHost() {
 
     var preview = document.getElementById('lfw-host-preview');
     preview.srcObject = liveLocalStream;
+    preview.classList.toggle('mirror', deeCameraEhFrontal(liveLocalStream, 'user'));
     preview.play().catch(function(){});
 
     win.classList.remove('minimized');
@@ -14736,7 +14998,7 @@ function setupLocalVideoPreview() {
     var localEl = document.getElementById('call-local-video');
     if (!localEl || !callLocalStream) return;
     localEl.srcObject = callLocalStream;
-    localEl.classList.toggle('mirror', callCamFacing === 'user');
+    localEl.classList.toggle('mirror', deeCameraEhFrontal(callLocalStream, callCamFacing));
     localEl.play().catch(function(){});
 }
 
@@ -15112,11 +15374,33 @@ function handleStatusFile(e) {
     reader.readAsDataURL(file);
 }
 
+// ── Câmera frontal ou traseira? ──
+// Decide se a imagem deve aparecer espelhada, como num espelho (só a
+// câmera frontal). Primeiro pergunta ao aparelho qual câmera abriu de
+// verdade; se ele não disser, tenta pelo nome da câmera (no Android vem
+// "facing front" / "facing back"); em último caso, usa a câmera pedida.
+// Usada na foto, na chamada de vídeo e nas lives (conversas e Comunidade).
+function deeCameraEhFrontal(stream, facingPedido) {
+    try {
+        var track = (stream && stream.getVideoTracks) ? stream.getVideoTracks()[0] : null;
+        if (track) {
+            var cfg = track.getSettings ? track.getSettings() : null;
+            if (cfg && cfg.facingMode) return cfg.facingMode === 'user';
+            var nome = String(track.label || '').toLowerCase();
+            if (/\bback\b|rear|traseira|environment/.test(nome)) return false;
+            if (/\bfront\b|frontal|facetime|selfie|webcam/.test(nome)) return true;
+        }
+    } catch (e) {}
+    return facingPedido === 'user';
+}
+
 async function startCamStream() {
     if (camStream) camStream.getTracks().forEach(function(t) { t.stop(); });
     try {
         camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing }, audio: false });
         document.getElementById('cam-video').srcObject = camStream;
+        // Frontal aparece espelhada; traseira, normal.
+        document.getElementById('cam-video').classList.toggle('mirror', deeCameraEhFrontal(camStream, camFacing));
     } catch(err) { notify('Câmera não permitida', 'err'); }
 }
 function flipCamera() { camFacing = camFacing === 'environment' ? 'user' : 'environment'; startCamStream(); }
@@ -15126,7 +15410,12 @@ function handleShutter() { snapPhoto(); }
 function snapPhoto() {
     var vid = document.getElementById('cam-video'); var canvas = document.getElementById('cam-canvas');
     canvas.width = vid.videoWidth || 640; canvas.height = vid.videoHeight || 480;
-    canvas.getContext('2d').drawImage(vid, 0, 0, canvas.width, canvas.height);
+    var camCtx = canvas.getContext('2d');
+    camCtx.setTransform(1, 0, 0, 1, 0, 0);
+    // Foto da câmera frontal sai igual ao que a pessoa viu na tela (espelhada).
+    if (vid.classList.contains('mirror')) { camCtx.translate(canvas.width, 0); camCtx.scale(-1, 1); }
+    camCtx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+    camCtx.setTransform(1, 0, 0, 1, 0, 0);
     var base64 = canvas.toDataURL('image/jpeg', 0.88);
     var purpose = camPurpose;
     closeCamera();
@@ -15216,7 +15505,14 @@ window.addEventListener('beforeunload', function() {
 });
 
 function pauseAllMedia() {
+    // A chamada em andamento e a prévia da própria live (Comunidade) ficam
+    // de fora: sair do app, puxar a barra de notificações ou abrir uma
+    // conversa não pode deixar a chamada muda nem a live congelada —
+    // elas só terminam quando a pessoa encerra.
+    var chamadaEmCurso = (typeof callState !== 'undefined' && callState !== 'idle');
     document.querySelectorAll('audio, video').forEach(function(el) {
+        if (chamadaEmCurso && el.closest && el.closest('#call-screen')) return;
+        if (el.getAttribute && el.getAttribute('data-dee-manter-ativo') === '1') return;
         if (!el.paused) el.pause();
     });
     // Silencia também o áudio embutido das publicações da Comunidade:
@@ -15229,6 +15525,13 @@ function pauseAllMedia() {
 document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
         pauseAllMedia();
+    }
+    // Voltando para o app no meio de uma chamada: som e imagem dela
+    // continuam (o sistema pode ter pausado enquanto o app estava fora).
+    if (!document.hidden && typeof callState !== 'undefined' && callState !== 'idle') {
+        document.querySelectorAll('#call-screen audio, #call-screen video').forEach(function(el) {
+            if (el.srcObject && el.paused) el.play().catch(function(){});
+        });
     }
     // Localização em tempo real: parar de atualizar com a aba escondida
     // economiza bateria e evita gravações desnecessárias no Firestore.

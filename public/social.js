@@ -11,6 +11,7 @@
     var sfCommentsUnsub  = null;  // listener dos comentários do post aberto no detalhe
     var sfDetailPostId   = null;  // post atualmente aberto no modal de detalhe
     var sfDetailPostOwnerUid = null; // dono do post aberto no detalhe (pode excluir qualquer comentário nele)
+    var sfDetailTravadoNaLive = false; // true = o detalhe aberto é a MINHA live no ar (só sai encerrando)
     var sfLoadedImages   = {};    // postId -> true, controla quais mediaId já foram baixados/decodificados (postagens antigas, com 1 imagem só)
     var sfLoadedAudios   = {};    // postId -> true, controla quais audioId já foram baixados/decodificados
     // ── Carrossel de fotos (até SF_MAX_IMAGES por postagem) ──
@@ -156,6 +157,12 @@
 .sf-perfil-topo{display:flex;align-items:flex-end;justify-content:flex-start;gap:12px;padding:0 18px;margin-top:-34px;flex-shrink:0;position:relative;z-index:2;}\
 .sf-perfil-foto{width:76px;height:76px;border-radius:50%;overflow:hidden;border:3px solid var(--surface);background:var(--surface2);flex-shrink:0;}\
 .sf-perfil-foto img{width:100%;height:100%;object-fit:cover;}\
+/* Tocar na capa ou na foto do perfil abre a imagem inteira. A faixa da foto fica por cima do pe da capa: so a propria foto recebe o toque, o resto da faixa deixa o toque passar para a capa. */\
+.sf-perfil-clicavel{cursor:zoom-in;}\
+.sf-perfil-topo{pointer-events:none;}\
+.sf-perfil-topo>*{pointer-events:auto;}\
+/* O visualizador de imagem (index.html) precisa abrir POR CIMA do perfil e das outras janelas da Comunidade. */\
+#img-viewer{z-index:1030;}\
 /* Postar, Live e Editar perfil ficam numa linha so deles, DEPOIS da foto, sempre abaixo da capa. Antes dividiam a linha com a foto e, em telas estreitas, o texto do botao quebrava em duas linhas: o botao crescia pra cima e cobria a capa. Com flex-wrap, se nao couberem os 3 lado a lado numa tela bem estreita, o ultimo desce pra uma segunda linha em vez de vazar da tela. */\
 .sf-perfil-acoes{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:0 18px;margin-top:10px;flex-shrink:0;position:relative;z-index:2;}\
 .sf-perfil-editar{background:rgba(0,229,204,.12);border:1px solid rgba(0,229,204,.3);color:var(--accent);border-radius:20px;padding:7px 15px;font-family:Syne,sans-serif;font-weight:700;font-size:12px;cursor:pointer;margin:0;white-space:nowrap;flex-shrink:0;}\
@@ -180,6 +187,11 @@
 .sf-perfil-tile-txt{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;font-size:10.5px;color:var(--muted);padding:8px;line-height:1.35;text-align:left;overflow:hidden;}\
 .sf-perfil-tile-multi{position:absolute;top:4px;right:4px;color:#fff;filter:drop-shadow(0 0 2px rgba(0,0,0,.85));}\
 .sf-perfil-tile-multi .icon{width:14px;height:14px;}\
+.sf-perfil-tile-live{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#20263c,#161b2c);}\
+.sf-perfil-tile-live .sf-avatar{width:44px;height:44px;font-size:16px;}\
+.sf-perfil-tile-live .sf-avatar img{position:static;width:100%;height:100%;object-fit:cover;}\
+.sf-perfil-tile-live-selo{position:absolute;top:5px;left:5px;z-index:2;display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.6);border-radius:20px;padding:3px 7px 3px 5px;font-family:"Syne",sans-serif;font-weight:800;font-size:9px;color:#fff;letter-spacing:.3px;}\
+.sf-perfil-tile-live-selo .sf-live-dot{width:6px;height:6px;}\
 .sf-perfil-vazio{grid-column:1/-1;text-align:center;padding:34px 16px;color:var(--muted);font-size:13px;}\
 /* Os modais abertos DE DENTRO do perfil (nova postagem, live, editar perfil, recorte) vem antes dele no HTML, entao com o mesmo z-index do .overlay (1000) eram desenhados POR TRAS do cartao do perfil. Subindo o z-index deles, abrem sempre na frente. Continuam abaixo da camera (1100) e do confirm-modal (10050). */\
 #sf-new-post-modal,#sf-live-new-modal,#sf-perfil-editar-modal{z-index:1010;}\
@@ -450,6 +462,7 @@
 .sf-detail-live-ended{position:relative;z-index:1;}\
 .sf-detail-live-area{position:relative;width:100%;border-radius:14px;overflow:hidden;background:#000;margin-bottom:10px;aspect-ratio:4/3;}\
 .sf-detail-live-video{width:100%;height:100%;object-fit:cover;display:block;background:#000;}\
+.sf-detail-live-video.sf-espelhar{transform:scaleX(-1);}\
 .sf-detail-live-badge{position:absolute;top:10px;left:10px;z-index:2;display:flex;align-items:center;gap:5px;background:rgba(0,0,0,.55);border-radius:20px;padding:4px 9px 4px 7px;}\
 .sf-detail-live-badge span{font-family:"Syne",sans-serif;font-weight:800;font-size:10px;color:#fff;letter-spacing:.5px;}\
 .sf-detail-live-viewers{position:absolute;top:10px;right:10px;z-index:2;display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.55);border-radius:20px;padding:4px 9px;font-size:11px;font-weight:700;color:#fff;}\
@@ -896,6 +909,8 @@
         document.getElementById('sf-live-new-rec-stop').onclick = sfLiveStopRecordAudio;
 
         document.getElementById('sf-detail-close-btn').onclick = function () {
+            // Minha live no ar: a tela só fecha pelo "Encerrar live".
+            if (sfDetailTravadoNaLive) { sfAvisarSaidaDaLive(); return; }
             sfStopDetailMedia(); closeModal('sf-detail-modal');
             sfStopCommentsListener();
             sfStopDetailMedia(); // para qualquer áudio/vídeo que tenha ficado tocando (legenda em áudio, etc.)
@@ -994,6 +1009,7 @@
                 sfEnsurePinnedPostLoaded();
                 if (sfIndex >= sfVisiblePosts().length) sfIndex = 0;
                 sfRenderCarousel();
+                sfAtualizarPerfilAberto(); // a grade do perfil aberto acompanha o feed na hora
                 if (sfDetailPostId) sfRefreshDetailIfOpen();
             }, function (err) { console.error('social feed:', err); });
     }
@@ -2067,7 +2083,10 @@
             sfLiveActivePostId = p.id;
             sfLiveIsHost = true;
             var video = document.getElementById('sf-live-video');
-            if (video && sfLiveLocalStream) { video.muted = true; video.srcObject = sfLiveLocalStream; video.play().catch(function () {}); }
+            // A prévia da própria live não congela quando o app perde o foco
+            // (pauseAllMedia, no index.html, respeita esta marca).
+            if (video) video.setAttribute('data-dee-manter-ativo', '1');
+            if (video && sfLiveLocalStream) { video.muted = true; video.srcObject = sfLiveLocalStream; video.classList.toggle('sf-espelhar', sfLiveEhCameraFrontal()); video.play().catch(function () {}); }
             if (controls) {
                 // Trocar entre câmera frontal e traseira só funciona no app
                 // instalado. No site e no PWA o navegador não entrega a
@@ -2089,6 +2108,9 @@
             sfLiveUpdateCamOffOverlay(sfLiveCamOn);
             if (!sfLiveViewersUnsub) sfLiveWatchViewers(p.id);
         } else {
+            // Quem assiste vê a imagem normal, nunca espelhada.
+            var videoEspectador = document.getElementById('sf-live-video');
+            if (videoEspectador) { videoEspectador.classList.remove('sf-espelhar'); videoEspectador.removeAttribute('data-dee-manter-ativo'); }
             sfLiveHostInfo = { uid: p.liveState.hostUid, nome: p.liveState.hostName, foto: p.liveState.hostFoto };
             sfLiveViewerMuted = false; // entra já com o som ativado — o espectador escolhe silenciar depois, pelo próprio ícone de som
             if (controls) {
@@ -2097,6 +2119,14 @@
             }
             sfLiveJoin(p.id);
         }
+    }
+
+    // A imagem da própria câmera do anfitrião aparece espelhada quando é a
+    // frontal (como num espelho); a traseira aparece normal. A conferência
+    // de qual câmera está aberta fica no index.html (deeCameraEhFrontal).
+    function sfLiveEhCameraFrontal() {
+        if (typeof deeCameraEhFrontal === 'function') return deeCameraEhFrontal(sfLiveLocalStream, sfLiveCamFacing);
+        return sfLiveCamFacing === 'user';
     }
 
     function sfLiveUpdateCamOffOverlay(camOn) {
@@ -2358,7 +2388,7 @@
         sfLiveLocalStream.addTrack(novaTrack);
 
         var video = document.getElementById('sf-live-video');
-        if (video) { video.srcObject = sfLiveLocalStream; video.play().catch(function () {}); }
+        if (video) { video.srcObject = sfLiveLocalStream; video.classList.toggle('sf-espelhar', sfLiveEhCameraFrontal()); video.play().catch(function () {}); }
     }
 
     function sfLiveToggleMic() {
@@ -2395,9 +2425,59 @@
             notify('Live encerrada', 'ok');
             sfStopDetailMedia();
             sfLiveTeardown();
-            sfRefreshDetailIfOpen();
+            // Encerrar é a saída da live: a tela fecha e a pessoa volta para
+            // onde estava (o perfil, de onde a live é iniciada) — lá a live
+            // continua na grade, marcada como encerrada.
+            sfDetailTravadoNaLive = false;
+            var detalheModal = document.getElementById('sf-detail-modal');
+            if (sfDetailPostId === postId && detalheModal && detalheModal.classList.contains('open')) {
+                document.getElementById('sf-detail-close-btn').click();
+            } else {
+                sfRefreshDetailIfOpen();
+            }
         });
     }
+
+    // ══ A LIVE SÓ TERMINA PELO "ENCERRAR" ══
+    // Quem está transmitindo não sai da própria live sem querer: o X some,
+    // o botão voltar do celular não fecha a tela (só avisa), nenhuma outra
+    // publicação abre por cima e o excluir fica escondido. A única saída
+    // é "Encerrar live" — e, ao encerrar, a tela fecha e a pessoa volta
+    // para o perfil. Assim a live nunca fica no ar sem a pessoa perceber.
+    function sfEhMinhaLiveAoVivo(p) {
+        return !!(me && p && p.type === 'live' && p.liveState &&
+                  p.liveState.status === 'live' && p.liveState.hostUid === me.uid);
+    }
+
+    var sfUltimoAvisoSaidaLive = 0;
+    function sfAvisarSaidaDaLive() {
+        // Um aviso por vez, mesmo apertando voltar várias vezes seguidas.
+        var agora = Date.now();
+        if (agora - sfUltimoAvisoSaidaLive < 2500) return;
+        sfUltimoAvisoSaidaLive = agora;
+        notify('Para sair, encerre a live', 'info', 2500);
+    }
+
+    // Usada pelo botão voltar (index.html): true = a tela da frente é a
+    // minha live no ar, então ela não fecha.
+    window.sfLiveSaidaBloqueada = function () {
+        var modal = document.getElementById('sf-detail-modal');
+        if (!sfDetailTravadoNaLive || !modal || !modal.classList.contains('open')) return false;
+        sfAvisarSaidaDaLive();
+        return true;
+    };
+
+    // Voltando para o app com a própria live no ar: a prévia da câmera
+    // volta a rodar (o sistema pode ter pausado o vídeo enquanto isso).
+    function sfRetomarPreviaDaLive() {
+        if (document.hidden || !sfDetailTravadoNaLive || !sfLiveLocalStream) return;
+        var v = document.getElementById('sf-live-video');
+        if (!v) return;
+        if (v.srcObject !== sfLiveLocalStream) v.srcObject = sfLiveLocalStream;
+        v.play().catch(function () {});
+    }
+    document.addEventListener('visibilitychange', sfRetomarPreviaDaLive);
+    window.addEventListener('focus', sfRetomarPreviaDaLive);
 
     // ── Espectador sai da live ao fechar o detalhe (pode entrar de novo
     //    quantas vezes quiser, enquanto ela durar). O anfitrião NÃO sai
@@ -3277,11 +3357,21 @@
     // Sair da Comunidade (abrir uma conversa, trocar de aba) também
     // silencia o que estiver tocando aqui.
     window.sfPararTudoAoSair = function () {
-        sfStopDetailMedia();
+        // Na tela da minha live no ar a câmera continua: sair do app ou
+        // puxar a barra de notificações não pode deixar a prévia preta.
+        if (!sfDetailTravadoNaLive) sfStopDetailMedia();
         window.sfPararAudios(null);
     };
 
     async function sfOpenPostDetail(postId, focusComment) {
+        // Transmitindo a própria live: nenhuma outra publicação abre por
+        // cima dela (nem tocando numa notificação) — a saída é só pelo
+        // "Encerrar live".
+        var detalheAberto = document.getElementById('sf-detail-modal');
+        if (sfDetailTravadoNaLive && detalheAberto && detalheAberto.classList.contains('open')) {
+            if (postId !== sfDetailPostId) sfAvisarSaidaDaLive();
+            return;
+        }
         // Trocar de publicação (arrastando para o lado, por exemplo) cala o
         // áudio da anterior antes de abrir a próxima — senão as duas vozes
         // se sobreporiam.
@@ -3309,6 +3399,10 @@
 
     function sfRenderDetail(p) {
         var isMine = !!(me && p.uid === me.uid);
+        // Minha live no ar: sem X e sem excluir — só sai pelo "Encerrar live".
+        sfDetailTravadoNaLive = sfEhMinhaLiveAoVivo(p);
+        var xDetalheBtn = document.getElementById('sf-detail-close-btn');
+        if (xDetalheBtn) xDetalheBtn.style.display = sfDetailTravadoNaLive ? 'none' : '';
         var likedByMe = !!(me && p.likedBy && p.likedBy.indexOf(me.uid) !== -1);
         document.getElementById('sf-detail-avatar').innerHTML = avInner(p.nome, p.foto);
         document.getElementById('sf-detail-avatar').classList.toggle('sf-spotlight', sfSpotlightTop3.indexOf(p.uid) !== -1);
@@ -3321,7 +3415,7 @@
                 if (p.uid && typeof window.viewUserProfile === 'function') window.viewUserProfile(p.uid, p.nome, e, true);
             };
         }
-        document.getElementById('sf-detail-del-btn').style.display = isMine ? 'flex' : 'none';
+        document.getElementById('sf-detail-del-btn').style.display = (isMine && !sfDetailTravadoNaLive) ? 'flex' : 'none';
         document.getElementById('sf-detail-more-btn').style.display = isMine ? 'none' : 'flex';
         var recogBtn = document.getElementById('sf-detail-recog-btn');
         if (recogBtn) {
@@ -3808,6 +3902,22 @@
             capaEl.classList.toggle('sem-capa', !perfil.capa);
         }
         document.getElementById('sf-perfil-foto').innerHTML = avInner(nome, foto);
+
+        // Tocar na capa ou na foto abre a imagem inteira, no mesmo
+        // visualizador das fotos das conversas (com zoom e "Baixar").
+        // Sem capa ou sem foto (só a inicial do nome), o toque não faz nada.
+        var capaImagem = perfil.capa || null;
+        if (capaEl) {
+            capaEl.classList.toggle('sf-perfil-clicavel', !!capaImagem);
+            capaEl.onclick = function (e) {
+                if (e.target.closest && e.target.closest('.sf-perfil-voltar')) return; // o botão voltar fica dentro da capa
+                sfVerImagemInteira(capaImagem);
+            };
+        }
+        var fotoEl = document.getElementById('sf-perfil-foto');
+        fotoEl.classList.toggle('sf-perfil-clicavel', !!foto);
+        fotoEl.onclick = function () { sfVerImagemInteira(foto); };
+
         document.getElementById('sf-perfil-nome').textContent = nome;
         var arrobaEl = document.getElementById('sf-perfil-arroba');
         arrobaEl.textContent = perfil.username ? '@' + perfil.username : '';
@@ -3833,6 +3943,14 @@
         sfPerfilAberto = null;
     }
 
+    // Abre a capa ou a foto do perfil inteira no visualizador de imagem do
+    // app (viewImg, no index.html). O botão voltar do celular fecha o
+    // visualizador e a pessoa continua no perfil.
+    function sfVerImagemInteira(src) {
+        if (!src || typeof viewImg !== 'function') return;
+        viewImg(src);
+    }
+
     // As publicações da pessoa, em grade — tocar em qualquer uma abre a
     // publicação inteira, igual ao feed.
     //
@@ -3842,11 +3960,49 @@
     // — e assim por diante, até acabarem as publicações.
     var SF_PERFIL_LOTE = 3;
     var sfPerfilPostsScrollFn = null; // listener de rolagem em uso, pra poder tirar antes de pôr outro
+    var sfPerfilPostsAssinatura = ''; // "retrato" do que a grade está mostrando agora
+
+    // Resume o que a grade mostra (quais publicações, em que ordem, e o que
+    // aparece em cada quadradinho). Serve para redesenhar a grade só quando
+    // algo nela mudou de verdade — uma curtida em qualquer post do feed não
+    // deve fazer a grade piscar nem perder a rolagem.
+    function sfAssinaturaPerfilPosts(lista) {
+        return lista.map(function (p) {
+            var imgs = sfPostImageList(p);
+            var primeira = imgs[0];
+            return [p.id, imgs.length, (primeira && primeira.mediaData) ? primeira.mediaData.length : 0,
+                    (p.text || '').slice(0, 60), p.type || '', (p.liveState && p.liveState.status) || '',
+                    p.coverData ? p.coverData.length : 0].join(':');
+        }).join('|');
+    }
+
+    // Chamada a cada atualização do feed: se um perfil está aberto e as
+    // publicações dele mudaram (postou, iniciou ou encerrou uma live,
+    // excluiu), a grade é redesenhada na hora — antes ela só mudava
+    // fechando e abrindo o perfil de novo. A rolagem da grade é mantida.
+    function sfAtualizarPerfilAberto() {
+        if (!sfPerfilAberto) return;
+        var modal = document.getElementById('sf-perfil-modal');
+        if (!modal || !modal.classList.contains('open')) return;
+        var uid = sfPerfilAberto;
+        var lista = sfPosts.filter(function (p) { return p.uid === uid; });
+        if (sfAssinaturaPerfilPosts(lista) === sfPerfilPostsAssinatura) return;
+        var caixa = document.getElementById('sf-perfil-posts');
+        var rolagem = caixa ? caixa.scrollTop : 0;
+        sfRenderPerfilPosts(uid);
+        if (caixa && rolagem > 0) {
+            var voltarRolagem = function () { caixa.scrollTop = rolagem; };
+            voltarRolagem();
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(voltarRolagem);
+            setTimeout(voltarRolagem, 220);
+        }
+    }
 
     function sfRenderPerfilPosts(uid) {
         var caixa = document.getElementById('sf-perfil-posts');
         if (!caixa) return;
         var lista = sfPosts.filter(function (p) { return p.uid === uid; });
+        sfPerfilPostsAssinatura = sfAssinaturaPerfilPosts(lista);
         document.getElementById('sf-perfil-qtd').textContent = lista.length;
 
         // Tira o listener da vez anterior (outro perfil, ou este mesmo
@@ -3875,6 +4031,16 @@
             var capa = (first && first.mediaData)
                 ? '<img src="' + first.mediaData + '" alt="">'
                 : '<span class="sf-perfil-tile-txt">' + esc((p.text || '').slice(0, 60)) + '</span>';
+            // Live: a capa (ou a foto de quem transmitiu) com o selo AO VIVO /
+            // ENCERRADA, igual ao feed — sem isso uma live sem legenda virava
+            // um quadradinho em branco no perfil.
+            if (p.type === 'live') {
+                var liveNoAr = !!(p.liveState && p.liveState.status === 'live');
+                capa = (p.coverData
+                        ? '<img src="' + p.coverData + '" alt="">'
+                        : '<span class="sf-perfil-tile-live"><span class="sf-avatar">' + avInner(p.nome, p.foto) + '</span></span>') +
+                    '<span class="sf-perfil-tile-live-selo"><span class="sf-live-dot' + (liveNoAr ? '' : ' ended') + '"></span>' + (liveNoAr ? 'AO VIVO' : 'ENCERRADA') + '</span>';
+            }
             var multiBadge = imgs.length > 1
                 ? '<span class="sf-perfil-tile-multi" title="Várias fotos"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="13" height="13" rx="2"/><path d="M21 8v10a2 2 0 0 1-2 2H8"/></svg></span>'
                 : '';
@@ -4076,17 +4242,25 @@
             // display:none), por isso medimos DEPOIS de abrir o modal.
             openModal('sf-crop-modal');
             var rect = stage.getBoundingClientRect();
-            var minScale = Math.max(rect.width / img.width, rect.height / img.height);
+            // A imagem começa INTEIRA, do jeito que foi escolhida, sem
+            // zoom nem corte automático (foto de perfil, capa e foto de
+            // postagem). A partir daí a pessoa decide: dá zoom, arrasta e
+            // recorta — ou usa a imagem inteira.
+            var escalaInteira = Math.min(rect.width / img.width, rect.height / img.height);
+            var escalaCobrir  = Math.max(rect.width / img.width, rect.height / img.height);
+            // Palco ainda sem altura medida (WebView antiga, sem
+            // aspect-ratio): mantém o comportamento de antes.
+            if (!(escalaInteira > 0)) escalaInteira = escalaCobrir;
             sfCrop = {
                 img: img, natW: img.width, natH: img.height,
-                scale: minScale, minScale: minScale, maxScale: minScale * 4,
+                scale: escalaInteira, minScale: escalaInteira, maxScale: escalaCobrir * 4,
                 stageW: rect.width, stageH: rect.height,
-                tipo: tipo, saida: saida, guardar: guardar
+                tipo: tipo, saida: saida, guardar: guardar,
+                origem: dataUrl // a imagem exatamente como veio (usada quando a foto de postagem fica inteira)
             };
-            // Começa cobrindo o palco inteiro, centralizada — igual ao
-            // "cover" que já era usado antes, só que agora ajustável.
-            sfCrop.offX = (rect.width  - img.width  * minScale) / 2;
-            sfCrop.offY = (rect.height - img.height * minScale) / 2;
+            // Centralizada no palco.
+            sfCrop.offX = (rect.width  - img.width  * escalaInteira) / 2;
+            sfCrop.offY = (rect.height - img.height * escalaInteira) / 2;
             document.getElementById('sf-crop-zoom').value = 0;
             sfCropRenderizar();
         };
@@ -4101,8 +4275,12 @@
     function sfEditarFotoPost(idx) {
         var item = sfPendingImages[idx];
         if (!item) return;
-        sfAbrirCropImagem(item.base64, 'post', function (v) {
-            sfPendingImages[idx] = { base64: v, mimeType: 'image/jpeg' };
+        // Editar de novo sempre parte da foto original escolhida (e não do
+        // recorte anterior) — assim dá para desfazer um corte e voltar a
+        // usar a foto inteira.
+        var original = item.original || item.base64;
+        sfAbrirCropImagem(original, 'post', function (v) {
+            sfPendingImages[idx] = { base64: v, mimeType: 'image/jpeg', original: original };
             sfUpdateNewPreview();
         });
     }
@@ -4117,12 +4295,16 @@
         img.style.top  = sfCrop.offY + 'px';
     }
 
-    // Nunca deixa sobrar área vazia dentro do palco.
+    // No sentido em que a imagem é MAIOR que o palco (com zoom), arrastar
+    // nunca deixa sobrar área vazia. No sentido em que ela é MENOR (imagem
+    // inteira, sem zoom), ela fica centralizada.
     function sfCropLimitar() {
         var dispW = sfCrop.natW * sfCrop.scale;
         var dispH = sfCrop.natH * sfCrop.scale;
-        sfCrop.offX = Math.min(0, Math.max(sfCrop.stageW - dispW, sfCrop.offX));
-        sfCrop.offY = Math.min(0, Math.max(sfCrop.stageH - dispH, sfCrop.offY));
+        if (dispW <= sfCrop.stageW) sfCrop.offX = (sfCrop.stageW - dispW) / 2;
+        else sfCrop.offX = Math.min(0, Math.max(sfCrop.stageW - dispW, sfCrop.offX));
+        if (dispH <= sfCrop.stageH) sfCrop.offY = (sfCrop.stageH - dispH) / 2;
+        else sfCrop.offY = Math.min(0, Math.max(sfCrop.stageH - dispH, sfCrop.offY));
     }
 
     // Muda o zoom mantendo o ponto (mx,my) do palco fixo na tela — é o
@@ -4211,15 +4393,53 @@
     // certo para cada uso (foto quadrada, capa em faixa larga).
     function sfCropConfirmar() {
         if (!sfCrop) return;
+
+        // ── FOTO DE POSTAGEM: sem bordas e sem diminuir ──
+        // Sai só a parte da foto que ficou visível no palco, na resolução
+        // da própria foto. Com zoom/arraste, é o recorte que a pessoa
+        // escolheu; sem cortar nada (imagem inteira), é a foto original,
+        // exatamente do jeito que foi escolhida — sem faixas pretas.
+        if (sfCrop.tipo === 'post') {
+            var escala = sfCrop.scale;
+            var sx = Math.max(0, -sfCrop.offX / escala);
+            var sy = Math.max(0, -sfCrop.offY / escala);
+            var ex = Math.min(sfCrop.natW, (sfCrop.stageW - sfCrop.offX) / escala);
+            var ey = Math.min(sfCrop.natH, (sfCrop.stageH - sfCrop.offY) / escala);
+            var sw = ex - sx, sh = ey - sy;
+            var inteira = sx < 1 && sy < 1 && sw > sfCrop.natW - 1 && sh > sfCrop.natH - 1;
+            if (inteira || !(sw > 0 && sh > 0)) {
+                sfCrop.guardar(sfCrop.origem);
+            } else {
+                var fator = Math.min(1, 1080 / Math.max(sw, sh)); // nunca aumenta; no máximo 1080 no lado maior
+                var cw = Math.max(2, Math.round(sw * fator));
+                var ch = Math.max(2, Math.round(sh * fator));
+                var cp = document.createElement('canvas');
+                cp.width = cw; cp.height = ch;
+                cp.getContext('2d').drawImage(sfCrop.img, sx, sy, sw, sh, 0, 0, cw, ch);
+                sfCrop.guardar(cp.toDataURL('image/jpeg', 0.85));
+            }
+            closeModal('sf-crop-modal');
+            sfCrop = null;
+            sfCropPointers = {};
+            return;
+        }
+
         var saida = sfCrop.saida || SF_CROP_SAIDA[sfCrop.tipo];
-        var origemX = -sfCrop.offX / sfCrop.scale;
-        var origemY = -sfCrop.offY / sfCrop.scale;
-        var origemW = sfCrop.stageW / sfCrop.scale;
-        var origemH = sfCrop.stageH / sfCrop.scale;
+        // Leva a posição e o tamanho da imagem no palco para a imagem
+        // final. Funciona com zoom e também com a imagem inteira, que pode
+        // não preencher o palco todo — a sobra fica com a mesma cor de
+        // fundo do palco, exatamente como a pessoa viu.
+        var kx = saida.w / sfCrop.stageW;
+        var ky = saida.h / sfCrop.stageH;
 
         var c = document.createElement('canvas');
         c.width = saida.w; c.height = saida.h;
-        c.getContext('2d').drawImage(sfCrop.img, origemX, origemY, origemW, origemH, 0, 0, saida.w, saida.h);
+        var ctx = c.getContext('2d');
+        ctx.fillStyle = '#05070c';
+        ctx.fillRect(0, 0, saida.w, saida.h);
+        ctx.drawImage(sfCrop.img,
+            sfCrop.offX * kx, sfCrop.offY * ky,
+            sfCrop.natW * sfCrop.scale * kx, sfCrop.natH * sfCrop.scale * ky);
         sfCrop.guardar(c.toDataURL('image/jpeg', 0.85));
 
         closeModal('sf-crop-modal');
@@ -4347,6 +4567,9 @@
     window.sfSalvarPerfil       = sfSalvarPerfil;
     window.sfAbrirBusca         = sfAbrirBusca;
     window.sfOpenNewPostModal   = sfOpenNewPostModal;
+    // O botão "Live" do perfil chama esta função pelo onclick do HTML;
+    // sem expô-la aqui, o toque não fazia nada.
+    window.sfOpenLiveNewModal   = sfOpenLiveNewModal;
 
     async function sfDeleteComment(postId, commentId) {
         if (!me || !postId || !commentId) return;
