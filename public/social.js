@@ -4760,8 +4760,27 @@
         if (!ok) return;
         try {
             var postRef = db.collection('social_posts').doc(postId);
-            await postRef.collection('comments').doc(commentId).delete();
-            await postRef.update({ commentsCount: firebase.firestore.FieldValue.increment(-1) });
+            var commentsRef = postRef.collection('comments');
+            // Se este for um comentário-raiz com respostas presas nele, elas
+            // têm que sumir junto — senão ficam órfãs no banco: o pai que as
+            // exibia não existe mais, então somem da tela, mas continuavam
+            // contando no total de comentários, que nunca mais batia com o
+            // que aparecia de fato (o número "sobrava" pra sempre).
+            var souDonoDoPost = !!(sfDetailPostOwnerUid && sfDetailPostOwnerUid === me.uid);
+            var respostasSnap = await commentsRef.where('parentId', '==', commentId).get();
+            var respostasApagaveis = respostasSnap.docs.filter(function (d) {
+                return souDonoDoPost || d.data().uid === me.uid;
+            });
+            // Tudo num único batch: excluir o(s) documento(s) e ajustar o
+            // contador acontecem juntos ou não acontecem. Antes eram dois
+            // passos separados — se o segundo falhasse (queda de conexão,
+            // etc.), o comentário já tinha sumido mas o número ficava
+            // travado no valor antigo.
+            var batch = db.batch();
+            batch.delete(commentsRef.doc(commentId));
+            respostasApagaveis.forEach(function (d) { batch.delete(d.ref); });
+            batch.update(postRef, { commentsCount: firebase.firestore.FieldValue.increment(-(1 + respostasApagaveis.length)) });
+            await batch.commit();
         } catch (e) { notify('Erro ao excluir comentário: ' + friendlyError(e), 'err'); }
     }
 

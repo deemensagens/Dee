@@ -2815,8 +2815,17 @@ auth.onAuthStateChanged(async function(user) {
         if (!okDelC) return;
         try {
             var postRef = db.collection('social_posts').doc(postId);
-            await postRef.collection('comments').doc(commentId).delete();
-            await postRef.update({ commentsCount: firebase.firestore.FieldValue.increment(-1) });
+            var commentsRef = postRef.collection('comments');
+            // Respostas presas neste comentário têm que sumir junto — senão
+            // ficam órfãs no banco: o pai que as exibia não existe mais,
+            // então somem da lista, mas continuavam contando no total (o
+            // número "sobrava" pra sempre em vez de bater com o que existe).
+            var respostasSnap = await commentsRef.where('parentId', '==', commentId).get();
+            var batch = db.batch();
+            batch.delete(commentsRef.doc(commentId));
+            respostasSnap.forEach(function (d) { batch.delete(d.ref); });
+            batch.update(postRef, { commentsCount: firebase.firestore.FieldValue.increment(-(1 + respostasSnap.size)) });
+            await batch.commit();
             showToast('Comentário excluído', 'ok');
         } catch (e) { showToast('Erro ao excluir comentário: ' + e.message, 'err'); }
     }
