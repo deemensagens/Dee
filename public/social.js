@@ -476,7 +476,7 @@
 .sf-crop-stage.dragging{cursor:grabbing;}\
 .sf-crop-stage.sf-crop-foto{width:min(220px,100%);aspect-ratio:1/1;border-radius:50%;}\
 .sf-crop-stage.sf-crop-capa{width:100%;max-width:340px;aspect-ratio:4/1;border-radius:14px;}\
-.sf-crop-stage.sf-crop-post{max-width:100%;border-radius:14px;}\
+.sf-crop-stage.sf-crop-post{border-radius:10px;}\
 .sf-crop-stage img{position:absolute;top:0;left:0;max-width:none;max-height:none;user-select:none;-webkit-user-drag:none;pointer-events:none;}\
 .sf-crop-zoom-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;color:var(--muted);}\
 .sf-crop-zoom-row input[type=range]{flex:1;accent-color:var(--accent);}\
@@ -659,7 +659,7 @@
                         '<input type="range" id="sf-crop-zoom" min="0" max="100" value="0">' +
                         '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="11" y1="8" x2="11" y2="14"/></svg>' +
                     '</div>' +
-                    '<div class="sf-crop-hint" id="sf-crop-hint">Arraste para posicionar. Belisque com dois dedos, use a roda do mouse ou o controle acima para dar zoom.</div>' +
+                    '<div class="sf-crop-hint">Arraste para posicionar. Belisque com dois dedos, use a roda do mouse ou o controle acima para dar zoom.</div>' +
                     '<div class="mbtns">' +
                         '<button class="mbtn sec" id="sf-crop-cancelar">Cancelar</button>' +
                         '<button class="mbtn pri" id="sf-crop-confirmar">Usar esta foto</button>' +
@@ -1562,10 +1562,16 @@
             return '<div class="sf-new-preview-item">' +
                 '<img src="' + img.base64 + '" alt="">' +
                 '<span class="sf-new-preview-num">' + (i + 1) + '</span>' +
-                '<button type="button" class="sf-edit-img" data-edit-idx="' + i + '" title="Editar"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></button>' +
+                '<button type="button" class="sf-edit-img" data-edit-idx="' + i + '" title="Editar foto"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>' +
                 '<button type="button" class="sf-rm-img" data-rm-idx="' + i + '" title="Remover"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
             '</div>';
         }).join('');
+        wrap.querySelectorAll('[data-edit-idx]').forEach(function (btn) {
+            btn.onclick = function (e) {
+                e.stopPropagation();
+                sfEditarFotoPendente(parseInt(btn.getAttribute('data-edit-idx'), 10));
+            };
+        });
         wrap.querySelectorAll('[data-rm-idx]').forEach(function (btn) {
             btn.onclick = function (e) {
                 e.stopPropagation();
@@ -1573,16 +1579,23 @@
                 sfUpdateNewPreview();
             };
         });
-        wrap.querySelectorAll('[data-edit-idx]').forEach(function (btn) {
-            btn.onclick = function (e) {
-                e.stopPropagation();
-                sfEditarImagemPendente(parseInt(btn.getAttribute('data-edit-idx'), 10));
-            };
-        });
         if (counter) {
             counter.style.display = 'block';
             counter.textContent = sfPendingImages.length + '/' + SF_MAX_IMAGES + ' fotos';
         }
+    }
+    // Abre o palco de recorte/zoom (tipo 'post', ver sfCropIniciar) para
+    // uma das fotos já escolhidas na nova postagem. Diferente da foto de
+    // perfil/capa, aqui NÃO existe proporção de saída fixa: o palco é
+    // montado do tamanho da própria foto, então ela abre inteira, sem
+    // cortar nada — cortar/dar zoom fica sendo escolha de quem publica.
+    function sfEditarFotoPendente(idx) {
+        var item = sfPendingImages[idx];
+        if (!item) return;
+        sfCropIniciar(item.base64, 'post', function (dataUrlEditado) {
+            sfPendingImages[idx] = { base64: dataUrlEditado, mimeType: 'image/jpeg' };
+            sfUpdateNewPreview();
+        });
     }
     function sfReadFileAsDataURL(file) {
         return new Promise(function (resolve, reject) {
@@ -3865,7 +3878,7 @@
     }
 
     // ══════════════════════════════════════════════════════════
-    //  RECORTE E ZOOM (foto de perfil / capa)
+    //  RECORTE E ZOOM (foto de perfil / capa / fotos da postagem)
     // ══════════════════════════════════════════════════════════
     //  Ao escolher um arquivo, abrimos um palco no formato final exato
     //  (círculo para a foto de perfil, faixa larga para a capa). Arrastar
@@ -3873,6 +3886,11 @@
     //  palco JÁ tem o formato de saída, o que aparece nele é exatamente
     //  o que vai ser salvo: a prévia é o resultado final, não uma
     //  aproximação.
+    //  Já as fotos da NOVA POSTAGEM (tipo 'post', aberto pelo lápis em
+    //  cada miniatura — ver sfEditarFotoPendente) NÃO têm formato de saída
+    //  fixo: o palco é montado na proporção da própria foto, então ela
+    //  abre inteira, sem cortar nada, e cortar/dar zoom vira escolha do
+    //  usuário — nunca o padrão.
     var sfCrop = null;         // estado da sessão de recorte atual (só uma por vez)
     var sfCropPointers = {};   // pointerId -> {x,y} dos dedos/mouse ativos no palco
     var SF_CROP_SAIDA = {      // resolução final exportada, por tipo
@@ -3884,108 +3902,75 @@
         var file = input.files && input.files[0];
         if (!file) return;
         var r = new FileReader();
-        r.onload = function (e) {
-            var img = new Image();
-            img.onload = function () {
-                var stage = document.getElementById('sf-crop-stage');
-                stage.className = 'sf-crop-stage ' + (tipo === 'foto' ? 'sf-crop-foto' : 'sf-crop-capa');
-                // Limpa qualquer tamanho fixo em pixel deixado por uma
-                // edição de foto de postagem (sfEditarImagemPendente), pra
-                // este palco voltar a usar o círculo/faixa do CSS.
-                stage.style.width = '';
-                stage.style.height = '';
-                document.getElementById('sf-crop-titulo').textContent =
-                    tipo === 'foto' ? 'Ajustar foto de perfil' : 'Ajustar capa';
-                var hint = document.getElementById('sf-crop-hint');
-                if (hint) hint.textContent = 'Arraste para posicionar. Belisque com dois dedos, use a roda do mouse ou o controle acima para dar zoom.';
-                document.getElementById('sf-crop-img').src = e.target.result;
-
-                // O palco só assume o tamanho final depois de aberto (o
-                // CSS usa aspect-ratio, e o modal começa com display:none),
-                // por isso medimos DEPOIS de abrir o modal.
-                openModal('sf-crop-modal');
-                var rect = stage.getBoundingClientRect();
-                var minScale = Math.max(rect.width / img.width, rect.height / img.height);
-                sfCrop = {
-                    img: img, natW: img.width, natH: img.height,
-                    scale: minScale, minScale: minScale, maxScale: minScale * 4,
-                    stageW: rect.width, stageH: rect.height,
-                    tipo: tipo, guardar: guardar
-                };
-                // Começa cobrindo o palco inteiro, centralizada — igual ao
-                // "cover" que já era usado antes, só que agora ajustável.
-                sfCrop.offX = (rect.width  - img.width  * minScale) / 2;
-                sfCrop.offY = (rect.height - img.height * minScale) / 2;
-                document.getElementById('sf-crop-zoom').value = 0;
-                sfCropRenderizar();
-            };
-            img.src = e.target.result;
-        };
+        r.onload = function (e) { sfCropIniciar(e.target.result, tipo, guardar); };
         r.readAsDataURL(file);
         // Limpa o valor: escolher o MESMO arquivo de novo (após cancelar,
         // por exemplo) precisa disparar o onchange outra vez.
         input.value = '';
     }
 
-    // ── Editar uma foto já anexada à Nova Postagem (botão de lápis na
-    //    miniatura) ──
-    // Diferente da foto de perfil/capa, uma foto de postagem não tem uma
-    // proporção de saída fixa — pode ser retrato, paisagem, quadrada etc.
-    // Por isso o palco aqui NÃO usa "cover" travado num círculo/faixa: ele
-    // é montado com a MESMA proporção da imagem original, então ao abrir
-    // o editor a foto aparece INTEIRA, sem nenhum corte automático. Dar
-    // zoom/recortar passa a ser uma escolha da pessoa (arrastando o
-    // controle, beliscando ou usando a roda do mouse), nunca o padrão.
-    function sfEditarImagemPendente(idx) {
-        var pend = sfPendingImages[idx];
-        if (!pend) return;
+    // Monta o palco de recorte/zoom para um dataURL já em mãos (arquivo de
+    // perfil/capa já lido, ou uma foto que já estava pendente na nova
+    // postagem — ver sfEditarFotoPendente). tipo 'foto'/'capa' continuam
+    // com proporção de saída FIXA (círculo/faixa), então o palco força
+    // esse formato de propósito. Já o tipo 'post' NÃO tem proporção fixa:
+    // o palco é montado na mesma proporção da própria imagem, então ela
+    // abre inteira e sem corte nenhum por padrão — cortar/dar zoom passa
+    // a ser uma escolha explícita (arrastar, beliscar, roda do mouse ou o
+    // controle), nunca automático.
+    function sfCropIniciar(dataUrl, tipo, guardar) {
         var img = new Image();
         img.onload = function () {
             var stage = document.getElementById('sf-crop-stage');
-            stage.className = 'sf-crop-stage sf-crop-post';
-            document.getElementById('sf-crop-titulo').textContent = 'Ajustar foto';
-            var hint = document.getElementById('sf-crop-hint');
-            if (hint) hint.textContent = 'A foto inteira já está pronta pra postar. Só mexa se quiser recortar ou dar zoom.';
-            document.getElementById('sf-crop-img').src = pend.base64;
+            // Limpa qualquer largura/altura fixa deixada por uma sessão
+            // 'post' anterior — senão o círculo da foto de perfil ou a
+            // faixa da capa herdam esse tamanho fixo e ficam quebrados.
+            stage.style.width = '';
+            stage.style.height = '';
+            stage.className = 'sf-crop-stage ' +
+                (tipo === 'foto' ? 'sf-crop-foto' : tipo === 'capa' ? 'sf-crop-capa' : 'sf-crop-post');
+            document.getElementById('sf-crop-titulo').textContent =
+                tipo === 'foto' ? 'Ajustar foto de perfil' : tipo === 'capa' ? 'Ajustar capa' : 'Ajustar foto';
+            document.getElementById('sf-crop-img').src = dataUrl;
 
-            // Assim como no recorte de foto de perfil/capa, o palco só tem
-            // um tamanho real depois de aberto (o modal começa oculto),
-            // por isso medimos DEPOIS de abrir.
+            // O palco só assume o tamanho final depois de aberto (o CSS
+            // usa aspect-ratio nos tipos fixos, e o modal começa com
+            // display:none), por isso medimos DEPOIS de abrir o modal.
             openModal('sf-crop-modal');
-
-            // Tamanho do palco: mesma proporção da imagem, limitado a um
-            // espaço confortável dentro do modal (não deixa fotos muito
-            // altas ou muito largas estourarem a tela).
-            var wrapRect = document.querySelector('.sf-crop-stage-wrap').getBoundingClientRect();
-            var maxW = Math.min(340, wrapRect.width || 340);
-            var maxH = Math.min(420, window.innerHeight * 0.5);
-            var razao = img.width / img.height;
-            var w = maxW, h = w / razao;
-            if (h > maxH) { h = maxH; w = h * razao; }
-            stage.style.width  = w + 'px';
-            stage.style.height = h + 'px';
-
             var rect = stage.getBoundingClientRect();
-            // minScale == a imagem cobre o palco exatamente, sem sobrar
-            // nem cortar nada, já que o palco foi montado na proporção
-            // dela — é por isso que abre mostrando a foto inteira.
+            if (tipo === 'post') {
+                // Sem proporção fixa: encaixa o palco na proporção da
+                // própria foto, dentro de uma caixa máxima (largura do
+                // card / altura da tela) — como as duas dimensões usam a
+                // MESMA proporção da imagem, o "cover" abaixo cobre o
+                // palco exibindo a foto inteira, sem sobrar nem cortar.
+                var maxW = Math.min(rect.width, 340);
+                var maxH = Math.min(window.innerHeight * 0.5, 420);
+                var propImg = img.width / img.height;
+                var w = maxW, h = w / propImg;
+                if (h > maxH) { h = maxH; w = h * propImg; }
+                stage.style.width  = w + 'px';
+                stage.style.height = h + 'px';
+                rect = stage.getBoundingClientRect();
+            }
             var minScale = Math.max(rect.width / img.width, rect.height / img.height);
             sfCrop = {
                 img: img, natW: img.width, natH: img.height,
                 scale: minScale, minScale: minScale, maxScale: minScale * 4,
                 stageW: rect.width, stageH: rect.height,
-                tipo: 'post',
-                guardar: function (dataUrl) {
-                    sfPendingImages[idx].base64 = dataUrl;
-                    sfUpdateNewPreview();
-                }
+                tipo: tipo, guardar: guardar
             };
+            // Começa cobrindo o palco inteiro, centralizada — igual ao
+            // "cover" que já era usado antes, só que agora ajustável. Nos
+            // tipos com proporção fixa ('foto'/'capa') isso já corta o
+            // excesso de propósito; no tipo 'post' a proporção do palco é
+            // igual à da foto, então isso equivale a mostrá-la inteira.
             sfCrop.offX = (rect.width  - img.width  * minScale) / 2;
             sfCrop.offY = (rect.height - img.height * minScale) / 2;
             document.getElementById('sf-crop-zoom').value = 0;
             sfCropRenderizar();
         };
-        img.src = pend.base64;
+        img.src = dataUrl;
     }
 
     // Aplica a posição/zoom atuais na <img> do palco.
@@ -4092,22 +4077,22 @@
     // certo para cada uso (foto quadrada, capa em faixa larga).
     function sfCropConfirmar() {
         if (!sfCrop) return;
-        var saida = SF_CROP_SAIDA[sfCrop.tipo];
-        if (!saida) {
-            // Foto de postagem: não tem proporção fixa (o palco foi
-            // montado igual à proporção original/atual do recorte), então
-            // a saída só limita a maior dimensão pra não gerar um arquivo
-            // gigante — mantém a proporção exibida no palco.
-            var maxDim = 1080;
-            var razaoSaida = sfCrop.stageW / sfCrop.stageH;
-            saida = razaoSaida >= 1
-                ? { w: maxDim, h: Math.round(maxDim / razaoSaida) }
-                : { w: Math.round(maxDim * razaoSaida), h: maxDim };
-        }
         var origemX = -sfCrop.offX / sfCrop.scale;
         var origemY = -sfCrop.offY / sfCrop.scale;
         var origemW = sfCrop.stageW / sfCrop.scale;
         var origemH = sfCrop.stageH / sfCrop.scale;
+
+        var saida = SF_CROP_SAIDA[sfCrop.tipo];
+        if (!saida) {
+            // Tipo 'post': sem proporção fixa de saída — exporta exatamente
+            // a área escolhida no palco (que, se ninguém tocar em nada, é a
+            // foto inteira), só limitando a maior dimensão a 1080px, mesmo
+            // padrão usado ao escolher a foto (ver resizeImageBase64), sem
+            // forçar círculo/faixa nem nenhuma outra forma.
+            var maiorLado = Math.max(origemW, origemH);
+            var fator = maiorLado > 1080 ? 1080 / maiorLado : 1;
+            saida = { w: Math.round(origemW * fator), h: Math.round(origemH * fator) };
+        }
 
         var c = document.createElement('canvas');
         c.width = saida.w; c.height = saida.h;
