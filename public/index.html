@@ -2556,7 +2556,7 @@
 <div id="chat-customize-modal" class="overlay">
     <div class="mcard">
         <h2 style="margin-bottom:6px;"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".6"/><circle cx="17.5" cy="10.5" r=".6"/><circle cx="8.5" cy="7.5" r=".6"/><circle cx="6.5" cy="12.5" r=".6"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg> Personalizar</h2>
-        <div class="chat-custom-note">A cor abaixo vale para o app inteiro — dentro e fora das conversas (menu lateral e chats). A imagem de fundo é só para a conversa aberta no momento. Nada disso é visto pela outra pessoa.</div>
+        <div class="chat-custom-note">Personalize o app com o seu tema preferido</div>
         <div class="chat-custom-colors" id="chat-custom-colors"></div>
         <div id="chat-custom-img-section" class="profile-opt-list" style="display:none;">
             <button class="status-opt-btn" onclick="document.getElementById('chat-bg-file-input').click();"><span class="status-opt-ic"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>Escolher foto de fundo desta conversa</button>
@@ -5404,7 +5404,19 @@ function closeTopUIIfAny() {
     }
 
     // 4) qualquer outro modal genérico (perfil, grupo, amigos, status, etc.)
-    var overlay = document.querySelector('.overlay.open');
+    // Pode haver mais de um ".overlay" aberto ao mesmo tempo — por exemplo,
+    // abrir uma publicação de dentro do perfil (Comunidade) deixa tanto o
+    // perfil quanto o modal da publicação com a classe "open" juntos, um
+    // por cima do outro (mesmo z-index; quem aparece na tela é sempre o
+    // último no HTML). Antes pegávamos o PRIMEIRO ".overlay.open" — ou
+    // seja, o de baixo, que nem estava visível — e fechávamos ele por
+    // engano. Isso fazia o botão voltar "pular" o perfil: no primeiro
+    // toque fechava o perfil escondido (sem efeito visual nenhum) e só no
+    // segundo toque fechava a publicação, caindo direto na Comunidade em
+    // vez de voltar para o perfil de onde a pessoa realmente veio. Agora
+    // pegamos o ÚLTIMO ".overlay.open", que é o que está de fato visível.
+    var overlaysOpen = document.querySelectorAll('.overlay.open');
+    var overlay = overlaysOpen.length ? overlaysOpen[overlaysOpen.length - 1] : null;
     if (overlay) {
         // ── O ÁUDIO DA PUBLICAÇÃO PRECISA PARAR AQUI ──
         // Fechar pelo X chamava a rotina da Comunidade, que silenciava o
