@@ -304,6 +304,9 @@
 .sf-new-preview-item img{width:100%;height:100%;object-fit:cover;display:block;}\
 .sf-new-preview-item .sf-rm-img{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.65);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}\
 .sf-new-preview-item .sf-rm-img .icon{width:11px;height:11px;}\
+.sf-new-preview-item .sf-edit-img{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.65);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}\
+.sf-new-preview-item .sf-edit-img .icon{width:11px;height:11px;}\
+.sf-new-preview-item .sf-edit-img:hover{color:var(--accent);}\
 .sf-new-preview-num{position:absolute;bottom:3px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:8px;font-family:"DM Sans",sans-serif;}\
 .sf-new-preview-counter{font-size:11px;color:var(--muted);margin-top:6px;}\
 .sf-pick-photo-btn{display:flex;align-items:center;gap:8px;padding:11px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;cursor:pointer;color:var(--text);font-size:13px;transition:border-color .15s;}\
@@ -340,10 +343,6 @@
 /* Com carrossel (2+ fotos), a caixa vira altura FIXA — cada foto pode ter uma proporção diferente, e uma caixa de tamanho variável faria o post pular de tamanho a cada foto trocada. Sem carrossel (a maioria dos posts, 1 foto só), nada aqui se aplica e o comportamento é o de sempre. */\
 .sf-detail-media.sf-has-carousel{height:340px;max-height:340px;}\
 .sf-detail-media .sf-img-slide img{width:100%;height:100%;object-fit:contain;display:block;}\
-/* Dentro do modal de detalhe não há o arraste que troca de POSTAGEM, então ali o carrossel de fotos também passa arrastando para o lado (ver sfInitDetailImgDrag). pan-y mantém a rolagem vertical do modal e pinch-zoom mantém o beliscão de zoom. */\
-.sf-detail-media .sf-img-carousel{touch-action:pan-y pinch-zoom;}\
-.sf-detail-media .sf-img-track{cursor:grab;}\
-.sf-detail-media .sf-img-track.dragging{transition:none;cursor:grabbing;}\
 .sf-detail-text{padding:14px 16px;font-size:14px;line-height:1.55;color:var(--text);word-break:break-word;}\
 .sf-detail-actions{display:flex;gap:8px;padding:4px 16px 12px;flex-shrink:0;}\
 .sf-comments-title{padding:10px 16px 4px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);flex-shrink:0;}\
@@ -478,6 +477,7 @@
 .sf-crop-stage.dragging{cursor:grabbing;}\
 .sf-crop-stage.sf-crop-foto{width:min(220px,100%);aspect-ratio:1/1;border-radius:50%;}\
 .sf-crop-stage.sf-crop-capa{width:100%;max-width:340px;aspect-ratio:4/1;border-radius:14px;}\
+.sf-crop-stage.sf-crop-post{width:min(280px,100%);max-width:100%;border-radius:14px;}\
 .sf-crop-stage img{position:absolute;top:0;left:0;max-width:none;max-height:none;user-select:none;-webkit-user-drag:none;pointer-events:none;}\
 .sf-crop-zoom-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;color:var(--muted);}\
 .sf-crop-zoom-row input[type=range]{flex:1;accent-color:var(--accent);}\
@@ -978,7 +978,6 @@
         });
 
         sfInitDrag();
-        sfInitDetailImgDrag();
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -1534,116 +1533,6 @@
         window.addEventListener('mouseup',   function () { if (dragging) up(); });
     }
 
-    // ── ARRASTE NO CARROSSEL DE FOTOS DO MODAL DE DETALHE ──
-    // No cartão do feed as fotos de um post só trocam pelas setinhas (lá o
-    // arraste horizontal é de quem troca de POSTAGEM). Dentro do modal de
-    // detalhe esse conflito não existe, então ali as fotos também passam
-    // arrastando para o lado com o dedo (ou com o mouse), no mesmo padrão
-    // do arraste do feed (sfInitDrag). Os eventos ficam presos no
-    // #sf-detail-media-wrap, que é fixo: o carrossel lá dentro é recriado
-    // a cada sfRenderDetail, e assim o arraste continua valendo sem
-    // precisar religar nada. A troca de foto em si reaproveita
-    // sfImgCarouselNav (a mesma das setinhas), então pontinhos, contador,
-    // setinhas e o download sob demanda da foto seguem iguais.
-    function sfInitDetailImgDrag() {
-        var mediaWrap = document.getElementById('sf-detail-media-wrap');
-        if (!mediaWrap) return;
-        var drag = null;             // arraste em andamento, ou null
-        var ignoreNextClick = false; // engole o "click" que o navegador dispara ao soltar o mouse depois de um arraste
-
-        function down(target, x, y) {
-            drag = null;
-            if (!target || target.closest('.sf-img-arrow')) return;
-            var carousel = target.closest('.sf-img-carousel');
-            if (!carousel || !mediaWrap.contains(carousel)) return;
-            var track = carousel.querySelector('.sf-img-track');
-            if (!track) return;
-            var total = parseInt(carousel.getAttribute('data-img-total'), 10) || 1;
-            if (total <= 1) return;
-            drag = {
-                carousel: carousel,
-                track: track,
-                idx: parseInt(carousel.getAttribute('data-img-index'), 10) || 0,
-                total: total,
-                startX: x, startY: y, currentX: x,
-                widthPx: carousel.getBoundingClientRect().width || 1,
-                axis: null // decidido no primeiro movimento: 'x' = passando foto · 'y' = rolando o modal
-            };
-        }
-        function move(x, y) {
-            if (!drag) return;
-            if (!drag.carousel.isConnected) { drag = null; return; } // o detalhe foi redesenhado no meio do arraste
-            var dx = x - drag.startX, dy = y - drag.startY;
-            if (!drag.axis) {
-                if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-                drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
-                if (drag.axis === 'y') { drag = null; return; } // gesto vertical: deixa o modal rolar normalmente
-                drag.track.classList.add('dragging');
-            }
-            drag.currentX = x;
-            // Antes da 1ª foto / depois da última o arraste fica "pesado", já que não há para onde ir.
-            if ((drag.idx === 0 && dx > 0) || (drag.idx === drag.total - 1 && dx < 0)) dx = dx * 0.3;
-            drag.track.style.transform = 'translateX(' + (-drag.idx * drag.widthPx + dx) + 'px)';
-        }
-        function up() {
-            if (!drag) return;
-            var d = drag;
-            drag = null;
-            if (d.axis !== 'x') return; // foi só um toque, sem arrastar
-            d.track.classList.remove('dragging');
-            if (!d.carousel.isConnected) return;
-            var delta = d.currentX - d.startX;
-            var threshold = d.widthPx * 0.18;
-            if (delta < -threshold && d.idx < d.total - 1) window.sfImgCarouselNav(d.carousel, 1);
-            else if (delta > threshold && d.idx > 0) window.sfImgCarouselNav(d.carousel, -1);
-            else d.track.style.transform = 'translateX(-' + (d.idx * 100) + '%)';
-        }
-        function cancel() {
-            if (!drag) return;
-            var d = drag;
-            drag = null;
-            if (d.axis !== 'x') return;
-            d.track.classList.remove('dragging');
-            d.track.style.transform = 'translateX(-' + (d.idx * 100) + '%)';
-        }
-
-        mediaWrap.addEventListener('touchstart', function (e) {
-            if (e.touches.length > 1) { cancel(); return; } // segundo dedo (beliscão): desiste do arraste
-            down(e.target, e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: true });
-        mediaWrap.addEventListener('touchmove', function (e) {
-            if (!drag) return;
-            if (e.touches.length > 1) { cancel(); return; }
-            move(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: true });
-        mediaWrap.addEventListener('touchend',    function () { up(); });
-        mediaWrap.addEventListener('touchcancel', function () { cancel(); });
-
-        mediaWrap.addEventListener('mousedown', function (e) {
-            if (e.button !== 0) return;
-            if (!e.target.closest('.sf-img-carousel') || e.target.closest('.sf-img-arrow')) return;
-            e.preventDefault(); // não deixa o navegador "arrastar a imagem" nem selecionar texto
-            down(e.target, e.clientX, e.clientY);
-        });
-        window.addEventListener('mousemove', function (e) { if (drag) move(e.clientX, e.clientY); });
-        window.addEventListener('mouseup', function () {
-            if (!drag) return;
-            if (drag.axis === 'x') {
-                // Soltar o mouse fora da foto (ex.: no fundo escuro do modal)
-                // geraria um click ali — não pode fechar nem acionar nada.
-                ignoreNextClick = true;
-                setTimeout(function () { ignoreNextClick = false; }, 0);
-            }
-            up();
-        });
-        window.addEventListener('click', function (e) {
-            if (!ignoreNextClick) return;
-            ignoreNextClick = false;
-            e.stopPropagation();
-            e.preventDefault();
-        }, true);
-    }
-
     // ══════════════════════════════════════════════════════════════════
     //  NOVA POSTAGEM
     // ══════════════════════════════════════════════════════════════════
@@ -1657,7 +1546,8 @@
         openModal('sf-new-post-modal');
     }
     // Redesenha a tira de miniaturas das fotos escolhidas (0 a SF_MAX_IMAGES),
-    // cada uma com seu próprio botão de remover e um numerozinho mostrando a
+    // cada uma com seu próprio botão de editar (recorte/zoom, ver
+    // sfEditarFotoPost), botão de remover e um numerozinho mostrando a
     // ordem em que vão aparecer no carrossel.
     function sfUpdateNewPreview() {
         var wrap = document.getElementById('sf-new-preview-list');
@@ -1674,9 +1564,16 @@
             return '<div class="sf-new-preview-item">' +
                 '<img src="' + img.base64 + '" alt="">' +
                 '<span class="sf-new-preview-num">' + (i + 1) + '</span>' +
+                '<button type="button" class="sf-edit-img" data-edit-idx="' + i + '" title="Editar"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>' +
                 '<button type="button" class="sf-rm-img" data-rm-idx="' + i + '" title="Remover"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
             '</div>';
         }).join('');
+        wrap.querySelectorAll('[data-edit-idx]').forEach(function (btn) {
+            btn.onclick = function (e) {
+                e.stopPropagation();
+                sfEditarFotoPost(parseInt(btn.getAttribute('data-edit-idx'), 10));
+            };
+        });
         wrap.querySelectorAll('[data-rm-idx]').forEach(function (btn) {
             btn.onclick = function (e) {
                 e.stopPropagation();
@@ -3970,59 +3867,112 @@
     }
 
     // ══════════════════════════════════════════════════════════
-    //  RECORTE E ZOOM (foto de perfil / capa)
+    //  RECORTE E ZOOM (foto de perfil / capa / foto de postagem)
     // ══════════════════════════════════════════════════════════
-    //  Ao escolher um arquivo, abrimos um palco no formato final exato
-    //  (círculo para a foto de perfil, faixa larga para a capa). Arrastar
-    //  reposiciona e beliscar/roda do mouse/controle dão zoom — como o
-    //  palco JÁ tem o formato de saída, o que aparece nele é exatamente
-    //  o que vai ser salvo: a prévia é o resultado final, não uma
-    //  aproximação.
+    //  Abrimos um palco no formato final exato (círculo para a foto de
+    //  perfil, faixa larga para a capa, proporção real da caixa do feed
+    //  para uma foto de postagem). Arrastar reposiciona e beliscar/roda
+    //  do mouse/controle dão zoom — como o palco JÁ tem o formato de
+    //  saída, o que aparece nele é exatamente o que vai ser salvo: a
+    //  prévia é o resultado final, não uma aproximação.
     var sfCrop = null;         // estado da sessão de recorte atual (só uma por vez)
     var sfCropPointers = {};   // pointerId -> {x,y} dos dedos/mouse ativos no palco
-    var SF_CROP_SAIDA = {      // resolução final exportada, por tipo
+    var SF_CROP_SAIDA = {      // resolução final exportada, por tipo (fixa; 'post' é calculada na hora, ver sfCropAbrirPalco)
         foto: { w: 480,  h: 480 },
         capa: { w: 1000, h: 250 }
     };
 
+    // Usada pela foto de perfil e pela capa: o arquivo vem de um <input
+    // type=file>, então primeiro lemos ele como data URL e só depois
+    // abrimos o palco de recorte propriamente dito.
     function sfAbrirCrop(input, tipo, guardar) {
         var file = input.files && input.files[0];
         if (!file) return;
         var r = new FileReader();
-        r.onload = function (e) {
-            var img = new Image();
-            img.onload = function () {
-                var stage = document.getElementById('sf-crop-stage');
-                stage.className = 'sf-crop-stage ' + (tipo === 'foto' ? 'sf-crop-foto' : 'sf-crop-capa');
-                document.getElementById('sf-crop-titulo').textContent =
-                    tipo === 'foto' ? 'Ajustar foto de perfil' : 'Ajustar capa';
-                document.getElementById('sf-crop-img').src = e.target.result;
-
-                // O palco só assume o tamanho final depois de aberto (o
-                // CSS usa aspect-ratio, e o modal começa com display:none),
-                // por isso medimos DEPOIS de abrir o modal.
-                openModal('sf-crop-modal');
-                var rect = stage.getBoundingClientRect();
-                var minScale = Math.max(rect.width / img.width, rect.height / img.height);
-                sfCrop = {
-                    img: img, natW: img.width, natH: img.height,
-                    scale: minScale, minScale: minScale, maxScale: minScale * 4,
-                    stageW: rect.width, stageH: rect.height,
-                    tipo: tipo, guardar: guardar
-                };
-                // Começa cobrindo o palco inteiro, centralizada — igual ao
-                // "cover" que já era usado antes, só que agora ajustável.
-                sfCrop.offX = (rect.width  - img.width  * minScale) / 2;
-                sfCrop.offY = (rect.height - img.height * minScale) / 2;
-                document.getElementById('sf-crop-zoom').value = 0;
-                sfCropRenderizar();
-            };
-            img.src = e.target.result;
-        };
+        r.onload = function (e) { sfCropAbrirPalco(e.target.result, tipo, guardar); };
         r.readAsDataURL(file);
         // Limpa o valor: escolher o MESMO arquivo de novo (após cancelar,
         // por exemplo) precisa disparar o onchange outra vez.
         input.value = '';
+    }
+
+    // Usada pelas fotos de uma nova postagem: a imagem já está em memória
+    // (veio de sfPendingImages, escolhida na galeria/câmera antes mesmo de
+    // existir um <input> por trás), então vamos direto para o palco.
+    function sfAbrirCropImagem(dataUrl, tipo, guardar) {
+        sfCropAbrirPalco(dataUrl, tipo, guardar);
+    }
+
+    // Núcleo compartilhado por sfAbrirCrop e sfAbrirCropImagem: monta o
+    // palco no formato de saída de cada tipo e inicia a sessão de recorte.
+    function sfCropAbrirPalco(dataUrl, tipo, guardar) {
+        var img = new Image();
+        img.onload = function () {
+            var stage = document.getElementById('sf-crop-stage');
+            var classe = tipo === 'foto' ? 'sf-crop-foto' : (tipo === 'capa' ? 'sf-crop-capa' : 'sf-crop-post');
+            stage.className = 'sf-crop-stage ' + classe;
+            document.getElementById('sf-crop-titulo').textContent =
+                tipo === 'foto' ? 'Ajustar foto de perfil' : (tipo === 'capa' ? 'Ajustar capa' : 'Ajustar foto');
+            document.getElementById('sf-crop-img').src = dataUrl;
+
+            var saida;
+            if (tipo === 'post') {
+                // Proporção 'post' não é fixa em CSS: medimos ao vivo a
+                // caixa onde uma foto de post aparece no feed (o feed
+                // continua por trás do modal de nova postagem), pra o
+                // recorte bater exatamente com o que vai aparecer na
+                // publicação. Sem nenhum post desenhado na tela pra medir,
+                // cai numa proporção razoável (retrato 4:5).
+                var refEl = document.querySelector('.sf-card-media');
+                var ratioW = 4, ratioH = 5;
+                if (refEl && refEl.offsetWidth > 0 && refEl.offsetHeight > 0) {
+                    ratioW = refEl.offsetWidth;
+                    ratioH = refEl.offsetHeight;
+                }
+                stage.style.aspectRatio = ratioW + ' / ' + ratioH;
+                var ladoMaior = 1080;
+                saida = (ratioW >= ratioH)
+                    ? { w: ladoMaior, h: Math.round(ladoMaior * ratioH / ratioW) }
+                    : { w: Math.round(ladoMaior * ratioW / ratioH), h: ladoMaior };
+            } else {
+                stage.style.aspectRatio = '';
+                saida = SF_CROP_SAIDA[tipo];
+            }
+
+            // O palco só assume o tamanho final depois de aberto (o
+            // CSS/estilo inline usa aspect-ratio, e o modal começa com
+            // display:none), por isso medimos DEPOIS de abrir o modal.
+            openModal('sf-crop-modal');
+            var rect = stage.getBoundingClientRect();
+            var minScale = Math.max(rect.width / img.width, rect.height / img.height);
+            sfCrop = {
+                img: img, natW: img.width, natH: img.height,
+                scale: minScale, minScale: minScale, maxScale: minScale * 4,
+                stageW: rect.width, stageH: rect.height,
+                tipo: tipo, saida: saida, guardar: guardar
+            };
+            // Começa cobrindo o palco inteiro, centralizada — igual ao
+            // "cover" que já era usado antes, só que agora ajustável.
+            sfCrop.offX = (rect.width  - img.width  * minScale) / 2;
+            sfCrop.offY = (rect.height - img.height * minScale) / 2;
+            document.getElementById('sf-crop-zoom').value = 0;
+            sfCropRenderizar();
+        };
+        img.src = dataUrl;
+    }
+
+    // Editar UMA foto específica já escolhida para a nova postagem (ainda
+    // não publicada) — reaproveita o mesmo palco de arrastar/zoom da foto
+    // de perfil e da capa. Ao confirmar, só essa foto é substituída no
+    // carrossel pendente; as outras continuam como estavam. Só existe na
+    // tela de nova postagem: depois de publicado não há botão de editar.
+    function sfEditarFotoPost(idx) {
+        var item = sfPendingImages[idx];
+        if (!item) return;
+        sfAbrirCropImagem(item.base64, 'post', function (v) {
+            sfPendingImages[idx] = { base64: v, mimeType: 'image/jpeg' };
+            sfUpdateNewPreview();
+        });
     }
 
     // Aplica a posição/zoom atuais na <img> do palco.
@@ -4129,7 +4079,7 @@
     // certo para cada uso (foto quadrada, capa em faixa larga).
     function sfCropConfirmar() {
         if (!sfCrop) return;
-        var saida = SF_CROP_SAIDA[sfCrop.tipo];
+        var saida = sfCrop.saida || SF_CROP_SAIDA[sfCrop.tipo];
         var origemX = -sfCrop.offX / sfCrop.scale;
         var origemY = -sfCrop.offY / sfCrop.scale;
         var origemW = sfCrop.stageW / sfCrop.scale;
