@@ -2330,7 +2330,7 @@
 <div id="about-dee-modal" class="overlay">
     <div class="mcard about-dee-card">
         <h2 style="margin-bottom:14px;"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Sobre o Dee</h2>
-        <p class="about-dee-desc">Dee é o seu app de mensagens: conversas em tempo real, chamadas, grupos, status, compartilhamento de localização ao vivo e o Cinema Coletivo — pra assistir vídeos juntos, na mesma conversa. Tudo em um só lugar, feito pra ficar perto de quem importa.</p>
+        <p class="about-dee-desc">Dee é o seu app de mensagens: conversas em tempo real, chamadas, grupos, status, compartilhamento de localização ao vivo e o Cinema Coletivo — pra assistir vídeos, na mesma conversa. Tudo em um só lugar, feito pra ficar perto de quem importa.</p>
         <div class="about-dee-version-row">
             <span>Versão instalada</span>
             <strong id="about-dee-version">Verificando...</strong>
@@ -2589,7 +2589,7 @@
             <button class="status-opt-btn" onclick="document.getElementById('chat-bg-file-input').click();"><span class="status-opt-ic"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>Escolher foto de fundo desta conversa</button>
             <button class="status-opt-btn" id="chat-custom-remove-img-btn" onclick="removeChatImage()" style="display:none;"><span class="status-opt-ic"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></span>Remover imagem desta conversa</button>
         </div>
-        <div class="chat-custom-note" id="chat-custom-no-chat-hint" style="display:none;margin-bottom:0;">Ao definir um tema ele será aplicado a todo o app</div>
+        <div class="chat-custom-note" id="chat-custom-no-chat-hint" style="display:none;margin-bottom:0;">O tema escolhido será aplicado a todo o app.</div>
         <div id="chat-custom-remove-box" style="display:none;margin-top:10px;">
             <button class="mbtn danger-btn" style="width:100%;" onclick="removerPersonalizacao()">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
@@ -5413,6 +5413,11 @@ function toggleMode() {
     try {
         var modeParam = new URLSearchParams(location.search).get('mode');
         if (modeParam === 'cadastro' && !isReg) toggleMode();
+        // Voltando da página de redefinir senha (redefinir-senha.html ou a
+        // do próprio Firebase), o e-mail da conta já vem preenchido no login.
+        var emailParam = new URLSearchParams(location.search).get('email');
+        var campoEmail = document.getElementById('inp-email');
+        if (emailParam && !isReg && campoEmail && !campoEmail.value) campoEmail.value = emailParam.trim();
     } catch(e) {}
 })();
 async function doAuth() {
@@ -5453,23 +5458,56 @@ async function doAuth() {
 // (auth.sendPasswordResetEmail). Não há forma segura de trocar a senha
 // inteiramente "dentro do app" sem um backend com privilégios de admin
 // (Cloud Functions / Admin SDK), que fica fora do plano gratuito.
+//
+// O link do e-mail leva à página própria do Dee (redefinir-senha.html),
+// onde a pessoa cria a nova senha — desde que no Console do Firebase o
+// modelo de e-mail aponte para ela (Authentication → Modelos → Personalizar
+// URL de ação). Sem isso, o link abre a página padrão do Firebase, também
+// em português, e depois volta para o login do Dee com o e-mail preenchido.
+var ultimoEnvioResetSenha = {}; // e-mail -> quando o link foi pedido (evita pedidos seguidos)
+
+function resetSenhaUrlDeVolta(email) {
+    var base = /^https?:$/.test(location.protocol) ? location.origin : 'https://dee-mensagens.web.app';
+    return base + '/index.html?mode=login&email=' + encodeURIComponent(email);
+}
+
 async function doForgotPassword() {
     var email = document.getElementById('inp-email').value.trim();
     if (!email) { notify('Digite seu e-mail no campo acima para receber o link de redefinição', 'warn'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { notify('Digite um e-mail válido.', 'warn'); return; }
+
+    var chave = email.toLowerCase();
+    var falta = 60 - Math.floor((Date.now() - (ultimoEnvioResetSenha[chave] || 0)) / 1000);
+    if (ultimoEnvioResetSenha[chave] && falta > 0) {
+        notify('O link já foi enviado para ' + email + '. Para pedir de novo, aguarde ' + falta + 's.', 'warn', 5000);
+        return;
+    }
 
     var lnk = document.getElementById('forgot-lnk');
     var originalText = lnk ? lnk.textContent : '';
     if (lnk) { lnk.style.pointerEvents = 'none'; lnk.style.opacity = '0.6'; lnk.textContent = 'Enviando...'; }
 
     try {
-        await auth.sendPasswordResetEmail(email);
-        notify('Enviamos um e-mail para ' + email + ' com o link para redefinir sua senha. Verifique também a caixa de spam.', 'ok', 7000);
+        // E-mail e página de redefinição em português.
+        auth.languageCode = 'pt-BR';
+        try {
+            // Depois de criar a nova senha, o botão "Continuar" volta para o
+            // login do Dee com o e-mail já preenchido.
+            await auth.sendPasswordResetEmail(email, { url: resetSenhaUrlDeVolta(email), handleCodeInApp: false });
+        } catch (e1) {
+            // Endereço de volta não autorizado no Firebase: envia do jeito simples.
+            if (e1 && /continue-uri/.test(e1.code || '')) await auth.sendPasswordResetEmail(email);
+            else throw e1;
+        }
+        ultimoEnvioResetSenha[chave] = Date.now();
+        notify('Link enviado para ' + email + '. Pode levar alguns minutos — confira também a caixa de Spam / Lixo eletrônico (procure por "noreply"). Se não chegar, confira se é o mesmo e-mail do cadastro.', 'ok', 12000);
     } catch(e) {
         var map = {
             'auth/user-not-found': 'Nenhuma conta encontrada com este e-mail.',
             'auth/invalid-email':  'E-mail inválido.',
+            'auth/missing-email':  'Digite seu e-mail.',
             'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+            'auth/network-request-failed': 'Sem conexão. Verifique sua internet e tente novamente.',
         };
         notify(map[e.code] || friendlyError(e), 'err');
     } finally {

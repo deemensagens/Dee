@@ -196,6 +196,14 @@
 /* Os modais abertos DE DENTRO do perfil (nova postagem, live, editar perfil, recorte) vem antes dele no HTML, entao com o mesmo z-index do .overlay (1000) eram desenhados POR TRAS do cartao do perfil. Subindo o z-index deles, abrem sempre na frente. Continuam abaixo da camera (1100) e do confirm-modal (10050). */\
 #sf-new-post-modal,#sf-live-new-modal,#sf-perfil-editar-modal{z-index:1010;}\
 #sf-crop-modal{z-index:1020;}\
+/* Visualizador somente-leitura da foto de perfil / capa: propositalmente SEM nenhum botao de baixar. Fica acima do proprio modal de perfil (de onde e aberto). */\
+#sf-fullimg-modal{z-index:1030;}\
+.sf-fullimg-card{background:transparent;box-shadow:none;padding:0;width:100vw;max-width:100vw;height:100vh;max-height:100vh;display:flex;position:relative;overflow:hidden;border-radius:0;}\
+.sf-fullimg-stage{position:relative;width:100%;height:100%;overflow:hidden;touch-action:none;cursor:grab;}\
+.sf-fullimg-stage.dragging{cursor:grabbing;}\
+.sf-fullimg-stage img{position:absolute;top:0;left:0;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;pointer-events:none;}\
+.sf-fullimg-fechar{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3;backdrop-filter:blur(4px);}\
+.sf-fullimg-fechar .icon{width:18px;height:18px;}\
 .sf-edit-contador{font-size:11px;color:var(--muted2);text-align:right;margin-top:4px;}\
 .sf-edit-contador.cheio{color:var(--warn,#ffb020);}\
 .sf-edit-campo{margin-bottom:14px;}\
@@ -612,6 +620,22 @@
                 '</div>' +
             '</div>' +
 
+            // Visualizador da foto de perfil / capa, aberto em tela cheia ao
+            // tocar nelas dentro do modal de perfil. É um visualizador
+            // PRÓPRIO, separado do "viewImg" usado nas fotos do chat —
+            // deliberadamente sem nenhum botão de baixar, e com o
+            // clique-direito/arrastar/toque-longo bloqueados (ver
+            // sfWireEvents e os estilos .sf-fullimg-*).
+            '<div id="sf-fullimg-modal" class="overlay">' +
+                '<div class="mcard sf-fullimg-card">' +
+                    '<button class="sf-fullimg-fechar" id="sf-fullimg-fechar" title="Fechar" aria-label="Fechar">' +
+                        '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+                    '<div class="sf-fullimg-stage" id="sf-fullimg-stage">' +
+                        '<img id="sf-fullimg-img" src="" alt="" draggable="false">' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+
             '<div id="sf-perfil-editar-modal" class="overlay">' +
                 '<div class="mcard">' +
                     '<h3 class="mtitle">Editar perfil</h3>' +
@@ -874,6 +898,24 @@
         if (cropCancelarBtn) cropCancelarBtn.onclick = sfCropCancelar;
         var cropConfirmarBtn = document.getElementById('sf-crop-confirmar');
         if (cropConfirmarBtn) cropConfirmarBtn.onclick = sfCropConfirmar;
+
+        // Visualizador da foto de perfil/capa (sem botão de baixar):
+        // arrastar (mouse/touch), beliscão de dois dedos, roda do mouse e
+        // toque/clique duplo dão zoom — igual ao palco de recorte. Clique
+        // direito é bloqueado para não abrir o "Salvar imagem como" do
+        // navegador.
+        var fullImgStage = document.getElementById('sf-fullimg-stage');
+        if (fullImgStage) {
+            fullImgStage.addEventListener('pointerdown', sfFullImgPointerDown);
+            fullImgStage.addEventListener('pointermove', sfFullImgPointerMove);
+            fullImgStage.addEventListener('pointerup', sfFullImgPointerUp);
+            fullImgStage.addEventListener('pointercancel', sfFullImgPointerUp);
+            fullImgStage.addEventListener('wheel', sfFullImgWheel, { passive: false });
+            fullImgStage.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+        }
+        var fullImgFechar = document.getElementById('sf-fullimg-fechar');
+        if (fullImgFechar) fullImgFechar.onclick = sfFecharImagemInteira;
+
         document.getElementById('sf-blocked-close').onclick = function () { closeModal('sf-blocked-modal'); };
         document.getElementById('sf-rank-btn').onclick = sfOpenRankModal;
         document.getElementById('sf-rank-close').onclick = function () { closeModal('sf-rank-modal'); };
@@ -3806,6 +3848,10 @@
     var sfPerfilCache   = {};     // uid -> dados do perfil, para não reler toda hora
     var sfMinhaFotoNova = null;   // foto escolhida na edição, ainda não salva
     var sfMinhaCapaNova = null;
+    // Visualizador de tela cheia (zoom/arraste) da foto de perfil/capa,
+    // SEM botão de baixar — ver sfVerImagemInteira, mais abaixo.
+    var sfFullImg         = null; // estado de zoom/posição da imagem aberta agora
+    var sfFullImgPointers = {};   // pointerId -> {x,y} dos dedos/mouse ativos no palco
 
     var TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000;
 
@@ -3903,9 +3949,10 @@
         }
         document.getElementById('sf-perfil-foto').innerHTML = avInner(nome, foto);
 
-        // Tocar na capa ou na foto abre a imagem inteira, no mesmo
-        // visualizador das fotos das conversas (com zoom e "Baixar").
-        // Sem capa ou sem foto (só a inicial do nome), o toque não faz nada.
+        // Tocar na capa ou na foto abre a imagem inteira num visualizador
+        // PRÓPRIO da Comunidade (com zoom, mas SEM nenhum botão de baixar —
+        // ver sfVerImagemInteira). Sem capa ou sem foto (só a inicial do
+        // nome), o toque não faz nada.
         var capaImagem = perfil.capa || null;
         if (capaEl) {
             capaEl.classList.toggle('sf-perfil-clicavel', !!capaImagem);
@@ -3943,12 +3990,148 @@
         sfPerfilAberto = null;
     }
 
-    // Abre a capa ou a foto do perfil inteira no visualizador de imagem do
-    // app (viewImg, no index.html). O botão voltar do celular fecha o
-    // visualizador e a pessoa continua no perfil.
+    // Abre a capa ou a foto do perfil inteira, em tela cheia, com zoom e
+    // arraste — mas SEM nenhum botão de baixar. Propositalmente NÃO usa o
+    // "viewImg" global (o mesmo visualizador das fotos do chat), porque
+    // aquele tem um botão "Baixar": aqui usamos um palco próprio
+    // (#sf-fullimg-modal), que nunca tem essa opção.
+    //
+    // Isso cobre o botão em si, mas nenhum app consegue impedir 100% que
+    // alguém salve algo que está na tela dele (ex.: print/captura de tela
+    // do sistema operacional continua funcionando, como em qualquer app).
+    // O que dá pra bloquear — e este visualizador bloqueia — são os
+    // atalhos "fáceis" de salvar a imagem: botão de baixar, clique direito
+    // > "Salvar imagem como", arrastar a imagem para fora, e o menu de
+    // toque longo do celular ("Salvar na galeria"/"Copiar imagem").
     function sfVerImagemInteira(src) {
-        if (!src || typeof viewImg !== 'function') return;
-        viewImg(src);
+        if (!src) return;
+        var pre = new Image();
+        pre.onload = function () {
+            var stage = document.getElementById('sf-fullimg-stage');
+            var imgEl = document.getElementById('sf-fullimg-img');
+            if (!stage || !imgEl) return;
+            imgEl.src = src;
+            openModal('sf-fullimg-modal');
+            var rect = stage.getBoundingClientRect();
+            var escalaInteira = Math.min(rect.width / pre.width, rect.height / pre.height) || 1;
+            sfFullImg = {
+                natW: pre.width, natH: pre.height,
+                scale: escalaInteira, minScale: escalaInteira, maxScale: escalaInteira * 4,
+                stageW: rect.width, stageH: rect.height
+            };
+            sfFullImg.offX = (rect.width  - pre.width  * escalaInteira) / 2;
+            sfFullImg.offY = (rect.height - pre.height * escalaInteira) / 2;
+            sfFullImgPointers = {};
+            sfFullImgRenderizar();
+        };
+        pre.src = src;
+    }
+
+    function sfFecharImagemInteira() {
+        closeModal('sf-fullimg-modal');
+        sfFullImg = null;
+        sfFullImgPointers = {};
+        var imgEl = document.getElementById('sf-fullimg-img');
+        if (imgEl) imgEl.src = '';
+    }
+
+    // Aplica a posição/zoom atuais na <img> do palco (mesmo esquema do
+    // recorte de foto de perfil/capa, ver sfCropRenderizar).
+    function sfFullImgRenderizar() {
+        if (!sfFullImg) return;
+        var imgEl = document.getElementById('sf-fullimg-img');
+        if (!imgEl) return;
+        imgEl.style.width  = (sfFullImg.natW * sfFullImg.scale) + 'px';
+        imgEl.style.height = (sfFullImg.natH * sfFullImg.scale) + 'px';
+        imgEl.style.left = sfFullImg.offX + 'px';
+        imgEl.style.top  = sfFullImg.offY + 'px';
+    }
+
+    // Nunca deixa sobrar área vazia quando a imagem está com zoom; sem
+    // zoom, mantém centralizada (mesma lógica de sfCropLimitar).
+    function sfFullImgLimitar() {
+        var dispW = sfFullImg.natW * sfFullImg.scale;
+        var dispH = sfFullImg.natH * sfFullImg.scale;
+        if (dispW <= sfFullImg.stageW) sfFullImg.offX = (sfFullImg.stageW - dispW) / 2;
+        else sfFullImg.offX = Math.min(0, Math.max(sfFullImg.stageW - dispW, sfFullImg.offX));
+        if (dispH <= sfFullImg.stageH) sfFullImg.offY = (sfFullImg.stageH - dispH) / 2;
+        else sfFullImg.offY = Math.min(0, Math.max(sfFullImg.stageH - dispH, sfFullImg.offY));
+    }
+
+    function sfFullImgPosRelativa(clientX, clientY) {
+        var rect = document.getElementById('sf-fullimg-stage').getBoundingClientRect();
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    // Muda o zoom mantendo o ponto (mx,my) do palco fixo na tela — o que
+    // faz o beliscão/roda do mouse "zoomarem" no dedo/cursor.
+    function sfFullImgZoomEm(mx, my, novaScale) {
+        novaScale = Math.min(sfFullImg.maxScale, Math.max(sfFullImg.minScale, novaScale));
+        var pontoX = (mx - sfFullImg.offX) / sfFullImg.scale;
+        var pontoY = (my - sfFullImg.offY) / sfFullImg.scale;
+        sfFullImg.scale = novaScale;
+        sfFullImg.offX = mx - pontoX * novaScale;
+        sfFullImg.offY = my - pontoY * novaScale;
+        sfFullImgLimitar();
+        sfFullImgRenderizar();
+    }
+
+    var sfFullImgLastTapAt = 0;
+    function sfFullImgPointerDown(e) {
+        if (!sfFullImg) return;
+        if (e.target.setPointerCapture) { try { e.target.setPointerCapture(e.pointerId); } catch (err) {} }
+        sfFullImgPointers[e.pointerId] = sfFullImgPosRelativa(e.clientX, e.clientY);
+        document.getElementById('sf-fullimg-stage').classList.add('dragging');
+        // Um só dedo/clique: verifica toque duplo (dá/tira zoom no ponto
+        // tocado). Com dois dedos já ativos, não é duplo toque.
+        if (Object.keys(sfFullImgPointers).length === 1) {
+            var agora = Date.now();
+            var p = sfFullImgPointers[e.pointerId];
+            if (agora - sfFullImgLastTapAt < 320) {
+                var alvo = (sfFullImg.scale > sfFullImg.minScale * 1.05) ? sfFullImg.minScale : sfFullImg.minScale * 2.5;
+                sfFullImgZoomEm(p.x, p.y, alvo);
+                sfFullImgLastTapAt = 0;
+            } else {
+                sfFullImgLastTapAt = agora;
+            }
+        }
+    }
+
+    function sfFullImgPointerMove(e) {
+        if (!sfFullImg || !sfFullImgPointers[e.pointerId]) return;
+        var anterior = sfFullImgPointers[e.pointerId];
+        var atual = sfFullImgPosRelativa(e.clientX, e.clientY);
+        var ids = Object.keys(sfFullImgPointers);
+
+        if (ids.length === 1) {
+            sfFullImg.offX += atual.x - anterior.x;
+            sfFullImg.offY += atual.y - anterior.y;
+            sfFullImgPointers[e.pointerId] = atual;
+            sfFullImgLimitar();
+            sfFullImgRenderizar();
+        } else {
+            var outroId = ids.filter(function (id) { return id !== String(e.pointerId); })[0];
+            var outro = sfFullImgPointers[outroId];
+            var distAntes = Math.hypot(anterior.x - outro.x, anterior.y - outro.y) || 1;
+            sfFullImgPointers[e.pointerId] = atual;
+            var distDepois = Math.hypot(atual.x - outro.x, atual.y - outro.y) || 1;
+            sfFullImgZoomEm((atual.x + outro.x) / 2, (atual.y + outro.y) / 2, sfFullImg.scale * (distDepois / distAntes));
+        }
+    }
+
+    function sfFullImgPointerUp(e) {
+        delete sfFullImgPointers[e.pointerId];
+        if (!Object.keys(sfFullImgPointers).length) {
+            var stage = document.getElementById('sf-fullimg-stage');
+            if (stage) stage.classList.remove('dragging');
+        }
+    }
+
+    function sfFullImgWheel(e) {
+        if (!sfFullImg) return;
+        e.preventDefault();
+        var p = sfFullImgPosRelativa(e.clientX, e.clientY);
+        sfFullImgZoomEm(p.x, p.y, sfFullImg.scale * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
     }
 
     // As publicações da pessoa, em grade — tocar em qualquer uma abre a

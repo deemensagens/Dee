@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<!-- O link do e-mail traz um código de uso único na URL: nunca repassar
+     o endereço desta página para outros sites. -->
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#00e5cc">
+<title>Redefinir senha — Dee</title>
+<link rel="icon" type="image/png" href="icon-192.png">
+
+<style>
+    :root {
+        --bg:       #030508;
+        --surface:  #0b0d12;
+        --surface2: #111420;
+        --accent:   #00e5cc;
+        --accent2:  #0088ff;
+        --text:     #e8eaf0;
+        --muted:    #6b7290;
+        --border:   #1a1d28;
+        --danger:   #ff3b5c;
+        --ok:       #2ee59d;
+        --safe-top:    env(safe-area-inset-top, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body {
+        min-height: 100%; background: var(--bg); color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+        display: flex; flex-direction: column; align-items: center;
+        padding: calc(var(--safe-top) + 28px) 16px calc(var(--safe-bottom) + 28px);
+        background: radial-gradient(ellipse at top left, #002a2a 0%, var(--bg) 60%);
+    }
+    .wrap { width: 100%; max-width: 420px; }
+
+    .brand { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 22px; }
+    .brand-logo {
+        width: 34px; height: 34px; border-radius: 10px;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 900; font-size: 16px; color: #04141a;
+    }
+    .brand-name { font-weight: 800; font-size: 17px; letter-spacing: .2px; }
+
+    .card {
+        width: 100%; background: var(--surface); border: 1px solid var(--border);
+        border-radius: 20px; padding: 24px 20px;
+    }
+    .icone {
+        width: 54px; height: 54px; border-radius: 50%; margin: 0 auto 14px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0,229,204,.12); color: var(--accent);
+    }
+    .icone.erro { background: rgba(255,59,92,.12); color: var(--danger); }
+    .icone.ok { background: rgba(46,229,157,.12); color: var(--ok); }
+    .icone svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    h1 { font-size: 19px; font-weight: 800; text-align: center; margin-bottom: 6px; }
+    .sub { font-size: 13.5px; color: var(--muted); text-align: center; line-height: 1.55; margin-bottom: 18px; word-break: break-word; }
+    .sub b { color: var(--text); font-weight: 700; }
+
+    .spinner {
+        width: 34px; height: 34px; margin: 4px auto 14px;
+        border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--accent);
+        animation: spin .85s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin: 14px 0 6px; }
+    .campo { position: relative; }
+    input {
+        width: 100%; background: #0a0c12; border: 1px solid var(--border); border-radius: 12px;
+        padding: 13px 46px 13px 14px; color: var(--text); font-family: inherit; font-size: 15px;
+    }
+    input.sem-olho { padding-right: 14px; }
+    input:focus { outline: none; border-color: var(--accent); }
+    .olho {
+        position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+        width: 36px; height: 36px; border: none; background: transparent; color: var(--muted);
+        display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 10px;
+    }
+    .olho svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .dica { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+    .msg { font-size: 13px; line-height: 1.5; margin-top: 12px; min-height: 0; }
+    .msg.erro { color: var(--danger); }
+    .msg.ok { color: var(--ok); }
+
+    .btn {
+        width: 100%; margin-top: 18px; padding: 14px; border-radius: 14px; border: none;
+        background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #04141a;
+        font-family: inherit; font-weight: 800; font-size: 15px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; text-decoration: none;
+    }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn.sec { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .nota { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.5; margin-top: 16px; }
+    .oculto { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <div class="brand">
+        <div class="brand-logo">D</div>
+        <div class="brand-name">Dee</div>
+    </div>
+
+    <!-- Carregando / conferindo o link -->
+    <div class="card" id="tela-carregando">
+        <div class="spinner"></div>
+        <h1>Conferindo o link…</h1>
+        <p class="sub" style="margin-bottom:0;">Só um instante.</p>
+    </div>
+
+    <!-- Criar a nova senha -->
+    <form class="card oculto" id="tela-nova-senha" novalidate>
+        <div class="icone"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <h1>Criar nova senha</h1>
+        <p class="sub">Conta: <b id="conta-email"></b></p>
+
+        <label for="senha-nova">Nova senha</label>
+        <div class="campo">
+            <input type="password" id="senha-nova" autocomplete="new-password" minlength="6" placeholder="Mínimo de 6 caracteres">
+            <button type="button" class="olho" data-alvo="senha-nova" title="Mostrar senha" aria-label="Mostrar senha"></button>
+        </div>
+        <label for="senha-confirmar">Repita a nova senha</label>
+        <div class="campo">
+            <input type="password" id="senha-confirmar" autocomplete="new-password" minlength="6" placeholder="Digite a mesma senha">
+            <button type="button" class="olho" data-alvo="senha-confirmar" title="Mostrar senha" aria-label="Mostrar senha"></button>
+        </div>
+        <p class="dica">Use pelo menos 6 caracteres. Evite senhas óbvias, como datas ou "123456".</p>
+        <p class="msg" id="msg-nova-senha"></p>
+
+        <button type="submit" class="btn" id="btn-salvar-senha">Salvar nova senha</button>
+    </form>
+
+    <!-- Pedir um link (sem link, ou link vencido/já usado) -->
+    <form class="card oculto" id="tela-pedir-link" novalidate>
+        <div class="icone" id="pedir-icone"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+        <h1 id="pedir-titulo">Esqueceu a senha?</h1>
+        <p class="sub" id="pedir-sub">Digite o e-mail da sua conta Dee. Vamos enviar um link para você criar uma nova senha.</p>
+
+        <label for="pedir-email">E-mail da conta</label>
+        <input type="email" class="sem-olho" id="pedir-email" autocomplete="email" inputmode="email" placeholder="seu@email.com">
+        <p class="msg" id="msg-pedir-link"></p>
+
+        <button type="submit" class="btn" id="btn-pedir-link">Enviar link</button>
+        <a class="btn sec" id="btn-voltar-login" href="index.html?mode=login">Voltar para o login</a>
+    </form>
+
+    <!-- Tudo certo -->
+    <div class="card oculto" id="tela-sucesso">
+        <div class="icone ok"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <h1 id="sucesso-titulo">Senha alterada!</h1>
+        <p class="sub" id="sucesso-sub">Pronto. Agora é só entrar no Dee com o seu e-mail e a nova senha.</p>
+        <a class="btn" id="btn-entrar" href="index.html?mode=login">Entrar no Dee</a>
+        <p class="nota" id="sucesso-nota">Usa o aplicativo no celular? Abra o Dee e entre com a nova senha — não precisa fazer mais nada aqui.</p>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════
+//  REDEFINIR SENHA — página própria do Dee para o link do e-mail
+// ══════════════════════════════════════════════════════════
+//  O Firebase manda o e-mail com um link de uso único (oobCode). Esta
+//  página confere o link, mostra de qual conta ele é e deixa a pessoa
+//  criar a nova senha ali mesmo. Sem o link (ou com um link vencido/já
+//  usado), ela oferece enviar um novo para o e-mail da conta.
+//
+//  Para os e-mails apontarem para cá, no Console do Firebase:
+//  Authentication → Modelos → (editar) → Personalizar URL de ação →
+//  https://dee-mensagens.web.app/redefinir-senha.html
+(function () {
+    'use strict';
+
+    var firebaseConfig = {
+        apiKey: "AIzaSyCf9UBLUNObJTzgOT6Wv6GRoWWYq0pUj68",
+        authDomain: "dee-mensagens.firebaseapp.com",
+        projectId: "dee-mensagens",
+        storageBucket: "dee-mensagens.firebasestorage.app",
+        messagingSenderId: "898078042067",
+        appId: "1:898078042067:web:6f4c2ef7554d2a6a81f126"
+    };
+
+    var $ = function (id) { return document.getElementById(id); };
+    // Formulários nunca recarregam a página (mesmo se o Firebase não carregar).
+    document.querySelectorAll('form').forEach(function (f) { f.addEventListener('submit', function (e) { e.preventDefault(); }); });
+    var TELAS = ['tela-carregando', 'tela-nova-senha', 'tela-pedir-link', 'tela-sucesso'];
+    function mostrar(id) { TELAS.forEach(function (t) { $(t).classList.toggle('oculto', t !== id); }); }
+    function msg(el, texto, tipo) { el.textContent = texto || ''; el.className = 'msg' + (tipo ? ' ' + tipo : ''); }
+
+    var OLHO_ABERTO  = '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    var OLHO_FECHADO = '<svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    document.querySelectorAll('.olho').forEach(function (b) {
+        b.innerHTML = OLHO_ABERTO;
+        b.addEventListener('click', function () {
+            var inp = $(b.getAttribute('data-alvo'));
+            var ver = inp.type === 'password';
+            inp.type = ver ? 'text' : 'password';
+            b.innerHTML = ver ? OLHO_FECHADO : OLHO_ABERTO;
+            b.title = ver ? 'Esconder senha' : 'Mostrar senha';
+        });
+    });
+
+    // ── Parâmetros do link ──
+    var params = new URLSearchParams(window.location.search);
+    var CHAVE_SESSAO = 'dee_reset_link';
+    var guardado = {};
+    try { guardado = JSON.parse(sessionStorage.getItem(CHAVE_SESSAO)) || {}; } catch (e) { guardado = {}; }
+    var mode = params.get('mode') || guardado.mode || '';
+    var oobCode = params.get('oobCode') || guardado.oobCode || '';
+    var continueUrl = params.get('continueUrl') || guardado.continueUrl || '';
+
+    // Tira o código da barra de endereço (não fica no histórico nem aparece
+    // num print), mas guarda nesta aba para sobreviver a um recarregar.
+    if (params.get('oobCode')) {
+        try { sessionStorage.setItem(CHAVE_SESSAO, JSON.stringify({ mode: mode, oobCode: oobCode, continueUrl: continueUrl })); } catch (e) {}
+        try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
+    }
+    function esquecerLink() { try { sessionStorage.removeItem(CHAVE_SESSAO); } catch (e) {} }
+
+    // Endereço de volta para o Dee: só aceita os endereços do próprio Dee
+    // (nunca redireciona para um site de fora, mesmo que alguém edite o link).
+    var DOMINIOS_DEE = ['dee-mensagens.web.app', 'dee-mensagens.firebaseapp.com', window.location.hostname];
+    function urlDeVolta(email) {
+        var base = 'index.html?mode=login' + (email ? '&email=' + encodeURIComponent(email) : '');
+        if (!continueUrl) return base;
+        try {
+            var u = new URL(continueUrl, window.location.href);
+            if ((u.protocol === 'https:' || u.protocol === 'http:') && DOMINIOS_DEE.indexOf(u.hostname) !== -1) return u.href;
+        } catch (e) {}
+        return base;
+    }
+
+    function erroAmigavel(e) {
+        var code = (e && e.code) || '';
+        var mapa = {
+            'auth/expired-action-code': 'Este link expirou. Peça um novo abaixo.',
+            'auth/invalid-action-code': 'Este link não é válido ou já foi usado. Peça um novo abaixo.',
+            'auth/user-disabled': 'Esta conta foi desativada.',
+            'auth/user-not-found': 'Não existe mais uma conta com este e-mail.',
+            'auth/weak-password': 'Senha muito fraca. Use pelo menos 6 caracteres.',
+            'auth/password-does-not-meet-requirements': 'A senha não atende às regras de segurança. Tente uma senha mais forte.',
+            'auth/invalid-email': 'E-mail inválido.',
+            'auth/missing-email': 'Digite seu e-mail.',
+            'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos e tente de novo.',
+            'auth/network-request-failed': 'Sem conexão. Verifique sua internet e tente de novo.'
+        };
+        return mapa[code] || 'Não foi possível concluir agora. Tente de novo em instantes.';
+    }
+
+    // ── Firebase ──
+    if (typeof firebase === 'undefined' || !firebase.initializeApp) {
+        mostrarPedirLink('Sem conexão', 'Não foi possível carregar a página. Verifique sua internet e recarregue.', true);
+        return;
+    }
+    if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    var auth = firebase.auth();
+    auth.languageCode = 'pt-BR';
+
+    // ── Tela: pedir link ──
+    var ultimoEnvio = 0;
+    function mostrarPedirLink(titulo, subtitulo, comoErro) {
+        $('pedir-titulo').textContent = titulo || 'Esqueceu a senha?';
+        $('pedir-sub').textContent = subtitulo || 'Digite o e-mail da sua conta Dee. Vamos enviar um link para você criar uma nova senha.';
+        $('pedir-icone').classList.toggle('erro', !!comoErro);
+        msg($('msg-pedir-link'), '');
+        mostrar('tela-pedir-link');
+    }
+
+    $('tela-pedir-link').addEventListener('submit', async function (ev) {
+        ev.preventDefault();
+        var email = $('pedir-email').value.trim();
+        var saida = $('msg-pedir-link');
+        var btn = $('btn-pedir-link');
+        if (!email) { msg(saida, 'Digite o e-mail da sua conta.', 'erro'); return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg(saida, 'Digite um e-mail válido.', 'erro'); return; }
+        var falta = 60 - Math.floor((Date.now() - ultimoEnvio) / 1000);
+        if (ultimoEnvio && falta > 0) { msg(saida, 'Link já enviado. Para pedir de novo, aguarde ' + falta + 's.', 'erro'); return; }
+
+        btn.disabled = true; btn.textContent = 'Enviando…';
+        try {
+            var voltar = (window.location.protocol === 'https:' ? window.location.origin : 'https://dee-mensagens.web.app') +
+                '/index.html?mode=login&email=' + encodeURIComponent(email);
+            try {
+                await auth.sendPasswordResetEmail(email, { url: voltar, handleCodeInApp: false });
+            } catch (e1) {
+                if (e1 && /continue-uri/.test(e1.code || '')) await auth.sendPasswordResetEmail(email);
+                else throw e1;
+            }
+            ultimoEnvio = Date.now();
+            msg(saida, 'Link enviado para ' + email + '. Pode levar alguns minutos — confira também a caixa de Spam / Lixo eletrônico (procure por "noreply"). Se não chegar, confira se é o mesmo e-mail do cadastro.', 'ok');
+        } catch (e) {
+            msg(saida, erroAmigavel(e), 'erro');
+        } finally {
+            btn.disabled = false; btn.textContent = 'Enviar link';
+        }
+    });
+
+    // ── Tela: nova senha ──
+    var emailDaConta = '';
+    $('tela-nova-senha').addEventListener('submit', async function (ev) {
+        ev.preventDefault();
+        var senha = $('senha-nova').value;
+        var repetir = $('senha-confirmar').value;
+        var saida = $('msg-nova-senha');
+        var btn = $('btn-salvar-senha');
+        if (senha.length < 6) { msg(saida, 'A senha precisa ter pelo menos 6 caracteres.', 'erro'); return; }
+        if (senha !== repetir) { msg(saida, 'As duas senhas não são iguais.', 'erro'); return; }
+
+        btn.disabled = true; btn.textContent = 'Salvando…';
+        msg(saida, '');
+        try {
+            await auth.confirmPasswordReset(oobCode, senha);
+            esquecerLink();
+            $('senha-nova').value = ''; $('senha-confirmar').value = '';
+            $('btn-entrar').href = urlDeVolta(emailDaConta);
+            mostrar('tela-sucesso');
+        } catch (e) {
+            var code = (e && e.code) || '';
+            if (code === 'auth/expired-action-code' || code === 'auth/invalid-action-code') {
+                esquecerLink();
+                $('pedir-email').value = emailDaConta;
+                mostrarPedirLink('Link vencido', erroAmigavel(e), true);
+            } else {
+                msg(saida, erroAmigavel(e), 'erro');
+            }
+        } finally {
+            btn.disabled = false; btn.textContent = 'Salvar nova senha';
+        }
+    });
+
+    // ── Início: o que o link pede? ──
+    (async function iniciar() {
+        if (!oobCode) {
+            mostrarPedirLink();
+            return;
+        }
+
+        if (mode === 'resetPassword') {
+            try {
+                emailDaConta = await auth.verifyPasswordResetCode(oobCode);
+                $('conta-email').textContent = emailDaConta;
+                mostrar('tela-nova-senha');
+                setTimeout(function () { try { $('senha-nova').focus(); } catch (e) {} }, 50);
+            } catch (e) {
+                esquecerLink();
+                mostrarPedirLink('Link vencido ou já usado', erroAmigavel(e), true);
+            }
+            return;
+        }
+
+        // Os mesmos links do Firebase também servem para confirmar e-mail e
+        // desfazer troca de e-mail — tratados aqui para nada ficar sem resposta.
+        if (mode === 'verifyEmail') {
+            try {
+                await auth.applyActionCode(oobCode);
+                esquecerLink();
+                $('sucesso-titulo').textContent = 'E-mail confirmado!';
+                $('sucesso-sub').textContent = 'Seu e-mail foi confirmado com sucesso.';
+                $('btn-entrar').href = urlDeVolta('');
+                mostrar('tela-sucesso');
+            } catch (e) {
+                esquecerLink();
+                mostrarPedirLink('Link vencido ou já usado', 'Este link de confirmação não é mais válido.', true);
+            }
+            return;
+        }
+
+        if (mode === 'recoverEmail') {
+            try {
+                var info = await auth.checkActionCode(oobCode);
+                var emailRestaurado = (info && info.data && info.data.email) || '';
+                await auth.applyActionCode(oobCode);
+                esquecerLink();
+                $('sucesso-titulo').textContent = 'E-mail restaurado';
+                $('sucesso-sub').textContent = 'O e-mail da conta voltou a ser ' + emailRestaurado + '. Se não foi você quem pediu a troca, crie uma nova senha agora.';
+                $('btn-entrar').textContent = 'Criar nova senha';
+                $('btn-entrar').href = '#';
+                $('btn-entrar').onclick = function (ev) {
+                    ev.preventDefault();
+                    $('pedir-email').value = emailRestaurado;
+                    mostrarPedirLink();
+                };
+                $('sucesso-nota').classList.add('oculto');
+                mostrar('tela-sucesso');
+            } catch (e) {
+                esquecerLink();
+                mostrarPedirLink('Link vencido ou já usado', erroAmigavel(e), true);
+            }
+            return;
+        }
+
+        esquecerLink();
+        mostrarPedirLink('Link inválido', 'Este link não é reconhecido. Se quiser, peça um novo link de redefinição abaixo.', true);
+    })();
+})();
+</script>
+</body>
+</html>
