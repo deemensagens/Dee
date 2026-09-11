@@ -260,9 +260,10 @@
 .sf-card-media{flex:1;min-height:0;background:#05070a;display:flex;align-items:center;justify-content:center;overflow:hidden;}\
 .sf-card-media img{width:100%;height:100%;object-fit:cover;display:block;}\
 .sf-media-loading{color:var(--muted);font-size:11px;}\
-/* Carrossel de fotos DENTRO de um post (até SF_MAX_IMAGES): setinhas e pontinhos por cima da imagem — sem arraste, de propósito, pra não conflitar com o arraste que troca de POSTAGEM no mesmo eixo. */\
+/* Carrossel de fotos DENTRO de um post (até SF_MAX_IMAGES): setinhas, pontinhos e arraste com o dedo/mouse por cima da imagem (ver sfInitDrag/sfInitDetailImgDrag e a classe .dragging abaixo, que desliga a transição enquanto o dedo está em movimento). O arraste aqui troca de FOTO; só quando chega na 1ª ou última foto e a pessoa insiste é que o gesto passa a trocar de POSTAGEM (mesmo eixo horizontal do carrossel de posts). */\
 .sf-img-carousel{position:relative;width:100%;height:100%;overflow:hidden;}\
 .sf-img-track{display:flex;width:100%;height:100%;transition:transform .28s cubic-bezier(.16,1,.3,1);}\
+.sf-img-track.dragging{transition:none;}\
 .sf-img-slide{flex:0 0 100%;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;}\
 .sf-card-media .sf-img-slide img{width:100%;height:100%;object-fit:cover;display:block;}\
 .sf-img-carousel:after{content:\'\';position:absolute;left:0;right:0;bottom:0;height:34px;background:linear-gradient(to top,rgba(0,0,0,.45),transparent);pointer-events:none;z-index:2;}\
@@ -978,6 +979,7 @@
         });
 
         sfInitDrag();
+        sfInitDetailImgDrag();
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -1141,6 +1143,17 @@
         var idx = parseInt(wrap.getAttribute('data-img-index'), 10) || 0;
         var next = idx + dir;
         if (next < 0 || next >= total) return;
+        sfImgCarouselIrPara(wrap, next);
+    };
+
+    // Aplica a troca pra foto "next" dentro do carrossel de UM post: move a
+    // faixa, atualiza pontinhos/contador/setinhas e dispara o download da
+    // foto se ainda não tiver sido baixada nesta sessão. Compartilhado pelas
+    // setinhas (sfImgCarouselNav) e pelo arraste com o dedo/mouse (sfInitDrag
+    // e sfInitDetailImgDrag), pra não duplicar essa lógica nos dois lugares.
+    function sfImgCarouselIrPara(wrap, next) {
+        var total = parseInt(wrap.getAttribute('data-img-total'), 10) || 1;
+        next = Math.max(0, Math.min(next, total - 1));
         wrap.setAttribute('data-img-index', String(next));
         var track = wrap.querySelector('.sf-img-track');
         if (track) track.style.transform = 'translateX(-' + (next * 100) + '%)';
@@ -1154,7 +1167,7 @@
         var postId = wrap.getAttribute('data-carousel-post-id');
         var imgs = sfCarouselDataByPost[postId];
         if (imgs) sfLoadCarouselSlide(postId, imgs, next);
-    };
+    }
 
     // Baixa (via chunks) UMA foto específica do carrossel de um post, se
     // ainda não tiver sido baixada nesta sessão. Só carrega sob demanda —
@@ -1491,29 +1504,93 @@
         var wrap = document.querySelector('.sf-carousel-wrap');
         if (!wrap) return;
         var dragging = false, startX = 0, currentX = 0, startTranslate = 0, widthPx = 0;
+        // Estado extra pra quando o arraste começa DENTRO do carrossel de
+        // fotos de UM post: nesse caso a gente troca de FOTO primeiro, e só
+        // "vaza" pro arraste de POSTAGEM (o de baixo) se a pessoa insistir
+        // arrastando além da primeira ou da última foto — ver noFolga em
+        // move(). Sem isso as duas ações, que usam o mesmo eixo horizontal,
+        // brigariam entre si.
+        var imgMode = false, imgWrap = null, imgTrack = null, imgIdx = 0, imgTotal = 1, imgWidthPx = 0;
 
-        function down(x) {
-            var list = sfVisiblePosts();
-            if (list.length <= 1) return;
+        function down(x, targetEl) {
             var track = document.getElementById('sf-track');
             if (!track) return;
+            var carrossel = targetEl && targetEl.closest && targetEl.closest('.sf-img-carousel');
+            // Sem carrossel de fotos envolvido, arraste de postagem só faz
+            // sentido havendo mais de um post pra trocar (comportamento
+            // inalterado). Começando dentro de um carrossel, o arraste vale
+            // a pena mesmo com um post só na tela, pra poder ver as outras
+            // fotos dele.
+            if (!carrossel && sfVisiblePosts().length <= 1) return;
+
             dragging = true; startX = x; currentX = x;
             widthPx = wrap.getBoundingClientRect().width || 1;
             startTranslate = -sfIndex * widthPx;
-            track.classList.add('dragging');
+
+            if (carrossel) {
+                imgMode = true;
+                imgWrap = carrossel;
+                imgTrack = carrossel.querySelector('.sf-img-track');
+                imgTotal = parseInt(carrossel.getAttribute('data-img-total'), 10) || 1;
+                imgIdx = parseInt(carrossel.getAttribute('data-img-index'), 10) || 0;
+                imgWidthPx = carrossel.getBoundingClientRect().width || 1;
+                if (imgTrack) imgTrack.classList.add('dragging');
+            } else {
+                imgMode = false;
+                imgWrap = null;
+                track.classList.add('dragging');
+            }
         }
         function move(x) {
             if (!dragging) return;
             currentX = x;
+            var delta = currentX - startX;
+
+            if (imgMode) {
+                var semFotoAntes  = imgIdx <= 0;
+                var semFotoDepois = imgIdx >= imgTotal - 1;
+                // Arrastando na direção de uma foto que não existe (antes da
+                // 1ª ou depois da última): dá uma pequena folga (12px) pra
+                // não vazar num toque leve sem querer e, passando dela, entrega
+                // o arraste pro post — começando do zero a partir da posição
+                // atual do dedo, sem pulo na tela.
+                var semFolga = (delta > 0 && semFotoAntes) || (delta < 0 && semFotoDepois);
+                if (semFolga && Math.abs(delta) > 12) {
+                    imgMode = false;
+                    if (imgTrack) { imgTrack.style.transform = 'translateX(-' + (imgIdx * 100) + '%)'; imgTrack.classList.remove('dragging'); }
+                    imgWrap = null;
+                    startX = currentX;
+                    var trackEl = document.getElementById('sf-track');
+                    if (trackEl) trackEl.classList.add('dragging');
+                    move(currentX);
+                    return;
+                }
+                if (imgTrack) imgTrack.style.transform = 'translateX(calc(-' + (imgIdx * 100) + '% + ' + delta + 'px))';
+                return;
+            }
+
             var track = document.getElementById('sf-track');
-            if (track) track.style.transform = 'translateX(' + (startTranslate + (currentX - startX)) + 'px)';
+            if (track) track.style.transform = 'translateX(' + (startTranslate + delta) + 'px)';
         }
         function up() {
             if (!dragging) return;
             dragging = false;
+            var delta = currentX - startX;
+
+            if (imgMode) {
+                imgMode = false;
+                if (imgTrack) imgTrack.classList.remove('dragging');
+                var limiar = imgWidthPx * 0.18;
+                var next = imgIdx;
+                if (delta < -limiar && imgIdx < imgTotal - 1) next = imgIdx + 1;
+                else if (delta > limiar && imgIdx > 0) next = imgIdx - 1;
+                if (imgWrap) sfImgCarouselIrPara(imgWrap, next);
+                imgWrap = null;
+                return;
+            }
+
             var track = document.getElementById('sf-track');
             if (track) track.classList.remove('dragging');
-            var delta = currentX - startX;
             var threshold = widthPx * 0.18;
             if (delta < -threshold) sfGoTo(sfIndex + 1);
             else if (delta > threshold) sfGoTo(sfIndex - 1);
@@ -1521,14 +1598,69 @@
         }
 
         // ".sf-img-arrow" são as setinhas do carrossel de FOTOS dentro de
-        // uma publicação (ver sfImgCarouselNav) — ficam no mesmo eixo
-        // horizontal deste arraste que troca de POSTAGEM, então também
-        // precisam ser ignoradas aqui, senão tocar nelas iniciaria (sem
-        // necessidade) um arraste de postagem por baixo.
-        wrap.addEventListener('touchstart', function (e) { if (e.target.closest('.sf-arrow') || e.target.closest('.sf-img-arrow')) return; down(e.touches[0].clientX); }, { passive: true });
+        // uma publicação (ver sfImgCarouselNav) — cliques nelas nunca devem
+        // iniciar um arraste por baixo. Já o carrossel em si (".sf-img-
+        // carousel") PODE iniciar um arraste — só que troca de foto
+        // primeiro, e só vira arraste de postagem se a pessoa insistir além
+        // da primeira/última foto (ver imgMode acima).
+        wrap.addEventListener('touchstart', function (e) { if (e.target.closest('.sf-arrow') || e.target.closest('.sf-img-arrow')) return; down(e.touches[0].clientX, e.target); }, { passive: true });
         wrap.addEventListener('touchmove',  function (e) { move(e.touches[0].clientX); }, { passive: true });
         wrap.addEventListener('touchend',   function () { up(); });
-        wrap.addEventListener('mousedown', function (e) { if (e.target.closest('.sf-arrow') || e.target.closest('.sf-img-arrow')) return; e.preventDefault(); down(e.clientX); });
+        wrap.addEventListener('mousedown', function (e) { if (e.target.closest('.sf-arrow') || e.target.closest('.sf-img-arrow')) return; e.preventDefault(); down(e.clientX, e.target); });
+        window.addEventListener('mousemove', function (e) { if (dragging) move(e.clientX); });
+        window.addEventListener('mouseup',   function () { if (dragging) up(); });
+    }
+
+    // Mesma ideia do arraste de fotos acima, só que para o carrossel dentro
+    // do MODAL DE DETALHE de um post (aberto ao tocar numa publicação).
+    // Aqui não existe arraste de POSTAGEM por baixo — o modal mostra um post
+    // por vez — então o arraste do carrossel nunca "vaza" pra outra coisa:
+    // é sempre só trocar de foto.
+    function sfInitDetailImgDrag() {
+        var modal = document.getElementById('sf-detail-modal');
+        if (!modal) return;
+        var dragging = false, startX = 0, currentX = 0;
+        var imgWrap = null, imgTrack = null, imgIdx = 0, imgTotal = 1, imgWidthPx = 0;
+
+        function down(x, targetEl) {
+            var carrossel = targetEl && targetEl.closest && targetEl.closest('.sf-img-carousel');
+            if (!carrossel) return;
+            dragging = true; startX = x; currentX = x;
+            imgWrap = carrossel;
+            imgTrack = carrossel.querySelector('.sf-img-track');
+            imgTotal = parseInt(carrossel.getAttribute('data-img-total'), 10) || 1;
+            imgIdx = parseInt(carrossel.getAttribute('data-img-index'), 10) || 0;
+            imgWidthPx = carrossel.getBoundingClientRect().width || 1;
+            if (imgTrack) imgTrack.classList.add('dragging');
+        }
+        function move(x) {
+            if (!dragging) return;
+            currentX = x;
+            var delta = currentX - startX;
+            if (imgTrack) imgTrack.style.transform = 'translateX(calc(-' + (imgIdx * 100) + '% + ' + delta + 'px))';
+        }
+        function up() {
+            if (!dragging) return;
+            dragging = false;
+            if (imgTrack) imgTrack.classList.remove('dragging');
+            var delta = currentX - startX;
+            var limiar = imgWidthPx * 0.18;
+            var next = imgIdx;
+            if (delta < -limiar && imgIdx < imgTotal - 1) next = imgIdx + 1;
+            else if (delta > limiar && imgIdx > 0) next = imgIdx - 1;
+            if (imgWrap) sfImgCarouselIrPara(imgWrap, next);
+            imgWrap = null;
+        }
+
+        modal.addEventListener('touchstart', function (e) { if (e.target.closest('.sf-img-arrow')) return; down(e.touches[0].clientX, e.target); }, { passive: true });
+        modal.addEventListener('touchmove',  function (e) { move(e.touches[0].clientX); }, { passive: true });
+        modal.addEventListener('touchend',   function () { up(); });
+        modal.addEventListener('mousedown', function (e) {
+            if (e.target.closest('.sf-img-arrow')) return;
+            if (!e.target.closest('.sf-img-carousel')) return; // deixa cliques normais do modal (curtir, comentar etc.) em paz
+            e.preventDefault();
+            down(e.clientX, e.target);
+        });
         window.addEventListener('mousemove', function (e) { if (dragging) move(e.clientX); });
         window.addEventListener('mouseup',   function () { if (dragging) up(); });
     }
